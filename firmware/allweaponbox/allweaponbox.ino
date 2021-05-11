@@ -145,7 +145,7 @@ const uint8_t  weaponPinA    = A1;    // Fencer A pin B - Analog
 const uint8_t  lamePinA      = A2;    // Fencer A pin A - Analog
 const uint8_t  groundPinB    = A3;    // Fencer B pin C - Analog
 const uint8_t  weaponPinB    = A4;    // Fencer B pin B - Analog
-const uint8_t  lamePinB      = A5;    // Fencer B pin A   §- Analog
+const uint8_t  lamePinB      = A5;    // Fencer B pin A - Analog
 
 #ifdef DISP_IR_CARDS_BOX
 // IR object
