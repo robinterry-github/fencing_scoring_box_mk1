@@ -24,6 +24,6 @@ Arduino libraries IRRemote, IRLib2 and TM1637Display are used in the software fo
 
 - The box has three main operating modes - sparring, bout and stopwatch.
 
-- The power supply connector is a 5V USB type A, which allows the box to be powered from a standard USB charger or a USB battery pack.
+- The power supply connector on the box is a 5V USB type B, which allows the box to be powered from a standard USB charger or a USB battery pack.
 
 - More details, including the full circuit diagram, are in the Word document which is found in the 'docs' directory.
