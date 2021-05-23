@@ -4,7 +4,7 @@
 //  Dev:     Wnew                                                            //
 //  Date:    Nov    2012                                                     //
 //  Updated: Sept   2015                                                     //
-//  Updated: Dec 21 2020 Robin Terry, Skipton, UK                            //
+//  Updated: May 23 2021 Robin Terry, Skipton, UK                            //
 //                                                                           //
 //  Notes:   1. Basis of algorithm from digitalwestie on github. Thanks Mate //
 //           2. Used uint8_t instead of int where possible to optimise       //
@@ -28,6 +28,8 @@
 //          10. Added a up/down-counting stopwatch                           //
 //          11. Stores the selected weapon type in EEPROM                    //
 //          12. Stores the current mode (spar/bout/stopwatch) in EEPROM      //
+//          13. Added in the serial port indicator (for external indication) //
+//          14. The timer shows 1/100 sec in last 9 seconds                  //
 //===========================================================================//
 
 //============
@@ -43,6 +45,8 @@
 #define DISP_IR_CARDS_BOX        // define this to enable 7-segment display, IR control and card LEDs -
                                  // for a simple hit indicator only box, you can undefine this
 
+//#define SERIAL_INDICATOR       // Send serial data out to an indicator application
+
 #ifdef DISP_IR_CARDS_BOX
 #define LOW_POWER                // support low-power for battery operation
 #define IRLIB2                   // use IRLib2 instead of IRRemote (IRLib2 is better, but bigger)
@@ -55,6 +59,7 @@
 #define LIGHTTIME      (3000)    // length of time the lights are kept on after a hit (ms)
 #define BAUDRATE       (230400)  // baud rate of the serial debug interface
 #define ONESEC         (1000)
+#define HUNDSEC        (10)
 #define ONESEC_US      (1000000)
 #define BUTTONSCAN     (200)              // button scan period (ms)
 #define BUTTONDEBOUNCE (BUTTONSCAN*10)    // button debounce (in ms, but a whole number of scan periods)
@@ -176,7 +181,10 @@ long timer           = 0;
 long timerMs         = 0;
 long timerMins       = 0;
 long timerSecs       = 0;
+long timerHund       = 0;
+long timerInterval   = ONESEC;
 bool timerStart      = false;
+bool timerLast9s     = false;
 long timerMax        = MATCHTIME;
 long hitDisplayTimer = 0;
 long resetTimer      = 0;
@@ -1028,6 +1036,10 @@ void displayScore()
      }
      currentDisp = DISP_SCORE;
   }
+#ifdef SERIAL_INDICATOR
+  String ind = String("*") + String(score[FENCER_A]) + "-" + String(score[FENCER_B]);
+  Serial.println(ind);
+#endif
 }
 
 //===================
@@ -1074,12 +1086,29 @@ void displayTime()
 #endif
 #ifdef DISP_IR_CARDS_BOX
          setBrightness(DIM_BRIGHTEST);
-         disp.showNumberDecEx(timerMins, 0b01000000, true, 2, 0);
-         disp.showNumberDecEx(timerSecs, 0b01000000, true, 2, 2);
+
+         // Show the 1/100 second timer
+         if (timerLast9s)
+         {
+            disp.showNumberDecEx(timerSecs, 0b01000000, true,  2, 0);
+            disp.showNumberDecEx(timerHund, 0b01000000, true,  2, 2);
+         }
+
+         // Show the 1 second timer
+         else
+         {
+            /* In Stopwatch mode, display a zero-padded time, but not otherwise */
+            disp.showNumberDecEx(timerMins, 0b01000000, inStopWatch() ? true:false, 2, 0);
+            disp.showNumberDecEx(timerSecs, 0b01000000, true,  2, 2);
+         }
 #endif
       }
       currentDisp = DISP_TIME;
    }
+#ifdef SERIAL_INDICATOR
+   String ind = String("@") + String(timerMins) + ":" + String(timerSecs);
+   Serial.println(ind);
+#endif
 }
 
 void displayPri()
@@ -1194,8 +1223,13 @@ void setup()
 #ifdef DEBUG_ALL
    Serial.begin(BAUDRATE);
 #endif
+#ifdef SERIAL_INDICATOR
+   Serial.begin(BAUDRATE);
    Serial.println("");
+   Serial.println("!GO");
+#endif
 #ifdef DEBUG_ALL
+   Serial.println("");
    Serial.println("Fencing Scoring Box");
    Serial.println("===================");
 #endif
@@ -1320,6 +1354,9 @@ void restartBox(MatchState state)
 
 void choosePriority()
 {
+#ifdef SERIAL_INDICATOR
+   Serial.println("!PC");
+#endif
 #ifdef DISP_IR_CARDS_BOX
    displayState(STA_PRIORITY);
 #endif
@@ -1341,10 +1378,12 @@ void setTimer(int time)
    {
       timerMax = time;
    }
-   timer     = time;
-   timerMs   = 0;
-   timerMins = timer/60;
-   timerSecs = timer%60;
+   timer        = time;
+   timerMs      = 0;
+   timerMins    = timer/60;
+   timerSecs    = timer%60;
+   timerHund    = 0;
+   timerLast9s  = false;
 #ifdef DEBUG_L6
    Serial.print("setting timer to ");
    Serial.println(time);
@@ -1378,7 +1417,7 @@ int incTimer(int inc)
       {
          inc = timerMax-timer;
       }
-      timer += inc;
+      timer     += inc;
       timerSecs += inc;
       if (timerSecs >= 60)
       {
@@ -1545,10 +1584,31 @@ void shortBeep()
 //============
 // Count down the main timer
 //============
-int countDown()
+int countDown(int timerGap)
 {
 #ifdef DISP_IR_CARDS_BOX
-   if (timer > 0)
+   if (timerLast9s)
+   {
+      /* Counting down in hundredths of seconds */
+      if (timerHund <= 0)
+      {
+         /* Has the timer expired? */
+         if (--timerSecs < 0)
+         {
+            timer       = timerSecs = 0;
+            timerLast9s = false;
+         }
+         else
+         {
+            timerHund += 99;
+         }
+      }
+      else
+      {
+         timerHund -= timerGap;
+      }
+   }
+   else if (timer > 0)
    {
       timer--;
       if (timerSecs <= 0)
@@ -1558,7 +1618,7 @@ int countDown()
       }
       else
       {
-         timerSecs--;
+         timerSecs -= timerGap;
       }
    }
    else
@@ -2481,6 +2541,10 @@ void transIR(unsigned long key)
 //=============
 void startMatch()
 {
+#ifdef SERIAL_INDICATOR
+   Serial.println("!MS");
+   Serial.println("*0-0");
+#endif
 #ifdef DISP_IR_CARDS_BOX
    priState                = PRI_IDLE;
 #ifdef STOPWATCH
@@ -2518,6 +2582,9 @@ void startMatch()
 
 void continueMatch()
 {
+#ifdef SERIAL_INDICATOR
+   Serial.println("!MC");
+#endif
 #ifdef DISP_IR_CARDS_BOX
    priState = PRI_IDLE;
    setTimer(MATCHTIME);
@@ -2545,6 +2612,9 @@ void buzzerTimeout()
 
 void endOfMatch()
 {
+#ifdef SERIAL_INDICATOR
+   Serial.println("!ME");
+#endif
 #ifdef DISP_IR_CARDS_BOX
    buzzerTimeout();
 
@@ -2560,6 +2630,9 @@ void endOfMatch()
 //=============
 void startPriority()
 {
+#ifdef SERIAL_INDICATOR
+   Serial.println("!PS");
+#endif
 #ifdef DISP_IR_CARDS_BOX
 #ifdef DEBUG_L1
    Serial.println(
@@ -2582,6 +2655,9 @@ void startPriority()
 
 void endPriority()
 {
+#ifdef SERIAL_INDICATOR
+   Serial.println("!PE");
+#endif
 #ifdef DISP_IR_CARDS_BOX
    priState   = PRI_END;
    timeState  = TIM_STOPPED;
@@ -2607,6 +2683,9 @@ void endPriority()
 //=============
 void startSpar()
 {
+#ifdef SERIAL_INDICATOR
+   Serial.println("!SS");
+#endif
 #ifdef DEBUG_L1
    Serial.println("sparring mode - no timer");
 #endif
@@ -2651,6 +2730,9 @@ void startStopWatch()
 {
 #ifdef STOPWATCH
    matchState = STA_STOPWATCH;
+#ifdef SERIAL_INDICATOR
+   Serial.println("!WS");
+#endif
 #ifdef EEPROM_STORAGE
    writeState(matchState);
 #endif
@@ -2687,6 +2769,9 @@ void setStopWatch()
 void resetStopWatch(bool restart)
 {
 #ifdef STOPWATCH
+#ifdef SERIAL_INDICATOR
+   Serial.println("!WR");
+#endif
 #ifdef DEBUG_L4
    Serial.println("reset stopwatch");
 #endif
@@ -2928,7 +3013,7 @@ void adcOpt()
 //============
 void loop() 
 {
-   int    expired;
+   int    expired, timerGap;
    long   now;
    
    // use a for() as a main loop as the loop() has too much overhead for fast analogReads
@@ -2981,6 +3066,7 @@ void loop()
             setBrightness(DIM_DIMMEST);
             dimTimer = millis();
             dimCycle = 0;
+
             displayDimCycle();
          }
       }
@@ -2992,7 +3078,7 @@ void loop()
             is used for IR detection wakes it up - however, any CPU
             idle time that we can obtain is useful for power saving */
          LowPower.idle(SLEEP_FOREVER, ADC_OFF, TIMER2_ON, 
-            TIMER1_OFF, TIMER0_ON, SPI_OFF, USART0_OFF, TWI_OFF);
+               TIMER1_OFF, TIMER0_ON, SPI_OFF, USART0_OFF, TWI_OFF);
 #endif
          if (millis() - dimTimer > DIMINTERVAL)
          {
@@ -3033,6 +3119,16 @@ void loop()
             // Start the hit display state machine
             startHitDisplay();
 
+            // Increment the score
+            if (hitOnTarg[FENCER_A])
+            {
+               addScore(FENCER_A);
+            }
+            if (hitOnTarg[FENCER_B])
+            {
+               addScore(FENCER_B);
+            }
+
             // Display the current score
             displayScore();
          }
@@ -3069,7 +3165,6 @@ void loop()
       // Poll the IR to see if a key has been pressed
       pollIR();
 #endif
-
       // Is the box changing mode?
       if (modeChange)
       {
@@ -3311,14 +3406,14 @@ void loop()
                }
                else if ((millis() - buttonDebounce) > BUTTONDEBOUNCE)
                {
-                   if (!buttonPressed)
-                   {
-                      buttonPressed = true;
-                      modeChange    = true;
+                  if (!buttonPressed)
+                  {
+                     buttonPressed = true;
+                     modeChange    = true;
 #ifdef DEBUG_L1
-                      Serial.println("button pressed");
+                     Serial.println("button pressed");
 #endif
-                   }
+                  }
                }
             }
 
@@ -3340,8 +3435,8 @@ void loop()
                Serial.println("button released");
 #endif
             }
+            buttonScan = millis();
          }
-         buttonScan = millis();
       }
 
 #ifdef DISP_IR_CARDS_BOX
@@ -3395,10 +3490,12 @@ void loop()
       // Handle main timer
       if (timeState != TIM_STOPPED)
       {
-         if (millis() > timerMs+ONESEC)
+         if (millis() > (timerMs+timerInterval))
          {
+            timerGap = (millis()-timerMs)/timerInterval;
 #ifdef DEBUG_L6
-            Serial.println("1 second gone");
+            if (timerInterval == ONESEC)
+               Serial.println("1 second gone");
 #endif
             timerMs = millis();
 #ifdef STOPWATCH
@@ -3409,8 +3506,21 @@ void loop()
             else
 #endif
             {
-               expired = countDown();
+               expired = countDown(timerGap);
                displayTime();
+
+               if (inMatch())
+               {
+                  if (timerMins == 0 && timerSecs <= 10)
+                  {
+                     if (!timerLast9s)
+                     {
+                        timerLast9s   = true;
+                        timerInterval = HUNDSEC;
+                        timerHund     = 0;
+                     }
+                  }
+               }
 
                // Countdown expired?
                if (expired)
@@ -3436,6 +3546,8 @@ void loop()
 #ifdef DEBUG_L6
                      Serial.println("match timer expired");
 #endif
+                     timerLast9s   = false;
+                     timerInterval = ONESEC;
                   }
 
                   // Stay in the same mode, so that we can continue if needed
@@ -3943,6 +4055,27 @@ void signalHits()
 #else
       digitalWrite(onTargetA,  hitOnTarg[FENCER_A] | hitOffTarg[FENCER_A]);
       digitalWrite(onTargetB,  hitOnTarg[FENCER_B] | hitOffTarg[FENCER_B]);
+#endif
+#ifdef SERIAL_INDICATOR
+      String ind = String("!");
+
+      if (hitOnTarg[FENCER_A])
+      {
+         ind += String("H0");
+      }
+      if (hitOnTarg[FENCER_B])
+      {
+         ind += String("H1");
+      }
+      if (hitOffTarg[FENCER_A])
+      {
+         ind += String("O0");
+      }
+      if (hitOffTarg[FENCER_B])
+      {
+         ind += String("O1");
+      }
+      Serial.println(ind);
 #endif
       buzzer(true);
 #ifdef DEBUG_L2
