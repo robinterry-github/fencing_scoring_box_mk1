@@ -41,10 +41,11 @@
 //#define DEBUG_L4               // level 4 debug
 //#define DEBUG_L5               // level 5 debug
 //#define DEBUG_L6               // level 6 debug
+//#define DEBUG_L7               // level 7 debug
 //#define OFFTARGET_LEDS         // define this if you have fitted the discrete off-target LEDs
 #define DISP_IR_CARDS_BOX        // define this to enable 7-segment display, IR control and card LEDs -
                                  // for a simple hit indicator only box, you can undefine this
-
+#define FREQUENT_IRPOLL          // define this to increase the amount of IR polling         
 //#define SERIAL_INDICATOR       // Send serial data out to an indicator application
 
 #ifdef DISP_IR_CARDS_BOX
@@ -56,6 +57,7 @@
 #endif
 
 #define BUZZERTIME     (1000)    // length of time the buzzer is kept on after a hit (ms)
+#define TESTPOINTTIME  (500)     // length of time the buzzer and lights are kept on when point testing (ms)
 #define LIGHTTIME      (3000)    // length of time the lights are kept on after a hit (ms)
 #define BAUDRATE       (230400)  // baud rate of the serial debug interface
 #define ONESEC         (1000)
@@ -63,10 +65,10 @@
 #define ONESEC_US      (1000000)
 #define BUTTONSCAN     (200)              // button scan period (ms)
 #define BUTTONDEBOUNCE (BUTTONSCAN*10)    // button debounce (in ms, but a whole number of scan periods)
-#define MATCHTIME      (180)     // 3 minutes match time
+#define BOUTTIME       (180)     // 3 minutes bout time
 #define PRITIME        (60)      // 1 minute priority time
 #define BREAKTIME      (60)      // 1 minute break time
-#define HITDISPTIME    (500)     // hit display flash time (ms)
+#define HITDISPTIME    (200)     // hit display flash time (ms)
 #define SCOREFLASHTIME (1000)    // score flashup display time (ms)
 #define MAXSCORE       (99)
 #define MAXSHORTCIRC   (3000)    // Short circuit persist time (ms)
@@ -121,7 +123,8 @@
 // Various debug levels
 #if defined(DEBUG_L1) || defined(DEBUG_L2) \
  || defined(DEBUG_L3) || defined(DEBUG_L4) \
- || defined(DEBUG_L5) || defined(DEBUG_L6)
+ || defined(DEBUG_L5) || defined(DEBUG_L6) \
+ || defined(DEBUG_L7)
 #define DEBUG_ALL
 #endif
 
@@ -185,14 +188,15 @@ long timerHund       = 0;
 long timerInterval   = ONESEC;
 bool timerStart      = false;
 bool timerLast9s     = false;
-long timerMax        = MATCHTIME;
+long timerMax        = BOUTTIME;
 long hitDisplayTimer = 0;
+long hitDisplayTime  = HITDISPTIME;
 long resetTimer      = 0;
 int  currentFencer   = 0;
 long swMins          = 0;
 long swSecs          = 0;
 
-// Total score for all bouts since restarting the match
+// Total score for all bouts since restarting the bout
 int  score[2]        = { 0, 0 };
 
 /* Score for just this bout - this can go negative
@@ -250,21 +254,24 @@ enum TimeState
 {
    TIM_STOPPED,
    TIM_BREAK,
-   TIM_MATCH,
+   TIM_BOUT,
    TIM_PRIORITY,
    TIM_STOPWATCH
 };
 
-enum MatchState
+enum BoutState
 {
    STA_NONE,
    STA_SPAR,
    STA_CONTINUE,
    STA_BREAK,
-   STA_STARTMATCH,
-   STA_MATCH,
+   STA_TP_BREAK,
+   STA_STARTBOUT,
+   STA_BOUT,
+   STA_TP_BOUT,
    STA_PRIORITY,
    STA_ENDPRI,
+   STA_TP_PRI,
    STA_STOPWATCH
 };
 
@@ -279,6 +286,7 @@ enum Reset
 {
    RES_IDLE,
    RES_BUZZER,
+   RES_TESTPOINT,
    RES_LIGHTS,
    RES_SHORT,
    RES_OFF
@@ -297,7 +305,7 @@ enum Key
   K_NONE,
   K_BREAK,
   K_RESET_TIMER,
-  K_START_MATCH,
+  K_START_BOUT,
   K_PRIORITY,
   K_CLEAR_SCORES,
   K_WIND_BACK,
@@ -356,7 +364,7 @@ Weapon weaponType = FOIL;
 //===============
 // State machines
 //===============
-MatchState      matchState        = STA_NONE;
+BoutState       boutState         = STA_NONE;
 TimeState       timeState         = TIM_STOPPED;
 HitDisplay      hitDisplay        = HIT_IDLE;
 Priority        priState          = PRI_IDLE;
@@ -562,29 +570,49 @@ const uint8_t touchDisp[][2] =
 };
 #endif
 
-bool inMatch()
+bool inBout()
 {
-   return ((matchState != STA_SPAR) && (matchState != STA_BREAK) && (matchState != STA_STOPWATCH)) ? true:false;
+   return ((boutState != STA_SPAR) && (boutState != STA_BREAK) && (boutState != STA_STOPWATCH)) ? true:false;
 }
 
-bool inMatchOrBreak()
+bool inBoutOrBreak()
 {
-   return ((matchState > STA_SPAR) && (matchState != STA_STOPWATCH)) ? true:false;
+   return ((boutState > STA_SPAR) && (boutState != STA_STOPWATCH)) ? true:false;
 }
 
-bool inMatchOrSpar()
+bool inBoutOrSpar()
 {
-   return ((matchState != STA_BREAK) && (matchState != STA_STOPWATCH)) ? true:false;
+   return ((boutState != STA_BREAK) && (boutState != STA_STOPWATCH)) ? true:false;
 }
 
 bool inSpar()
 {
-   return (matchState == STA_SPAR) ? true:false;
+   return (boutState == STA_SPAR) ? true:false;
+}
+
+bool inBreak()
+{
+   return (boutState == STA_BREAK) ? true:false;
+}
+
+bool inBoutStart()
+{
+   return (boutState == STA_STARTBOUT) ? true:false;
 }
 
 bool inStopWatch()
 {
-   return (matchState == STA_STOPWATCH) ? true:false;
+   return (boutState == STA_STOPWATCH) ? true:false;
+}
+
+bool inTestPoint()
+{
+   return (boutState == STA_TP_BOUT || boutState == STA_TP_PRI || boutState == STA_TP_BREAK) ? true:false;
+}
+
+bool pointCanBeTested()
+{
+   return inTestPoint() || inBreak() || inBoutStart();
 }
 
 bool isHit()
@@ -638,11 +666,11 @@ void displayWeapon(bool lights)
    // Turn all lights on
    if (lights)
    {
-      digitalWrite(onTargetA,  1);
-      digitalWrite(onTargetB,  1);
+      digitalWrite(onTargetA,  HIGH);
+      digitalWrite(onTargetB,  HIGH);
 #ifdef OFFTARGET_LEDS
-      digitalWrite(offTargetA, 1);
-      digitalWrite(offTargetB, 1);
+      digitalWrite(offTargetA, HIGH);
+      digitalWrite(offTargetB, HIGH);
 #endif
       updateCardLeds(A_ALL | B_ALL);
 
@@ -651,11 +679,11 @@ void displayWeapon(bool lights)
       delay(1000);
 
       // Turn all lights off
-      digitalWrite(onTargetA,  0);
-      digitalWrite(onTargetB,  0);
+      digitalWrite(onTargetA,  LOW);
+      digitalWrite(onTargetB,  LOW);
 #ifdef OFFTARGET_LEDS
-      digitalWrite(offTargetA, 0);
-      digitalWrite(offTargetB, 0);
+      digitalWrite(offTargetA, LOW);
+      digitalWrite(offTargetB, LOW);
 #endif
       updateCardLeds(0);
    }
@@ -663,10 +691,10 @@ void displayWeapon(bool lights)
 
 void displayState()
 {
-   displayState(matchState);
+   displayState(boutState);
 }
 
-void displayState(enum MatchState state)
+void displayState(enum BoutState state)
 {
 #ifdef DISP_IR_CARDS_BOX
    setBrightness(DIM_BRIGHTEST);
@@ -676,18 +704,21 @@ void displayState(enum MatchState state)
          disp.setSegments(sparDisp, 4, 0);
          break;
 
-      case STA_MATCH:
-      case STA_STARTMATCH:
+      case STA_BOUT:
+      case STA_TP_BOUT:
+      case STA_STARTBOUT:
       case STA_CONTINUE:
         disp.setSegments(boutDisp, 4, 0);
         break;
 
      case STA_PRIORITY:
+     case STA_TP_PRI:
      case STA_ENDPRI:
         disp.setSegments(prioDisp, 4, 0);
         break;
 
      case STA_BREAK:
+     case STA_TP_BREAK:
         disp.setSegments(restDisp, 4, 0);
         break;
 
@@ -788,7 +819,7 @@ void displayScore()
            disp.showNumberDecEx(score[FENCER_B], 0, false, 2, 2);
 #endif
           // Flash the hit LED of the fencer who won priority
-          digitalWrite((priFencer == FENCER_A) ? onTargetA:onTargetB, 1);
+          digitalWrite((priFencer == FENCER_A) ? onTargetA:onTargetB, HIGH);
           break;
 
         case HIT_OFF:
@@ -796,8 +827,8 @@ void displayScore()
            // Flash the score of the fencer who won priority
            disp.setSegments(blankDisp, 2, (priFencer == FENCER_A) ? 0:2);
 #endif
-           digitalWrite(onTargetA, 0);
-           digitalWrite(onTargetB, 0);
+           digitalWrite(onTargetA, LOW);
+           digitalWrite(onTargetB, LOW);
            break;
      }
   }
@@ -824,11 +855,11 @@ void displayScore()
               // If we've hit maximum sabre hits, then flash both hit LEDs
               if (maxSabreHits[FENCER_A])
               {
-                 digitalWrite(onTargetA, 1);
+                 digitalWrite(onTargetA, HIGH);
               }
               if (maxSabreHits[FENCER_B])
               {
-                 digitalWrite(onTargetB, 1);
+                 digitalWrite(onTargetB, HIGH);
               }
            }
 
@@ -842,7 +873,7 @@ void displayScore()
 #endif
 #ifndef OFFTARGET_LEDS
                  // Flash the 'on target A' LED
-                 digitalWrite(onTargetA, 1);
+                 digitalWrite(onTargetA, HIGH);
 #endif
               }
               else
@@ -858,7 +889,7 @@ void displayScore()
 #endif
 #ifndef OFFTARGET_LEDS
                  // Flash the 'on target B' LED
-                 digitalWrite(onTargetB, 1);
+                 digitalWrite(onTargetB, HIGH);
 #endif
               }
               else
@@ -879,8 +910,8 @@ void displayScore()
               disp.setSegments(blankDisp, 2, 0);
               disp.setSegments(blankDisp, 2, 2); 
 #endif
-              digitalWrite(onTargetA, 0);
-              digitalWrite(onTargetB, 0);
+              digitalWrite(onTargetA, LOW);
+              digitalWrite(onTargetB, LOW);
            }
 
            // Only flash the display for the fencer who hit
@@ -893,7 +924,7 @@ void displayScore()
               case HIT_OFFTARGET:
 #ifndef OFFTARGET_LEDS
                  // Flash the 'on target A' LED
-                 digitalWrite(onTargetA, 0);
+                 digitalWrite(onTargetA, LOW);
 #endif
                  // Drop through
 
@@ -914,7 +945,7 @@ void displayScore()
               case HIT_OFFTARGET:
 #ifndef OFFTARGET_LEDS
                  // Flash the 'on target B' LED
-                 digitalWrite(onTargetB, 0);
+                 digitalWrite(onTargetB, LOW);
 #endif
                  // Drop through
 
@@ -969,7 +1000,7 @@ void displayScore()
 #endif
 #ifndef OFFTARGET_LEDS
                 // Flash the 'on target A' LED
-                digitalWrite(onTargetA, 1);
+                digitalWrite(onTargetA, HIGH);
 #endif
                 break;
           }
@@ -996,7 +1027,7 @@ void displayScore()
 #endif
 #ifndef OFFTARGET_LEDS
                 // Flash the 'on target B' LED
-                digitalWrite(onTargetB, 1);
+                digitalWrite(onTargetB, HIGH);
 #endif
                 break;
           }
@@ -1015,7 +1046,7 @@ void displayScore()
              if (hitDisplayFlag[FENCER_A] == HIT_OFFTARGET)
              {
                 // Flash the 'on target A' LED
-                digitalWrite(onTargetA, 0);
+                digitalWrite(onTargetA, LOW);
              }
 #endif
           }
@@ -1028,7 +1059,7 @@ void displayScore()
              if (hitDisplayFlag[FENCER_B] == HIT_OFFTARGET)
              {
                 // Flash the 'on target B' LED
-                digitalWrite(onTargetB, 0);
+                digitalWrite(onTargetB, LOW);
              }
 #endif
           }
@@ -1130,8 +1161,8 @@ void displayPri()
          // Show fencer A has won priority on the hit LEDs
          if (priState == PRI_SELECTED || priState == PRI_END)
          {
-            digitalWrite(onTargetA, 1);
-            digitalWrite(onTargetB, 0);
+            digitalWrite(onTargetA, HIGH);
+            digitalWrite(onTargetB, LOW);
          }
       }
       else
@@ -1141,8 +1172,8 @@ void displayPri()
          // Show fencer B has won priority on the hit LEDs
          if (priState == PRI_SELECTED || priState == PRI_END)
          {
-            digitalWrite(onTargetA, 0);
-            digitalWrite(onTargetB, 1);
+            digitalWrite(onTargetA, LOW);
+            digitalWrite(onTargetB, HIGH);
          }
       }
    }
@@ -1274,21 +1305,21 @@ void setup()
       weaponType = w;
    }
 
-   MatchState m = readState();
+   BoutState m = readState();
 
    // If the state is unset, default to SPAR
    if (m == STA_NONE)
    {
-      matchState = STA_SPAR;
-      writeState(matchState);
+      boutState = STA_SPAR;
+      writeState(boutState);
    }
    else
    {
-      matchState = m;
+      boutState = m;
    }
 #else
    weaponType = FOIL;
-   matchState = STA_SPAR;
+   boutState = STA_SPAR;
 #endif
 
    // Restart the box
@@ -1303,10 +1334,10 @@ void setup()
 //=============
 void restartBox()
 {
-   restartBox(matchState);
+   restartBox(boutState);
 }
 
-void restartBox(MatchState state)
+void restartBox(BoutState state)
 {
    displayWeapon();
 
@@ -1335,18 +1366,23 @@ void restartBox(MatchState state)
    {
       case STA_SPAR:
       default:
-         matchState = state;
+         boutState = state;
          startSpar();
          break;
 
-      case STA_STARTMATCH:
-      case STA_MATCH:
-         matchState = STA_STARTMATCH;
-         startMatch();
+      case STA_STARTBOUT:
+      case STA_BOUT:
+      case STA_TP_BOUT:
+      case STA_TP_PRI:
+      case STA_PRIORITY:
+      case STA_BREAK:
+      case STA_TP_BREAK:
+         boutState = STA_STARTBOUT;
+         startBout();
          break;
 
       case STA_STOPWATCH:
-         matchState = state;
+         boutState = state;
          startStopWatch();
          break;
    }
@@ -1532,7 +1568,7 @@ void resetScore()
 #ifdef DEBUG_L1
    Serial.println("reset scores");
 #endif
-   if (inMatch())
+   if (inBout())
    {
       delay(1000);
       displayTime();
@@ -1662,12 +1698,12 @@ void transIR(unsigned long key)
   case 0xFF6897: // *
      if (priorityInactive())
      {
-        // In SPARRING mode? Go into MATCH mode
+        // In SPARRING mode? Go into BOUT mode
         if (inSpar())
         {
-           // Go into MATCH mode
+           // Go into BOUT mode
            keyClick();
-           startMatch();
+           startBout();
         }
 #ifdef STOPWATCH
         else if (inStopWatch())
@@ -1683,11 +1719,11 @@ void transIR(unsigned long key)
         // Only allow these keys if the timer is not running
         else if (timeState == TIM_STOPPED)
         {
-           switch (matchState)
+           switch (boutState)
            {                 
-              case STA_STARTMATCH:
+              case STA_STARTBOUT:
 #ifdef STOPWATCH
-                 // Match not started - go into STOPWATCH mode
+                 // Bout not started - go into STOPWATCH mode
                  keyClick();
                  startStopWatch();
 #else
@@ -1697,9 +1733,9 @@ void transIR(unsigned long key)
                  break;
 
               default:
-                 // In the middle of a match - restart the match
+                 // In the middle of a bout - restart the bout
                  keyClick();
-                 startMatch();
+                 startBout();
                  break;
            }
         }
@@ -1710,7 +1746,7 @@ void transIR(unsigned long key)
            keyClick();
            scoreFlash = true;
         }
-        lastKey = K_START_MATCH;
+        lastKey = K_START_BOUT;
         resetHits();
      }
 
@@ -1726,9 +1762,10 @@ void transIR(unsigned long key)
      {
         if (timeState == TIM_STOPPED)
         {
-           switch (matchState)
+           switch (boutState)
            {
               case STA_BREAK:
+              case STA_TP_BREAK:
                  keyClick();
 #ifdef DEBUG_L1
                  Serial.println("reset break timer");
@@ -1738,6 +1775,7 @@ void transIR(unsigned long key)
                  break;
 
               case STA_PRIORITY:
+              case STA_TP_PRI:
                  keyClick();
 #ifdef DEBUG_L1
                  Serial.println("reset priority timer");
@@ -1746,12 +1784,13 @@ void transIR(unsigned long key)
                  displayTime();
                  break;
 
-              case STA_MATCH:
+              case STA_BOUT:
+              case STA_TP_BOUT:
                  keyClick();
 #ifdef DEBUG_L1
-                 Serial.println("reset match timer");
+                 Serial.println("reset bout timer");
 #endif
-                 setTimer(MATCHTIME);
+                 setTimer(BOUTTIME);
                  displayTime();
                  break;
 
@@ -1766,7 +1805,7 @@ void transIR(unsigned long key)
   case 0xFF10EF: // LEFT
      if (priorityInactive())
      {
-        if (inMatchOrSpar())
+        if (inBoutOrSpar())
         {
            // Change to fencer A for last hit
            if (!disableScore)
@@ -1873,30 +1912,36 @@ void transIR(unsigned long key)
         }
         else 
 #endif
-        if (inMatchOrBreak())
+        // Are we in a bout, or in the break period?
+        if (inBoutOrBreak())
         {
            if (timeState != TIM_STOPPED)
            {
               keyClick();
 #ifdef DEBUG_L1
-              switch (matchState)
+              switch (boutState)
               {
                  case STA_BREAK:
+                 case STA_TP_BREAK:
                     Serial.println("break timer stopped");
                     break;
 
                  case STA_PRIORITY:
                  case STA_ENDPRI:
+                 case STA_TP_PRI:
                     Serial.println("priority timer stopped");
                     break;
 
-                 case STA_MATCH:
-                    Serial.println("match timer stopped");
+                 case STA_BOUT:
+                 case STA_TP_BOUT:
+                    Serial.println("bout timer stopped");
                     break;
               }
 #endif
               timeState = TIM_STOPPED;
            }
+
+           // Turn the lights off after a hit
            else if (resetState == RES_LIGHTS)
            {
               // Turn lights off
@@ -1908,6 +1953,28 @@ void transIR(unsigned long key)
               // Force hits to be reset
               resetHits(true);
 
+              // Go into point test mode
+              switch (boutState)
+              {
+                 case STA_BREAK:
+                    boutState = STA_TP_BREAK;
+                    resetValues();
+                    break;
+
+                 case STA_BOUT:
+                    boutState = STA_TP_BOUT;
+                    resetValues();
+                    break;
+
+                 case STA_PRIORITY:
+                    boutState = STA_TP_PRI;
+                    resetValues();
+                    break;
+
+                 default:
+                    break;
+              }
+
               // Switch back to timer display
               displayTime();
 #ifdef DEBUG_L1
@@ -1918,23 +1985,23 @@ void transIR(unsigned long key)
            {
               keyClick();
               resetValues();
-              switch (matchState)
+              switch (boutState)
               {
                  case STA_ENDPRI:
-                    matchState = STA_CONTINUE;
+                    boutState = STA_CONTINUE;
                     resetLights();
                     break;
                     
                  case STA_CONTINUE:
-                    setTimer(MATCHTIME);
-                    matchState = STA_STARTMATCH;
+                    setTimer(BOUTTIME);
+                    boutState = STA_STARTBOUT;
                     displayTime();
 #ifdef DEBUG_L1
-                    Serial.println("match continuing");
+                    Serial.println("bout continuing");
 #endif
                     break;
                  
-                 case STA_STARTMATCH:
+                 case STA_STARTBOUT:
                     // If we've switched to score display, switch back to time
                     if (currentDisp == DISP_SCORE)
                     {
@@ -1943,14 +2010,15 @@ void transIR(unsigned long key)
                     else
                     {
                        restartTimer();
-                       matchState = STA_MATCH;
+                       boutState = STA_BOUT;
 #ifdef DEBUG_L1
-                       Serial.println("start match timer");
+                       Serial.println("start bout timer");
 #endif
                     }
                     break;
 
                  case STA_BREAK:
+                 case STA_TP_BREAK:
                     // If we've switched to score display, switch back to time
                     if (currentDisp == DISP_SCORE)
                     {
@@ -1967,6 +2035,7 @@ void transIR(unsigned long key)
                     break;
 
                  case STA_PRIORITY:
+                 case STA_TP_PRI:
                     // If we've switched to score display, switch back to time
                     if (currentDisp == DISP_SCORE)
                     {
@@ -1976,13 +2045,15 @@ void transIR(unsigned long key)
                     {
                        restartTimer();
                        timeState = TIM_PRIORITY;
+                       boutState = STA_PRIORITY;
 #ifdef DEBUG_L1
                        Serial.println("priority timer running");
 #endif
                     }
                     break;
 
-                 case STA_MATCH:
+                 case STA_BOUT:
+                 case STA_TP_BOUT:
                     // If we've switched to score display, switch back to time
                     if (currentDisp == DISP_SCORE)
                     {
@@ -1991,9 +2062,10 @@ void transIR(unsigned long key)
                     else
                     {
                        restartTimer();
-                       timeState = TIM_MATCH;
+                       timeState = TIM_BOUT;
+                       boutState = STA_BOUT;
 #ifdef DEBUG_L1
-                       Serial.println("match timer running");
+                       Serial.println("bout timer running");
 #endif
                     }
                     break;
@@ -2021,7 +2093,7 @@ void transIR(unsigned long key)
   case 0xFF5AA5: // RIGHT
      if (priorityInactive())
      {
-        if (inMatchOrSpar())
+        if (inBoutOrSpar())
         {
            // Change to fencer B for last hit
            if (!disableScore)
@@ -2089,7 +2161,7 @@ void transIR(unsigned long key)
   case 0xFF4AB5: // DOWN
      if (priorityInactive())
      {
-        if (inMatchOrSpar())
+        if (inBoutOrSpar())
         {
            if (!disableScore)
            {
@@ -2180,7 +2252,7 @@ void transIR(unsigned long key)
   case 0xFF9867: // 0
      if (priorityInactive())
      {
-        if (inMatchOrBreak())
+        if (inBoutOrBreak())
         {
            if (timeState == TIM_STOPPED)
            {
@@ -2202,7 +2274,7 @@ void transIR(unsigned long key)
   case 0xFF18E7: // UP
      if (priorityInactive())
      {
-        if (inMatchOrSpar())
+        if (inBoutOrSpar())
         {
            if (!disableScore)
            {
@@ -2318,7 +2390,7 @@ void transIR(unsigned long key)
      }
      else 
 #endif
-     if (inMatch())
+     if (inBout())
      {
         if (timeState == TIM_STOPPED)
         {
@@ -2360,8 +2432,8 @@ void transIR(unsigned long key)
   case 0xFFA25D: // 1
      if (priorityInactive())
      {
-        // If in a match, wind back timer by 1 second
-        if (inMatchOrBreak())
+        // If in a bout, wind back timer by 1 second
+        if (inBoutOrBreak())
         {
            if (timeState == TIM_STOPPED)
            {
@@ -2389,8 +2461,8 @@ void transIR(unsigned long key)
   case 0xFFE21D: // 3
      if (priorityInactive())
      {
-        // If in a match, wind forward timer by 1 second
-        if (inMatchOrBreak())
+        // If in a bout, wind forward timer by 1 second
+        if (inBoutOrBreak())
         {
            if (timeState == TIM_STOPPED)
            {
@@ -2406,7 +2478,7 @@ void transIR(unsigned long key)
 #ifdef DEBUG_L1
                  Serial.println("timer at maximum");
 #endif
-                 setTimer(MATCHTIME);
+                 setTimer(BOUTTIME);
               }
               displayTime();
            }
@@ -2420,7 +2492,7 @@ void transIR(unsigned long key)
   case 0xFF02FD: // 5
      if (priorityInactive())
      {
-        if (inMatchOrSpar())
+        if (inBoutOrSpar())
         {
            if (!disableScore)
            {
@@ -2440,7 +2512,7 @@ void transIR(unsigned long key)
   case 0xFFE01F: // 7
      if (priorityInactive())
      {
-        if (inMatch())
+        if (inBout())
         {
            if (timeState == TIM_STOPPED)
            {
@@ -2469,7 +2541,7 @@ void transIR(unsigned long key)
   case 0xFFA857: // 8
      if (priorityInactive())
      {
-        if (inMatch())
+        if (inBout())
         {
            if (timeState == TIM_STOPPED)
            {
@@ -2491,7 +2563,7 @@ void transIR(unsigned long key)
   case 0xFF906F: // 9
      if (priorityInactive())
      {
-        if (inMatch())
+        if (inBout())
         {
            if (timeState == TIM_STOPPED)
            {
@@ -2537,9 +2609,9 @@ void transIR(unsigned long key)
 #endif
 
 //=============
-// Start a new match
+// Start a new bout
 //=============
-void startMatch()
+void startBout()
 {
 #ifdef SERIAL_INDICATOR
    Serial.println("!MS");
@@ -2557,12 +2629,12 @@ void startMatch()
    maxSabreHits[FENCER_B]  = false;
    scoreThisBout[FENCER_A] = 0;
    scoreThisBout[FENCER_B] = 0;
-   matchState              = STA_STARTMATCH;
+   boutState              = STA_STARTBOUT;
    resetState              = RES_IDLE;
    hitDisplay              = HIT_IDLE;
    resetHits();
 #ifdef EEPROM_STORAGE
-   writeState(matchState);
+   writeState(boutState);
 #endif
    setBrightness(DIM_BRIGHTEST);
    disp.setSegments(boutDisp, 4, 0);
@@ -2572,27 +2644,27 @@ void startMatch()
    resetLights();
 #ifdef DISP_IR_CARDS_BOX
    delay(1000);
-   setTimer(MATCHTIME);
+   setTimer(BOUTTIME);
    displayTime();
 #ifdef DEBUG_L1
-   Serial.println("match start mode");
+   Serial.println("bout start mode");
 #endif
 #endif
 }
 
-void continueMatch()
+void continueBout()
 {
 #ifdef SERIAL_INDICATOR
    Serial.println("!MC");
 #endif
 #ifdef DISP_IR_CARDS_BOX
    priState = PRI_IDLE;
-   setTimer(MATCHTIME);
+   setTimer(BOUTTIME);
    displayScore();
-   matchState = STA_CONTINUE; 
+   boutState = STA_CONTINUE; 
    scoreThisBout[FENCER_A] = scoreThisBout[FENCER_B] = 0;
 #ifdef DEBUG_L1
-   Serial.println("continue match");
+   Serial.println("continue bout");
 #endif
 #endif
 }
@@ -2610,7 +2682,7 @@ void buzzerTimeout()
    }
 }
 
-void endOfMatch()
+void endOfBout()
 {
 #ifdef SERIAL_INDICATOR
    Serial.println("!ME");
@@ -2620,7 +2692,7 @@ void endOfMatch()
 
    displayScore();
 #ifdef DEBUG_L1
-   Serial.println("end of match");
+   Serial.println("end of bout");
 #endif
 #endif   
 }
@@ -2649,7 +2721,7 @@ void startPriority()
    priState = PRI_IDLE;
    setTimer(PRITIME);
    displayTime();
-   matchState = STA_PRIORITY;
+   boutState = STA_PRIORITY;
 #endif
 }
 
@@ -2661,7 +2733,7 @@ void endPriority()
 #ifdef DISP_IR_CARDS_BOX
    priState   = PRI_END;
    timeState  = TIM_STOPPED;
-   matchState = STA_ENDPRI;
+   boutState  = STA_ENDPRI;
 
    /* If one fencer has a higher score then the other at the end of
       the priority time period, then make them the priority fencer */
@@ -2689,9 +2761,9 @@ void startSpar()
 #ifdef DEBUG_L1
    Serial.println("sparring mode - no timer");
 #endif
-   matchState      = STA_SPAR;
+   boutState      = STA_SPAR;
 #ifdef EEPROM_STORAGE
-   writeState(matchState);
+   writeState(boutState);
 #endif
    timeState       = TIM_STOPPED;
    priState        = PRI_IDLE;
@@ -2718,7 +2790,7 @@ void startBreak()
 #ifdef DEBUG_L1
    Serial.println("1 minute break"); 
 #endif
-   matchState = STA_BREAK;
+   boutState = STA_BREAK;
    displayState();
    delay(1000);
    setTimer(BREAKTIME);
@@ -2729,12 +2801,12 @@ void startBreak()
 void startStopWatch()
 {
 #ifdef STOPWATCH
-   matchState = STA_STOPWATCH;
+   boutState = STA_STOPWATCH;
 #ifdef SERIAL_INDICATOR
    Serial.println("!WS");
 #endif
 #ifdef EEPROM_STORAGE
-   writeState(matchState);
+   writeState(boutState);
 #endif
    timeState  = TIM_STOPPED;
    swMins     = 0;
@@ -2782,8 +2854,8 @@ void resetStopWatch(bool restart)
    // Illuminate the LEDs at the start
    if (restart)
    {
-      digitalWrite(onTargetA, 1);
-      digitalWrite(onTargetB, 0);
+      digitalWrite(onTargetA, HIGH);
+      digitalWrite(onTargetB, LOW);
       updateCardLeds(A_ALL);
 
       // If restarting the timer...
@@ -2803,14 +2875,14 @@ void stopWatchLeds()
   // Illuminate the LEDs until stopwatch expires
   if (swCount == SW_END)
   {
-     digitalWrite(onTargetA, 0);
-     digitalWrite(onTargetB, 0);
+     digitalWrite(onTargetA, LOW);
+     digitalWrite(onTargetB, LOW);
      updateCardLeds(0);
   }
   else
   {
-     digitalWrite(onTargetA, stopWatchLeds ? 0:1);
-     digitalWrite(onTargetB, stopWatchLeds ? 1:0);
+     digitalWrite(onTargetA, stopWatchLeds ? LOW:HIGH);
+     digitalWrite(onTargetB, stopWatchLeds ? HIGH:LOW);
      updateCardLeds(stopWatchLeds ? B_ALL:A_ALL);
   }
 #endif
@@ -2820,7 +2892,7 @@ int runStopWatch()
 {
    int ret = 0;
 #ifdef STOPWATCH
-   if (matchState == STA_STOPWATCH)
+   if (boutState == STA_STOPWATCH)
    {
       // Starting for first time
       if (swEdit != SW_NONE)
@@ -2954,10 +3026,16 @@ bool checkSabreHits()
 
 void startHitDisplay()
 {
+   startHitDisplay(HITDISPTIME);
+}
+
+void startHitDisplay(long time)
+{
 #ifdef DISP_IR_CARDS_BOX
    if (hitDisplay == HIT_IDLE)
    {
       hitDisplay      = HIT_ON;
+      hitDisplayTime  = time;
       hitDisplayTimer = millis();
 
       // Select the type of hit for fencer A
@@ -3020,8 +3098,8 @@ void loop()
    // we get a 3-4% speed up on the loop this way
    for (;;) 
    {
-      // Don't read the analogue pins if not a match nor sparring
-      if (inMatchOrSpar())
+      // Don't read the analogue pins if not a bout nor sparring
+      if (!inStopWatch())
       {
          // read analogue pins
          weapon[FENCER_A] = analogRead(weaponPinA);
@@ -3099,20 +3177,34 @@ void loop()
 
       // Check for hits and signal
       if (isHit())
-      {  
-         if (timeState != TIM_STOPPED)
+      {
+         // Can we do a point test?
+         if (pointCanBeTested())
          {
             signalHits();
-#ifdef DEBUG_L1
-            Serial.println("hit - stop the timer");
-#endif            
+           
             // Start the reset state machine to turn off buzzer and lights
             if (!resetState)
             {
-              resetState = RES_BUZZER;
-              resetTimer = millis();
+               resetState = RES_TESTPOINT;
+               resetTimer = millis();
             }
+         }
 
+         // Regular hit during a bout?
+         else if (timeState != TIM_STOPPED)
+         {
+            signalHits();
+           
+            // Start the reset state machine to turn off buzzer and lights
+            if (!resetState)
+            {
+               resetState = RES_BUZZER;
+               resetTimer = millis();
+            }
+#ifdef DEBUG_L1
+            Serial.println("hit - stop the timer");
+#endif 
             // Stop the timer
             timeState  = TIM_STOPPED;
 
@@ -3163,7 +3255,9 @@ void loop()
 
 #ifdef DISP_IR_CARDS_BOX
       // Poll the IR to see if a key has been pressed
+#ifdef FREQUENT_IRPOLL
       pollIR();
+#endif
 #endif
       // Is the box changing mode?
       if (modeChange)
@@ -3200,7 +3294,9 @@ void loop()
 
 #ifdef DISP_IR_CARDS_BOX
       // Poll the IR to see if a key has been pressed
+#ifdef FREQUENT_IRPOLL
       pollIR();
+#endif
 #endif
 
 #ifdef DISP_IR_CARDS_BOX
@@ -3226,11 +3322,30 @@ void loop()
                // Clear hit and lockout
                resetValues();
                shortBeep();
+
                resetState = RES_LIGHTS;
                resetTimer = millis();
             }
             break;
 
+         case RES_TESTPOINT:
+            /* If we're in a bout, and a hit has already been cleared,
+               then deal with the situation where a fencer tests their
+               weapon point before restarting the bout
+            */        
+            if (millis() - resetTimer >= TESTPOINTTIME)
+            {
+               // Clear hit and lockout
+               resetValues();
+               shortBeep();
+               
+               // Turn lights off
+               resetLights();
+               resetState = RES_IDLE;
+               resetTimer = 0;
+            }
+            break;
+            
          case RES_LIGHTS:
             // Turn lights off automatically in sparring mode
             if (inSpar())
@@ -3268,13 +3383,15 @@ void loop()
 
 #ifdef DISP_IR_CARDS_BOX
       // Poll the IR to see if a key has been pressed
+#ifdef FREQUENT_IRPOLL
       pollIR();
+#endif
 #endif
 
       // Flash the display when a hit is active?
       if (hitDisplay)
       {
-         if (millis() - hitDisplayTimer >= HITDISPTIME)
+         if (millis() - hitDisplayTimer >= hitDisplayTime)
          {
             hitDisplay = (hitDisplay == HIT_ON) ? HIT_OFF:HIT_ON;
             displayScore();
@@ -3370,7 +3487,9 @@ void loop()
 
 #ifdef DISP_IR_CARDS_BOX
       // Poll the IR to see if a key has been pressed
+#ifdef FREQUENT_IRPOLL
       pollIR();
+#endif
 #endif
 
       // Do we need to flash up the score?
@@ -3441,16 +3560,18 @@ void loop()
 
 #ifdef DISP_IR_CARDS_BOX
       // Poll the IR to see if a key has been pressed
+#ifdef FREQUENT_IRPOLL
       pollIR();
 #endif
+#endif
 
-      // Start the timer for the start of a match
+      // Start the timer for the start of a bout
       if (timerStart)
       {
           timerMs = millis();
           timerStart = false;
           displayTime();
-          switch (matchState)
+          switch (boutState)
           {
              case STA_STOPWATCH:
                 timeState = TIM_STOPWATCH;
@@ -3473,18 +3594,25 @@ void loop()
 #endif
                 break;
 
-             case STA_MATCH:
-                timeState = TIM_MATCH;
+             case STA_BOUT:
+                timeState = TIM_BOUT;
 #ifdef DEBUG_L2
-                Serial.println("match starting");
+                Serial.println("bout starting");
 #endif
+                break;
+
+             case STA_TP_BOUT:
+             case STA_TP_PRI:
+             case STA_TP_BREAK:
                 break;
           }
       }
 
 #ifdef DISP_IR_CARDS_BOX
       // Poll the IR to see if a key has been pressed
+#ifdef FREQUENT_IRPOLL
       pollIR();
+#endif
 #endif
 
       // Handle main timer
@@ -3509,7 +3637,7 @@ void loop()
                expired = countDown(timerGap);
                displayTime();
 
-               if (inMatch())
+               if (inBout())
                {
                   if (timerMins == 0 && timerSecs <= 10)
                   {
@@ -3544,18 +3672,18 @@ void loop()
                   {
                      timeState = TIM_STOPPED;
 #ifdef DEBUG_L6
-                     Serial.println("match timer expired");
+                     Serial.println("bout timer expired");
 #endif
                      timerLast9s   = false;
                      timerInterval = ONESEC;
                   }
 
                   // Stay in the same mode, so that we can continue if needed
-                  endOfMatch();
+                  endOfBout();
 
-                  if (matchState == STA_MATCH || matchState == STA_BREAK)
+                  if (boutState == STA_BOUT || boutState == STA_BREAK)
                   {
-                     continueMatch();
+                     continueBout();
                   }
                }
 
@@ -4048,13 +4176,13 @@ void signalHits()
       lastHit = (hitOnTarg[FENCER_A] ? (1 << FENCER_A):0) | (hitOnTarg[FENCER_B] ? (1 << FENCER_B):0);
 
 #ifdef OFFTARGET_LEDS
-      digitalWrite(onTargetA,  hitOnTarg[FENCER_A]);
-      digitalWrite(onTargetB,  hitOnTarg[FENCER_B]);
-      digitalWrite(offTargetA, hitOffTarg[FENCER_A]);
-      digitalWrite(offTargetB, hitOffTarg[FENCER_B]);
+      digitalWrite(onTargetA,  hitOnTarg[FENCER_A]  ? HIGH:LOW);
+      digitalWrite(onTargetB,  hitOnTarg[FENCER_B]  ? HIGH:LOW);
+      digitalWrite(offTargetA, hitOffTarg[FENCER_A] ? HIGH:LOW);
+      digitalWrite(offTargetB, hitOffTarg[FENCER_B] ? HIGH:LOW);
 #else
-      digitalWrite(onTargetA,  hitOnTarg[FENCER_A] | hitOffTarg[FENCER_A]);
-      digitalWrite(onTargetB,  hitOnTarg[FENCER_B] | hitOffTarg[FENCER_B]);
+      digitalWrite(onTargetA,  (hitOnTarg[FENCER_A] | hitOffTarg[FENCER_A]) ? HIGH:LOW);
+      digitalWrite(onTargetB,  (hitOnTarg[FENCER_B] | hitOffTarg[FENCER_B]) ? HIGH:LOW);
 #endif
 #ifdef SERIAL_INDICATOR
       String ind = String("!");
@@ -4232,7 +4360,7 @@ Weapon readWeapon()
    }
 }
 
-void writeState(MatchState state)
+void writeState(BoutState state)
 {
    switch (state)
    {
@@ -4240,8 +4368,8 @@ void writeState(MatchState state)
          EEPROM.update(NV_STATE, 0);
          break;
 
-      case STA_MATCH:
-      case STA_STARTMATCH:
+      case STA_BOUT:
+      case STA_STARTBOUT:
          EEPROM.update(NV_STATE, 1);
          break;
 
@@ -4254,7 +4382,7 @@ void writeState(MatchState state)
    }
 }
 
-MatchState readState()
+BoutState readState()
 {
    int m = EEPROM.read(NV_STATE);
 
@@ -4264,7 +4392,7 @@ MatchState readState()
          return STA_SPAR;
 
       case 1:
-         return STA_STARTMATCH;
+         return STA_STARTBOUT;
 
       case 2:
          return STA_STOPWATCH;
