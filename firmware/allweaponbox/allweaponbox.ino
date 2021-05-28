@@ -42,6 +42,7 @@
 //#define DEBUG_L5               // level 5 debug
 //#define DEBUG_L6               // level 6 debug
 //#define DEBUG_L7               // level 7 debug
+//#define DEBUG_IR               // debug the IR reception
 //#define OFFTARGET_LEDS         // define this if you have fitted the discrete off-target LEDs
 #define DISP_IR_CARDS_BOX        // define this to enable 7-segment display, IR control and card LEDs -
                                  // for a simple hit indicator only box, you can undefine this
@@ -51,6 +52,13 @@
 #ifdef DISP_IR_CARDS_BOX
 #define LOW_POWER                // support low-power for battery operation
 #define IRLIB2                   // use IRLib2 instead of IRRemote (IRLib2 is better, but bigger)
+
+#ifdef IRLIB2
+// IR receiver frame timeout
+// You might need to modify this for different IR handsets
+#define IR_FRAMETIMEOUT 5000
+#endif
+
 #define STOPWATCH                // enable the stopwatch
 #define EEPROM_STORAGE           // use EEPROM for storing values over power-off
 //#define SPAR_INCR_SCORE        // automatically increment score after a hit in sparring mode
@@ -98,6 +106,7 @@
 #ifdef IRLIB2
 #include "IRLibRecv.h"
 #include "IRLibDecodeBase.h"
+// Change the protocol header for different IR handsets
 #include "IRLib_P01_NEC.h"
 #include "IRLibCombo.h"
 #else
@@ -124,7 +133,7 @@
 #if defined(DEBUG_L1) || defined(DEBUG_L2) \
  || defined(DEBUG_L3) || defined(DEBUG_L4) \
  || defined(DEBUG_L5) || defined(DEBUG_L6) \
- || defined(DEBUG_L7)
+ || defined(DEBUG_L7) || defined(DEBUG_IR)
 #define DEBUG_ALL
 #endif
 
@@ -160,6 +169,7 @@ const uint8_t  lamePinB      = A5;    // Fencer B pin A - Analog
 IRrecv irRecv(irrecvPin);
 #ifdef IRLIB2
 IRdecode irDecode;
+uint16_t irBuffer[RECV_BUF_LENGTH];
 #endif
 #endif
 
@@ -312,7 +322,7 @@ enum Key
   K_WIND_FORWARD,
   K_LEFT,
   K_RIGHT,
-  K_PAUSE,
+  K_OK,
   K_CARD_A,
   K_CARD_B,
   K_DEC_SCORE,
@@ -790,7 +800,7 @@ void displayShortCircuit()
 //===================
 void displayScore()
 { 
-#ifdef DEBUG_ALL
+#ifdef DEBUG_L1
   Serial.println("display score");
 #endif
 
@@ -1078,7 +1088,7 @@ void displayScore()
 //===================
 void displayTime()
 {
-#ifdef DEBUG_ALL
+#ifdef DEBUG_L1
   Serial.println("display time");
 #endif
 
@@ -1121,16 +1131,15 @@ void displayTime()
          // Show the 1/100 second timer
          if (timerLast9s)
          {
-            disp.showNumberDecEx(timerSecs, 0b01000000, true,  2, 0);
+            disp.showNumberDecEx(timerSecs, 0b01000000, false, 2, 0);
             disp.showNumberDecEx(timerHund, 0b01000000, true,  2, 2);
          }
 
          // Show the 1 second timer
          else
          {
-            /* In Stopwatch mode, display a zero-padded time, but not otherwise */
-            disp.showNumberDecEx(timerMins, 0b01000000, inStopWatch() ? true:false, 2, 0);
-            disp.showNumberDecEx(timerSecs, 0b01000000, true,  2, 2);
+            disp.showNumberDecEx(timerMins, 0b01000000, true, 2, 0);
+            disp.showNumberDecEx(timerSecs, 0b01000000, true, 2, 2);
          }
 #endif
       }
@@ -1325,6 +1334,10 @@ void setup()
    // Restart the box
    restartBox();
 #ifdef DISP_IR_CARDS_BOX
+   irRecv.enableAutoResume(irBuffer);
+#ifdef IR_FRAMETIMEOUT
+   irRecv.setFrameTimeout(IR_FRAMETIMEOUT);
+#endif
    irRecv.enableIRIn();
 #endif
 }
@@ -1414,12 +1427,13 @@ void setTimer(int time)
    {
       timerMax = time;
    }
-   timer        = time;
-   timerMs      = 0;
-   timerMins    = timer/60;
-   timerSecs    = timer%60;
-   timerHund    = 0;
-   timerLast9s  = false;
+   timer         = time;
+   timerMs       = 0;
+   timerMins     = timer/60;
+   timerSecs     = timer%60;
+   timerHund     = 0;
+   timerLast9s   = false;
+   timerInterval = ONESEC;
 #ifdef DEBUG_L6
    Serial.print("setting timer to ");
    Serial.println(time);
@@ -1516,7 +1530,7 @@ void addScore(int fencer)
             startHitDisplay();
          }
          displayScore();
-#ifdef DEBUG_ALL
+#ifdef DEBUG_L1
          Serial.print("increment score for fencer ");
          Serial.print(fencer == 0 ? "A":"B");
          Serial.print(", score ");
@@ -1546,7 +1560,7 @@ void subScore(int fencer)
             startHitDisplay();
          }
          displayScore();
-#ifdef DEBUG_ALL
+#ifdef DEBUG_L1
          Serial.print("decrement score for fencer ");
          Serial.println(fencer == 0 ? "A":"B");
          Serial.print(", score ");
@@ -1631,8 +1645,9 @@ int countDown(int timerGap)
          /* Has the timer expired? */
          if (--timerSecs < 0)
          {
-            timer       = timerSecs = 0;
-            timerLast9s = false;
+            timer         = timerSecs = 0;
+            timerLast9s   = false;
+            timerInterval = ONESEC;
          }
          else
          {
@@ -1659,7 +1674,9 @@ int countDown(int timerGap)
    }
    else
    {
-      timerMins = timerSecs = 0;
+      timerMins     = timerSecs = 0;
+      timerLast9s   = false;
+      timerInterval = ONESEC;
    }
    return (timer == 0) ? 1:0;
 #else
@@ -1918,26 +1935,33 @@ void transIR(unsigned long key)
            if (timeState != TIM_STOPPED)
            {
               keyClick();
-#ifdef DEBUG_L1
               switch (boutState)
               {
                  case STA_BREAK:
                  case STA_TP_BREAK:
+#ifdef DEBUG_L1
                     Serial.println("break timer stopped");
+#endif
+                    boutState = STA_TP_BREAK;
                     break;
 
                  case STA_PRIORITY:
                  case STA_ENDPRI:
                  case STA_TP_PRI:
+#ifdef DEBUG_L1
                     Serial.println("priority timer stopped");
+#endif
+                    boutState = STA_TP_PRI;
                     break;
 
                  case STA_BOUT:
                  case STA_TP_BOUT:
+#ifdef DEBUG_L1
                     Serial.println("bout timer stopped");
+#endif
+                    boutState = STA_TP_BOUT;
                     break;
               }
-#endif
               timeState = TIM_STOPPED;
            }
 
@@ -2079,7 +2103,6 @@ void transIR(unsigned long key)
            keyClick();
            resetScore();
         }
-        lastKey = K_PAUSE;
         resetHits();
      }
 
@@ -2089,6 +2112,7 @@ void transIR(unsigned long key)
         keyClick();
         priState = PRI_SELECTED;
      }
+     lastKey = K_OK;
      break;
   case 0xFF5AA5: // RIGHT
      if (priorityInactive())
@@ -2808,11 +2832,13 @@ void startStopWatch()
 #ifdef EEPROM_STORAGE
    writeState(boutState);
 #endif
-   timeState  = TIM_STOPPED;
-   swMins     = 0;
-   swSecs     = 0;
-   swCount    = SW_UP;
-   swEdit     = SW_MINS;
+   timeState     = TIM_STOPPED;
+   swMins        = 0;
+   swSecs        = 0;
+   timerLast9s   = false;
+   timerInterval = ONESEC;
+   swCount       = SW_UP;
+   swEdit        = SW_MINS;
 
    displayState();
    delay(1000);
@@ -2982,10 +3008,10 @@ void pollIR()
      irDecode.decode(); 
      if (irDecode.protocolNum == NEC)
      {
-#ifdef DEBUG_L2
+        transIR(irDecode.value);
+#ifdef DEBUG_IR
         irDecode.dumpResults(true);
 #endif
-        transIR(irDecode.value);
      }
      irRecv.enableIRIn();
   }
@@ -3189,6 +3215,7 @@ void loop()
                resetState = RES_TESTPOINT;
                resetTimer = millis();
             }
+            restoreDisplay();
          }
 
          // Regular hit during a bout?
