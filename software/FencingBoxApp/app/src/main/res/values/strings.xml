@@ -1,0 +1,8 @@
+<resources>
+    <string name="app_name">Fencing Box</string>
+    <string name="weapon_foil">FOIL</string>
+    <string name="weapon_epee">EPEE</string>
+    <string name="weapon_sabre">SABRE</string>
+    <string name="choose_priority">PRIORITY</string>
+    <string name="rest_period">REST PERIOD</string>
+</resources>

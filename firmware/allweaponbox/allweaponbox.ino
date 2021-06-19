@@ -47,7 +47,7 @@
 #define DISP_IR_CARDS_BOX        // define this to enable 7-segment display, IR control and card LEDs -
                                  // for a simple hit indicator only box, you can undefine this
 #define FREQUENT_IRPOLL          // define this to increase the amount of IR polling         
-//#define SERIAL_INDICATOR       // Send serial data out to an indicator application
+#define SERIAL_INDICATOR         // Send serial data out to an indicator application
 
 #ifdef DISP_IR_CARDS_BOX
 #define LOW_POWER                // support low-power for battery operation
@@ -743,6 +743,9 @@ void displayState(enum BoutState state)
 
 void displayWeaponAndState()
 {
+#ifdef SERIAL_INDICATOR
+   indicateWeapon();
+#endif
    displayWeapon(false);
    delay(1000);
    displayState();
@@ -1078,8 +1081,15 @@ void displayScore()
      currentDisp = DISP_SCORE;
   }
 #ifdef SERIAL_INDICATOR
-  String ind = String("*") + String(score[FENCER_A]) + "-" + String(score[FENCER_B]);
-  Serial.println(ind);
+  if (!disableScore)
+  {
+     char ind[10];
+     /* Two sprintfs are needed because of an awful bug in the Arduino
+        libraries which means that sprintf() can't take more than one argument! */
+     sprintf(&ind[0], "*%02d",  score[FENCER_A]);
+     sprintf(&ind[3], "%02d",   score[FENCER_B]);
+     Serial.println(ind);
+  }
 #endif
 }
 
@@ -1131,8 +1141,11 @@ void displayTime()
          // Show the 1/100 second timer
          if (timerLast9s)
          {
-            disp.showNumberDecEx(timerSecs, 0b01000000, false, 2, 0);
-            disp.showNumberDecEx(timerHund, 0b01000000, true,  2, 2);
+            if (timerHund >= 0)
+            {
+               disp.showNumberDecEx(timerSecs, 0b01000000, false, 2, 0);
+               disp.showNumberDecEx(timerHund, 0b01000000, true,  2, 2);
+            }
          }
 
          // Show the 1 second timer
@@ -1146,8 +1159,44 @@ void displayTime()
       currentDisp = DISP_TIME;
    }
 #ifdef SERIAL_INDICATOR
-   String ind = String("@") + String(timerMins) + ":" + String(timerSecs);
-   Serial.println(ind);
+   char ind[10];
+
+   /* Two sprintfs are needed because of an awful bug in the Arduino
+      libraries which means that sprintf() can't take more than one argument! */
+#ifdef STOPWATCH
+   if (inStopWatch())
+   {
+      if (swEdit != SW_NONE)
+      {
+         sprintf(&ind[0], "@%02d",  swMins);
+         sprintf(&ind[3], "%02d",   swSecs);
+      }
+      else
+      {
+         sprintf(&ind[0], "@%02d",  timerMins);
+         sprintf(&ind[3], "%02d",   timerSecs);
+      }
+      Serial.println(ind);
+   }
+   else
+#endif
+   if (timerLast9s)
+   {
+      if (timerHund >= 0)
+      {
+         sprintf(&ind[0], "@%02d",  timerSecs);
+         sprintf(&ind[3], "%02d",   timerHund);
+         Serial.println(ind);
+      }
+   }
+   else
+   {
+      /* Two sprintfs are needed because of an awful bug in the Arduino
+         libraries which means that sprintf() can't take more than one argument! */
+      sprintf(&ind[0], "@%02d",  timerMins);
+      sprintf(&ind[3], "%02d",   timerSecs);
+      Serial.println(ind);
+   }
 #endif
 }
 
@@ -1172,6 +1221,9 @@ void displayPri()
          {
             digitalWrite(onTargetA, HIGH);
             digitalWrite(onTargetB, LOW);
+#ifdef SERIAL_INDICATOR
+            Serial.println("$H1");
+#endif
          }
       }
       else
@@ -1183,6 +1235,9 @@ void displayPri()
          {
             digitalWrite(onTargetA, LOW);
             digitalWrite(onTargetB, HIGH);
+#ifdef SERIAL_INDICATOR
+            Serial.println("$H2");
+#endif
          }
       }
    }
@@ -1263,11 +1318,6 @@ void setup()
 #ifdef DEBUG_ALL
    Serial.begin(BAUDRATE);
 #endif
-#ifdef SERIAL_INDICATOR
-   Serial.begin(BAUDRATE);
-   Serial.println("");
-   Serial.println("!GO");
-#endif
 #ifdef DEBUG_ALL
    Serial.println("");
    Serial.println("Fencing Scoring Box");
@@ -1330,6 +1380,12 @@ void setup()
    weaponType = FOIL;
    boutState = STA_SPAR;
 #endif
+#ifdef SERIAL_INDICATOR
+   Serial.begin(BAUDRATE);
+   Serial.println("");
+   Serial.println("!GO");
+   indicateWeapon();
+#endif
 
    // Restart the box
    restartBox();
@@ -1341,6 +1397,27 @@ void setup()
    irRecv.enableIRIn();
 #endif
 }
+
+#ifdef SERIAL_INDICATOR
+void indicateWeapon()
+{
+   switch (weaponType)
+   {
+      case FOIL:
+      default:
+         Serial.println("!TF");
+         break;
+
+      case EPEE:
+         Serial.println("!TE");
+         break;
+
+      case SABRE:
+         Serial.println("!TS");
+         break;
+   }
+}
+#endif
 
 //=============
 // Restart the box
@@ -2638,8 +2715,8 @@ void transIR(unsigned long key)
 void startBout()
 {
 #ifdef SERIAL_INDICATOR
-   Serial.println("!MS");
-   Serial.println("*0-0");
+   Serial.println("!BS");
+   Serial.println("*0000");
 #endif
 #ifdef DISP_IR_CARDS_BOX
    priState                = PRI_IDLE;
@@ -2679,7 +2756,7 @@ void startBout()
 void continueBout()
 {
 #ifdef SERIAL_INDICATOR
-   Serial.println("!MC");
+   Serial.println("!BC");
 #endif
 #ifdef DISP_IR_CARDS_BOX
    priState = PRI_IDLE;
@@ -2709,7 +2786,7 @@ void buzzerTimeout()
 void endOfBout()
 {
 #ifdef SERIAL_INDICATOR
-   Serial.println("!ME");
+   Serial.println("!BE");
 #endif
 #ifdef DISP_IR_CARDS_BOX
    buzzerTimeout();
@@ -2811,6 +2888,9 @@ void startSpar()
 void startBreak()
 {
 #ifdef DISP_IR_CARDS_BOX
+#ifdef SERIAL_INDICATOR
+   Serial.println("!RS");
+#endif
 #ifdef DEBUG_L1
    Serial.println("1 minute break"); 
 #endif
@@ -2904,12 +2984,18 @@ void stopWatchLeds()
      digitalWrite(onTargetA, LOW);
      digitalWrite(onTargetB, LOW);
      updateCardLeds(0);
+#ifdef SERIAL_INDICATOR
+     Serial.println("!RL");
+#endif
   }
   else
   {
      digitalWrite(onTargetA, stopWatchLeds ? LOW:HIGH);
      digitalWrite(onTargetB, stopWatchLeds ? HIGH:LOW);
      updateCardLeds(stopWatchLeds ? B_ALL:A_ALL);
+#ifdef SERIAL_INDICATOR
+     Serial.println(stopWatchLeds ? "$H4":"$H3");
+#endif
   }
 #endif
 }
@@ -3297,6 +3383,9 @@ void loop()
 #ifdef EEPROM_STORAGE
                writeWeapon(weaponType);
 #endif
+#ifdef SERIAL_INDICATOR
+               indicateWeapon();
+#endif
                restartBox();
                break;
 
@@ -3305,6 +3394,9 @@ void loop()
 #ifdef EEPROM_STORAGE
                writeWeapon(weaponType);
 #endif
+#ifdef SERIAL_INDICATOR
+               indicateWeapon();
+#endif
                restartBox();
                break;
 
@@ -3312,6 +3404,9 @@ void loop()
                weaponType = FOIL;
 #ifdef EEPROM_STORAGE
                writeWeapon(weaponType);
+#endif
+#ifdef SERIAL_INDICATOR
+               indicateWeapon();
 #endif
                restartBox();
                break;
@@ -4212,23 +4307,23 @@ void signalHits()
       digitalWrite(onTargetB,  (hitOnTarg[FENCER_B] | hitOffTarg[FENCER_B]) ? HIGH:LOW);
 #endif
 #ifdef SERIAL_INDICATOR
-      String ind = String("!");
+      String ind = String("");
 
       if (hitOnTarg[FENCER_A])
       {
-         ind += String("H0");
+         ind += String("$H1");
       }
       if (hitOnTarg[FENCER_B])
       {
-         ind += String("H1");
+         ind += String("$H2");
       }
       if (hitOffTarg[FENCER_A])
       {
-         ind += String("O0");
+         ind += String("$O0");
       }
       if (hitOffTarg[FENCER_B])
       {
-         ind += String("O1");
+         ind += String("$O1");
       }
       Serial.println(ind);
 #endif
@@ -4284,6 +4379,9 @@ void resetCards()
 #ifdef DEBUG_L1
    Serial.println("reset cards");
 #endif
+#endif
+#ifdef SERIAL_INDICATOR
+   Serial.println("!RC");
 #endif
 }
 
@@ -4359,6 +4457,9 @@ void resetLights()
    {
       resetHits();
    }
+#ifdef SERIAL_INDICATOR
+   Serial.println("!RL");
+#endif
 }
 
 #ifdef EEPROM_STORAGE
