@@ -1,5 +1,7 @@
 package com.robinterry.fencingboxapp;
 
+/* Original copyright (c) 2019 Kai Morich */
+
 import android.app.Activity;
 import android.content.BroadcastReceiver;
 import android.content.Context;

@@ -1,5 +1,7 @@
 package com.robinterry.fencingboxapp;
 
+/* Original copyright (c) 2019 Kai Morich */
+
 class Constants {
 
     // values have to be globally unique

@@ -1,5 +1,7 @@
 package com.robinterry.fencingboxapp;
 
+/* Original copyright (c) 2019 Kai Morich */
+
 import com.hoho.android.usbserial.driver.CdcAcmSerialDriver;
 import com.hoho.android.usbserial.driver.ProbeTable;
 import com.hoho.android.usbserial.driver.UsbSerialProber;

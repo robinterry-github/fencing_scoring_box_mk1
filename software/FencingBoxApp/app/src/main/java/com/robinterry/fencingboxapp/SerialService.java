@@ -1,5 +1,8 @@
 package com.robinterry.fencingboxapp;
 
+/* Original copyright (c) 2019 Kai Morich
+   Modifications (c) 2021 Robin Terry (mainly the Log output) */
+
 import android.app.Service;
 import android.content.Intent;
 import android.os.Binder;
