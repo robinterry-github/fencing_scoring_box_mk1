@@ -7,9 +7,34 @@
     tools:context=".MainActivity">
 
     <TextView
+        android:id="@+id/redCardA"
+        android:layout_width="43dp"
+        android:layout_height="19dp"
+        android:layout_marginStart="32dp"
+        android:layout_marginTop="12dp"
+        android:background="#FF0000"
+        app:layout_constraintEnd_toEndOf="@+id/textFencerALight"
+        app:layout_constraintHorizontal_bias="1.0"
+        app:layout_constraintStart_toEndOf="@+id/yellowCardA"
+        app:layout_constraintTop_toBottomOf="@+id/textFencerALight" />
+
+    <TextView
+        android:id="@+id/yellowCardA"
+        android:layout_width="43dp"
+        android:layout_height="19dp"
+        android:layout_marginStart="44dp"
+        android:layout_marginTop="12dp"
+        android:background="#FFFF00"
+        android:foregroundTint="#FFFF00"
+        app:layout_constraintBottom_toTopOf="@+id/textClock"
+        app:layout_constraintStart_toStartOf="@+id/guideline"
+        app:layout_constraintTop_toBottomOf="@+id/textFencerALight"
+        app:layout_constraintVertical_bias="0.0" />
+
+    <TextView
         android:id="@+id/textScore"
-        android:layout_width="235dp"
-        android:layout_height="97dp"
+        android:layout_width="280dp"
+        android:layout_height="96dp"
         android:layout_marginBottom="104dp"
         android:background="#D8D8D8"
         android:textAlignment="center"
@@ -49,18 +74,19 @@
 
     <TextView
         android:id="@+id/textClock"
-        android:layout_width="235dp"
-        android:layout_height="97dp"
+        android:layout_width="280dp"
+        android:layout_height="94dp"
         android:background="#D8D8D8"
         android:textAlignment="center"
         android:textSize="64sp"
         android:textStyle="bold"
         app:layout_constraintBottom_toTopOf="@+id/textScore"
         app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintHorizontal_bias="0.445"
+        app:layout_constraintHorizontal_bias="0.488"
         app:layout_constraintStart_toStartOf="@+id/guideline"
         app:layout_constraintTop_toTopOf="@+id/guideline2"
-        app:layout_constraintVertical_bias="0.824" />
+        app:layout_constraintVertical_bias="0.825"
+        tools:ignore="MissingPrefix" />
 
     <androidx.constraintlayout.widget.Guideline
         android:id="@+id/guideline"
@@ -75,5 +101,29 @@
         android:layout_height="wrap_content"
         android:orientation="horizontal"
         app:layout_constraintGuide_end="632dp" />
+
+    <TextView
+        android:id="@+id/redCardB"
+        android:layout_width="43dp"
+        android:layout_height="19dp"
+        android:layout_marginTop="12dp"
+        android:layout_marginEnd="40dp"
+        android:background="#FF0000"
+        app:layout_constraintBottom_toTopOf="@+id/textClock"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/textFencerBLight"
+        app:layout_constraintVertical_bias="0.0" />
+
+    <TextView
+        android:id="@+id/yellowCardB"
+        android:layout_width="43dp"
+        android:layout_height="19dp"
+        android:layout_marginTop="12dp"
+        android:layout_marginEnd="36dp"
+        android:background="#FFFF00"
+        app:layout_constraintEnd_toStartOf="@+id/redCardB"
+        app:layout_constraintHorizontal_bias="0.0"
+        app:layout_constraintStart_toStartOf="@+id/textFencerBLight"
+        app:layout_constraintTop_toBottomOf="@+id/textFencerBLight" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>

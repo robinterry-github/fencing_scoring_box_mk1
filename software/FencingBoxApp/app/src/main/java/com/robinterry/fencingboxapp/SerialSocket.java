@@ -52,6 +52,7 @@ public class SerialSocket implements SerialInputOutputManager.Listener {
         serialPort.setDTR(true); // for arduino, ...
         serialPort.setRTS(true);
         ioManager = new SerialInputOutputManager(serialPort, this);
+        ioManager.setReadBufferSize(50);
         ioManager.start();
     }
 

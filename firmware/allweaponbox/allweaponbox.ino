@@ -93,6 +93,7 @@
 #define FENCER_A       (0)
 #define FENCER_B       (1)
 
+/* These bits match the hardware design */
 #define A_YELLOW       (0x80)
 #define A_RED          (0x40)
 #define B_YELLOW       (0x20)
@@ -221,10 +222,6 @@ bool modeChange      = false;
 bool scoreFlash      = false;
 long scoreFlashTimer = 0;
 bool maxSabreHits[2] = { false, false };
-
-// Yellow and red cards
-bool red[2]          = { false, false };
-bool yellow[2]       = { false, false };
 
 //==========================
 // Lockout & Depress Times
@@ -1680,6 +1677,38 @@ void updateCardLeds(int Leds)
    digitalWrite(latchPin, LOW); 
    shiftOut(dataPin, clockPin, LSBFIRST, Leds); 
    digitalWrite(latchPin, HIGH);
+#endif
+#ifdef SERIAL_INDICATOR
+   int LedsA = 0;
+   if (cardLeds & A_YELLOW)
+   {
+      LedsA |= 1;
+   }
+   if (cardLeds & A_RED)
+   {
+      LedsA |= 2;
+   }
+   if (cardLeds & A_SHORT)
+   {
+      LedsA |= 4;
+   }
+   String cardA = "?0" + String(LedsA);
+   Serial.println(cardA);
+   int LedsB = 0;
+   if (cardLeds & B_YELLOW)
+   {
+      LedsB |= 1;
+   }
+   if (cardLeds & B_RED)
+   {
+      LedsB |= 2;
+   }
+   if (cardLeds & B_SHORT)
+   {
+      LedsB |= 4;
+   }
+   String cardB = "?1" + String(LedsB);
+   Serial.println(cardB);
 #endif
    cardLedUpdate = false;
 #endif
@@ -4372,16 +4401,14 @@ void resetValues()
 void resetCards()
 {
 #ifdef DISP_IR_CARDS_BOX
-   red[FENCER_A]         = false;
-   yellow[FENCER_A]      = false;
-   red[FENCER_B]         = false;
-   yellow[FENCER_B]      = false;
+   cardLeds = 0;
 #ifdef DEBUG_L1
    Serial.println("reset cards");
 #endif
 #endif
 #ifdef SERIAL_INDICATOR
-   Serial.println("!RC");
+   Serial.println("?C0");
+   Serial.println("?D0");
 #endif
 }
 
