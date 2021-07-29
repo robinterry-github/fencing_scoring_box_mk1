@@ -2,9 +2,9 @@
 //                                                                           //
 //  Desc:    Arduino Code to implement a fencing scoring apparatus           //
 //  Dev:     Wnew                                                            //
-//  Date:    Nov    2012                                                     //
-//  Updated: Sept   2015                                                     //
-//  Updated: May 23 2021 Robin Terry, Skipton, UK                            //
+//  Date:    Nov     2012                                                    //
+//  Updated: Sept    2015                                                    //
+//  Updated: July 25 2021 Robin Terry, Skipton, UK                           //
 //                                                                           //
 //  Notes:   1. Basis of algorithm from digitalwestie on github. Thanks Mate //
 //           2. Used uint8_t instead of int where possible to optimise       //
@@ -59,6 +59,9 @@
 #define IR_FRAMETIMEOUT 5000
 #endif
 
+#define MAX_DELAY_IR_REPEAT 300  // Initial period in milliseconds before repeats start
+#define MAX_KEYPRESS_GAP 200     // Gap between keypresses which resets the IR state machine
+
 #define STOPWATCH                // enable the stopwatch
 #define EEPROM_STORAGE           // use EEPROM for storing values over power-off
 //#define SPAR_INCR_SCORE        // automatically increment score after a hit in sparring mode
@@ -94,6 +97,8 @@
 #define FENCER_B       (1)
 
 /* These bits match the hardware design */
+#define A_NONE         (~A_ALL)
+#define B_NONE         (~B_ALL)
 #define A_YELLOW       (0x80)
 #define A_RED          (0x40)
 #define B_YELLOW       (0x20)
@@ -1197,7 +1202,7 @@ void displayTime()
 #endif
 }
 
-void displayPri()
+void displayPriority()
 {
 #ifdef DISP_IR_CARDS_BOX
    // Is a short-circuit being displayed?
@@ -1219,7 +1224,7 @@ void displayPri()
             digitalWrite(onTargetA, HIGH);
             digitalWrite(onTargetB, LOW);
 #ifdef SERIAL_INDICATOR
-            Serial.println("$H1");
+            Serial.println("$H3");
 #endif
          }
       }
@@ -1233,7 +1238,7 @@ void displayPri()
             digitalWrite(onTargetA, LOW);
             digitalWrite(onTargetB, HIGH);
 #ifdef SERIAL_INDICATOR
-            Serial.println("$H2");
+            Serial.println("$H4");
 #endif
          }
       }
@@ -1296,7 +1301,7 @@ bool restoreDisplay()
          break;
 
       case DISP_PRI:
-         displayPri();
+         displayPriority();
          ret = true;
          break;
 
@@ -1530,19 +1535,45 @@ void restartTimer()
 }
 
 //===================
-// Increment main timer
+// Increment main timer manually
 //===================
-int incTimer(int inc)
+int incTimer(int inc = 1)
 {
 #ifdef DISP_IR_CARDS_BOX
    if (timeState == TIM_STOPPED)
    {
-      if (timerMax > 0 && (timer+inc) > timerMax)
+      /* Reached current top limit? */
+      if (timerMax > 0 && timer >= timerMax)
       {
-         inc = timerMax-timer;
+         return 0;
       }
-      timer     += inc;
-      timerSecs += inc;
+
+      /* Are we into hundredths of seconds? */
+      timerLast9s = (timerMins == 0 && timerSecs < 10) ? true:false;
+
+      /* Increment in hundredths of seconds */
+      if (timerLast9s)
+      {
+         timerInterval = HUNDSEC;
+         
+         timerHund += inc;
+         if (timerHund >= 100)
+         {
+            timerHund -= 100;
+            timerSecs++;
+            timer++;
+         }
+      }
+
+      /* Increment in seconds */
+      else
+      {
+         timerInterval = ONESEC;
+         timer += inc;
+         timerHund  = 0;
+         
+         timerSecs += inc;
+      }
       if (timerSecs >= 60)
       {
         timerMins++;
@@ -1558,25 +1589,58 @@ int incTimer(int inc)
 }
 
 //===================
-// Decrement main timer
+// Decrement main timer manually
 //===================
-int decTimer(int inc)
+int decTimer(int dec = 1)
 {
 #ifdef DISP_IR_CARDS_BOX
    if (timeState == TIM_STOPPED)
    {
-      timer -= inc;
-      if (timerSecs < inc)
+      /* Reached bottom limit? */
+      if (timerMins == 0 && timerSecs == 0 && timerHund == 0)
       {
-        if (timerMins > 0)
-        {
-          timerMins--;
-          timerSecs = 60+timerSecs-inc;
-        }
+         return 0;
       }
+
+      /* Are we into hundredths of seconds? */
+      timerLast9s = (timerMins == 0 && timerSecs < 10) ? true:false;
+
+      /* Decrement in hundredths of seconds */
+      if (timerLast9s)
+      {
+         timerInterval = HUNDSEC;
+
+         timerHund -= dec;
+         if (timerHund < 0)
+         {
+            if (timerSecs > 0)
+            {
+               timerHund += 100;
+               timerSecs--;
+               timer--;
+            }
+         }
+      }
+
+      /* Decrement in seconds */
       else
       {
-         timerSecs -= inc;
+         timerInterval = ONESEC;
+         timer -= dec;
+         timerHund = 0;
+
+         if (timerSecs < dec)
+         {
+            if (timerMins > 0)
+            {
+               timerMins--;
+               timerSecs = 60+timerSecs-dec;
+            }
+         }
+         else
+         {
+            timerSecs -= dec;
+         }
       }
 #ifdef DEBUG_L6
       Serial.println("decrement timer");
@@ -1679,36 +1743,60 @@ void updateCardLeds(int Leds)
    digitalWrite(latchPin, HIGH);
 #endif
 #ifdef SERIAL_INDICATOR
-   int LedsA = 0;
-   if (cardLeds & A_YELLOW)
+#ifdef STOPWATCH
+   if (inStopWatch())
    {
-      LedsA |= 1;
+      /* Send card LED message to repeater to light all card LEDs */
+      if (Leds == A_ALL)
+      {
+         Serial.println("?07");
+         Serial.println("?10");
+      }
+      else if (Leds == B_ALL)
+      {
+         Serial.println("?00");
+         Serial.println("?17");
+      }
+      else
+      {
+         Serial.println("?00");
+         Serial.println("?10");
+      }
    }
-   if (cardLeds & A_RED)
+   else
+#endif
    {
-      LedsA |= 2;
+      int LedsA = 0;
+      if (cardLeds & A_YELLOW)
+      {
+         LedsA |= 1;
+      }
+      if (cardLeds & A_RED)
+      {
+         LedsA |= 2;
+      }
+      if (cardLeds & A_SHORT)
+      {
+         LedsA |= 4;
+      }
+      String cardA = "?0" + String(LedsA);
+      Serial.println(cardA);
+      int LedsB = 0;
+      if (cardLeds & B_YELLOW)
+      {
+         LedsB |= 1;
+      }
+      if (cardLeds & B_RED)
+      {
+         LedsB |= 2;
+      }
+      if (cardLeds & B_SHORT)
+      {
+         LedsB |= 4;
+      }
+      String cardB = "?1" + String(LedsB);
+      Serial.println(cardB);
    }
-   if (cardLeds & A_SHORT)
-   {
-      LedsA |= 4;
-   }
-   String cardA = "?0" + String(LedsA);
-   Serial.println(cardA);
-   int LedsB = 0;
-   if (cardLeds & B_YELLOW)
-   {
-      LedsB |= 1;
-   }
-   if (cardLeds & B_RED)
-   {
-      LedsB |= 2;
-   }
-   if (cardLeds & B_SHORT)
-   {
-      LedsB |= 4;
-   }
-   String cardB = "?1" + String(LedsB);
-   Serial.println(cardB);
 #endif
    cardLedUpdate = false;
 #endif
@@ -1746,7 +1834,7 @@ int countDown(int timerGap)
    if (timerLast9s)
    {
       /* Counting down in hundredths of seconds */
-      if (timerHund <= 0)
+      if (timerHund < 0)
       {
          /* Has the timer expired? */
          if (--timerSecs < 0)
@@ -1757,7 +1845,7 @@ int countDown(int timerGap)
          }
          else
          {
-            timerHund += 99;
+            timerHund += 100;
          }
       }
       else
@@ -1796,10 +1884,21 @@ int countDown(int timerGap)
 #ifdef DISP_IR_CARDS_BOX
 void transIR(unsigned long key)
 {
+   static unsigned long delayIRRepeat = 0;
+   static unsigned long keypressGap   = 0;
 #ifdef DEBUG_L1
    Serial.print("key:");
    Serial.println(key, HEX);
 #endif
+
+   /* Has it been a while since the last keypress? */
+   if (millis()-keypressGap > MAX_KEYPRESS_GAP)
+   {
+      lastKeyCode   = 0;
+      delayIRRepeat = millis();
+   }
+   keypressGap = millis();
+   
    /* Wake up display, if asleep -
       don't process the key otherwise */
    if (restoreDisplayAfterSleep())
@@ -1810,7 +1909,10 @@ void transIR(unsigned long key)
    // Record last key
    if (key != 0xFFFFFFFF)
    {
-      lastKeyCode = key;
+      if (lastKeyCode != key)
+      {
+         lastKeyCode = key;
+      }
    }
 
   //=============================
@@ -1829,13 +1931,23 @@ void transIR(unsigned long key)
            startBout();
         }
 #ifdef STOPWATCH
+        // In STOPWATCH mode?
         else if (inStopWatch())
         {
            if (timeState == TIM_STOPPED)
            {
-              // In STOPWATCH mode? Go into SPARRING mode
-              keyClick();
-              startSpar();
+              // If the timer has been stopped, reset it without starting it
+              if (timerMins != swMins || timerSecs != swSecs)
+              {
+                 keyClick();
+                 resetStopWatch();
+              }
+              else
+              {        
+                 // Stopwatch already at zero, so go into SPARRING mode
+                 keyClick();
+                 startSpar();
+              }
            }
         }
 #endif
@@ -1908,6 +2020,7 @@ void transIR(unsigned long key)
                  break;
 
               case STA_BOUT:
+              case STA_STARTBOUT:
               case STA_TP_BOUT:
                  keyClick();
 #ifdef DEBUG_L1
@@ -2562,16 +2675,16 @@ void transIR(unsigned long key)
   case 0xFFA25D: // 1
      if (priorityInactive())
      {
-        // If in a bout, wind back timer by 1 second
+        // If in a bout, wind back timer
         if (inBoutOrBreak())
         {
            if (timeState == TIM_STOPPED)
            {
-              keyClick();
-              if (decTimer(1))
+              if (decTimer())
               {
+                 keyClick();
 #ifdef DEBUG_L1
-                 Serial.println("timer back by 1 second");
+                 Serial.println("timer back");
 #endif
               }
               else
@@ -2591,16 +2704,16 @@ void transIR(unsigned long key)
   case 0xFFE21D: // 3
      if (priorityInactive())
      {
-        // If in a bout, wind forward timer by 1 second
+        // If in a bout, wind forward timer
         if (inBoutOrBreak())
         {
            if (timeState == TIM_STOPPED)
            {
-              keyClick();
-              if (incTimer(1))
+              if (incTimer())
               {
+                 keyClick();
 #ifdef DEBUG_L1
-                 Serial.println("timer forward by 1 second");
+                 Serial.println("timer forward");
 #endif
               }
               else
@@ -2725,8 +2838,12 @@ void transIR(unsigned long key)
          || 
          lastKey == K_WIND_FORWARD)
      {
-        // Recursively call with last keypress
-        transIR(lastKeyCode);
+        /* Handle the initial delay in IR repeat */
+        if (millis()-delayIRRepeat > MAX_DELAY_IR_REPEAT)
+        {
+           // Recursively call with last keypress
+           transIR(lastKeyCode);
+        }
      }
      break;
   default:
@@ -2833,7 +2950,7 @@ void endOfBout()
 void startPriority()
 {
 #ifdef SERIAL_INDICATOR
-   Serial.println("!PS");
+   Serial.println(priFencer == FENCER_A ? "!P0":"!P1");
 #endif
 #ifdef DISP_IR_CARDS_BOX
 #ifdef DEBUG_L1
@@ -2843,7 +2960,7 @@ void startPriority()
       "priority mode (fencer A)");
 #endif
    disableScore = false;
-   displayPri();
+   displayPriority();
    delay(1000);
    resetLights();
    displayScore();
@@ -2857,9 +2974,6 @@ void startPriority()
 
 void endPriority()
 {
-#ifdef SERIAL_INDICATOR
-   Serial.println("!PE");
-#endif
 #ifdef DISP_IR_CARDS_BOX
    priState   = PRI_END;
    timeState  = TIM_STOPPED;
@@ -2875,6 +2989,10 @@ void endPriority()
    {
       priFencer = FENCER_B;
    }
+#ifdef SERIAL_INDICATOR
+   Serial.println("!PE");
+   Serial.println(priFencer == FENCER_A ? "$H3":"$H4");
+#endif
    startHitDisplay();
    displayScore();
 #endif
@@ -2973,7 +3091,17 @@ void setStopWatch()
 #endif
 }
 
+void resetStopWatch()
+{
+   resetStopWatch(false, false);
+}
+
 void resetStopWatch(bool restart)
+{
+   resetStopWatch(restart, true);
+}
+
+void resetStopWatch(bool restart, bool lightLeds)
 {
 #ifdef STOPWATCH
 #ifdef SERIAL_INDICATOR
@@ -2986,15 +3114,29 @@ void resetStopWatch(bool restart)
    setTimer(swMins*60+swSecs);
    displayTime();
 
-   // Illuminate the LEDs at the start
    if (restart)
+   {
+      restartTimer();
+      lightLeds = true;
+   }
+
+   if (lightLeds)
    {
       digitalWrite(onTargetA, HIGH);
       digitalWrite(onTargetB, LOW);
       updateCardLeds(A_ALL);
-
-      // If restarting the timer...
-      restartTimer();
+#ifdef SERIAL_INDICATOR
+     Serial.println("$H3");
+#endif
+   }
+   else
+   {
+      digitalWrite(onTargetA, LOW);
+      digitalWrite(onTargetB, LOW);
+      updateCardLeds(0);
+#ifdef SERIAL_INDICATOR
+     Serial.println("!RL");
+#endif
    }
 #endif
 }
@@ -3097,6 +3239,7 @@ int runStopWatch()
             if (timer == 0)
             {
                timerMins = timerSecs = 0;
+               swMins    = swSecs = 0;
                swCount   = SW_END;
                stopWatchLeds();
                timeState = TIM_STOPPED;
@@ -3118,6 +3261,7 @@ int runStopWatch()
 void pollIR()
 {
 #ifdef IRLIB2
+   irDecode.value = 0;
    if (irRecv.getResults()) 
    {
      irDecode.decode(); 
@@ -3133,6 +3277,7 @@ void pollIR()
 #else
    decode_results res;
 
+   res.value = 0;
    while (irRecv.decode(&res))
    {
       transIR(res.value);
@@ -3456,7 +3601,7 @@ void loop()
       {
          // Oscillate between fencers when choosing priority
          priFencer ^= 1;
-         displayPri();
+         displayPriority();
       }
       else if (priState == PRI_SELECTED)
       {
@@ -4340,21 +4485,21 @@ void signalHits()
 
       if (hitOnTarg[FENCER_A])
       {
-         ind += String("$H1");
+         ind += String("$H1\n");
       }
       if (hitOnTarg[FENCER_B])
       {
-         ind += String("$H2");
+         ind += String("$H2\n");
       }
       if (hitOffTarg[FENCER_A])
       {
-         ind += String("$O0");
+         ind += String("$O0\n");
       }
       if (hitOffTarg[FENCER_B])
       {
-         ind += String("$O1");
+         ind += String("$O1\n");
       }
-      Serial.println(ind);
+      Serial.print(ind);
 #endif
       buzzer(true);
 #ifdef DEBUG_L2

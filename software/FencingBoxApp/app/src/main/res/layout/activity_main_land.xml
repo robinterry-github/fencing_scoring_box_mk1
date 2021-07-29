@@ -2,19 +2,10 @@
 <androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/activity_main_land"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     tools:context=".MainActivity">
-
-    <TextView
-        android:id="@+id/textFencerALight_l"
-        android:layout_width="198dp"
-        android:layout_height="56dp"
-        android:layout_marginStart="28dp"
-        android:layout_marginTop="16dp"
-        android:background="#FF0000"
-        app:layout_constraintStart_toStartOf="@+id/guideline"
-        app:layout_constraintTop_toTopOf="@+id/guideline3" />
 
     <TextView
         android:id="@+id/textScoreB_l"
@@ -22,48 +13,13 @@
         android:layout_height="96dp"
         android:layout_marginEnd="28dp"
         android:layout_marginBottom="32dp"
-        android:background="#D8D8D8"
+        android:background="#000000"
         android:textAlignment="center"
         android:textSize="64sp"
         android:textStyle="bold"
         app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintEnd_toEndOf="parent" />
-
-    <TextView
-        android:id="@+id/redCardB_l"
-        android:layout_width="43dp"
-        android:layout_height="19dp"
-        android:layout_marginTop="16dp"
-        android:background="#FF0000"
-        app:layout_constraintEnd_toEndOf="@+id/textFencerBLight_l"
-        app:layout_constraintTop_toBottomOf="@+id/textFencerBLight_l" />
-
-    <TextView
-        android:id="@+id/yellowCardB_l"
-        android:layout_width="43dp"
-        android:layout_height="19dp"
-        android:layout_marginTop="16dp"
-        android:background="#FFFF00"
-        app:layout_constraintStart_toStartOf="@+id/textFencerBLight_l"
-        app:layout_constraintTop_toBottomOf="@+id/textFencerBLight_l" />
-
-    <TextView
-        android:id="@+id/redCardA_l"
-        android:layout_width="43dp"
-        android:layout_height="19dp"
-        android:layout_marginTop="16dp"
-        android:background="#FF0000"
-        app:layout_constraintEnd_toEndOf="@+id/textFencerALight_l"
-        app:layout_constraintTop_toBottomOf="@+id/textFencerALight_l" />
-
-    <TextView
-        android:id="@+id/yellowCardA_l"
-        android:layout_width="43dp"
-        android:layout_height="19dp"
-        android:layout_marginTop="16dp"
-        android:background="#FFFF00"
-        app:layout_constraintStart_toStartOf="@+id/textFencerALight_l"
-        app:layout_constraintTop_toBottomOf="@+id/textFencerALight_l" />
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toTopOf="@+id/guideline5" />
 
     <TextView
         android:id="@+id/textScoreA_l"
@@ -71,36 +27,28 @@
         android:layout_height="96dp"
         android:layout_marginStart="28dp"
         android:layout_marginBottom="32dp"
-        android:background="#D8D8D8"
+        android:background="#000000"
         android:textAlignment="center"
         android:textSize="64sp"
         android:textStyle="bold"
         app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintStart_toStartOf="@+id/guideline" />
-
-    <TextView
-        android:id="@+id/textFencerBLight_l"
-        android:layout_width="198dp"
-        android:layout_height="56dp"
-        android:layout_marginTop="16dp"
-        android:layout_marginEnd="28dp"
-        android:background="#00FF00"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintTop_toTopOf="@+id/guideline3" />
+        app:layout_constraintStart_toStartOf="@+id/guideline"
+        app:layout_constraintTop_toTopOf="@+id/guideline5" />
 
     <TextView
         android:id="@+id/textClock_l"
         android:layout_width="280dp"
         android:layout_height="96dp"
         android:layout_marginBottom="32dp"
-        android:background="#D8D8D8"
+        android:background="#000000"
         android:textAlignment="center"
         android:textSize="64sp"
         android:textStyle="bold"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toStartOf="@+id/textScoreB_l"
         app:layout_constraintHorizontal_bias="0.515"
-        app:layout_constraintStart_toEndOf="@+id/textScoreA_l" />
+        app:layout_constraintStart_toEndOf="@+id/textScoreA_l"
+        app:layout_constraintTop_toTopOf="@+id/guideline5" />
 
     <androidx.constraintlayout.widget.Guideline
         android:id="@+id/guideline"
@@ -115,5 +63,12 @@
         android:layout_height="wrap_content"
         android:orientation="horizontal"
         app:layout_constraintGuide_begin="0dp" />
+
+    <androidx.constraintlayout.widget.Guideline
+        android:id="@+id/guideline5"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        app:layout_constraintGuide_begin="218dp" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>

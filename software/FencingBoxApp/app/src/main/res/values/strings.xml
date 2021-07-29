@@ -5,4 +5,7 @@
     <string name="weapon_sabre">SABRE</string>
     <string name="choose_priority">PRIORITY</string>
     <string name="rest_period">REST PERIOD</string>
+    <string name="mode_spar">SPAR</string>
+    <string name="mode_bout">BOUT</string>
+    <string name="mode_stopwatch">STOPWATCH</string>
 </resources>

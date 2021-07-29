@@ -1,6 +1,8 @@
 package com.robinterry.fencingboxapp;
 
+import androidx.appcompat.app.ActionBar;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.constraintlayout.widget.ConstraintLayout;
 
 import com.hoho.android.usbserial.driver.UsbSerialDriver;
 import com.hoho.android.usbserial.driver.UsbSerialPort;
@@ -14,14 +16,19 @@ import android.content.Intent;
 import android.content.ServiceConnection;
 import android.content.res.Configuration;
 import android.graphics.Typeface;
+import android.graphics.Color;
+import android.graphics.drawable.ColorDrawable;
 import android.hardware.usb.UsbDevice;
 import android.hardware.usb.UsbDeviceConnection;
 import android.hardware.usb.UsbManager;
 import android.os.IBinder;
 import android.widget.TextView;
 import android.widget.Toast;
+import android.view.View;
 import android.view.WindowManager;
+import android.view.Window;
 import android.view.Gravity;
+import android.view.MotionEvent;
 import android.os.Bundle;
 import java.lang.String;
 import java.lang.Integer;
@@ -32,14 +39,17 @@ import android.util.Log;
 @SuppressWarnings("ALL")
 public class MainActivity extends AppCompatActivity implements ServiceConnection, SerialListener {
 
-    public TextView lightA, lightB, textScore, textScoreA, textScoreB, textClock;
-    public TextView yellowCardA, yellowCardB, redCardA, redCardB;
+    public static enum Orientation { Portrait, Landscape }
+    private static Orientation orientation = Orientation.Portrait;
+    public static Orientation getOrientation() { return orientation; }
+
+    public TextView textScore, textScoreA, textScoreB, textClock;
     public String scoreA = "00", scoreB = "00";
     public String timeMins = "00", timeSecs = "00";
     private static Integer cardA = 0;
     private static Integer cardB = 0;
     public boolean hitA = false, hitB = false;
-    public static final String TAG = "FencingBoxApp";
+    private static final String TAG = "FencingBoxApp";
     public static final Integer hitAColor       = 0xFFFF0000;
     public static final Integer hitBColor       = 0xFF00FF00;
     public static final Integer inactiveColor   = 0xFFE0E0E0;
@@ -49,16 +59,15 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
     public static final Integer redCardBit      = 0x02;
     public static final Integer shortCircuitBit = 0x04;
     public MainActivity thisActivity;
+    public static ConstraintLayout layout;
 
     private enum Connected { False, Pending, True }
     private enum Weapon { Foil, Epee, Sabre }
     private enum Mode { Sparring, Bout, Stopwatch }
-    private enum Orientation { Portrait, Landscape }
 
     private Connected connected = Connected.False;
     private Weapon weapon = Weapon.Foil;
     private Mode mode = Mode.Sparring;
-    private Orientation orientation = Orientation.Portrait;
     private final Integer portNum = 0;
     private final Integer baudRate = 230400;
     private UsbSerialPort usbSerialPort;
@@ -66,6 +75,11 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
     private boolean initialStart = true;
     private boolean isResumed = false;
     private SerialSocket socket;
+    private HitLightView hitLightA, hitLightB;
+    private CardLightView cardLightA, cardLightB;
+    private final int ledSize = 200;
+    private final boolean controlUI = true;
+    private boolean visibleUI = false;
 
     private final byte cmdMarker = '!';
     private final byte clockMarker = '@';
@@ -77,43 +91,82 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
          Log.d(TAG, "Initialising broadcast receiver");
          thisActivity = this;
          final BroadcastReceiver broadcastReceiver = new BroadcastReceiver() {
-            @Override
-            public void onReceive(Context context, Intent intent) {
+             @Override
+             public void onReceive(Context context, Intent intent) {
                 Log.d(TAG, "Broadcast receiver intent " + intent);
                 if (com.robinterry.fencingboxapp.Constants.INTENT_ACTION_GRANT_USB.equals(intent.getAction())) {
                     Boolean granted = intent.getBooleanExtra(UsbManager.EXTRA_PERMISSION_GRANTED, false);
                     Log.d(TAG, "GRANT_USB intent " + granted + " received, trying to connect");
                     connect(granted);
                 }
-            }
-        };
+             }
+         };
     }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         Log.d(TAG, "onCreate start");
         super.onCreate(savedInstanceState);
-        Configuration newConf = getResources().getConfiguration();
-        if (newConf.orientation == Configuration.ORIENTATION_LANDSCAPE) {
+        orientation = getCurrentOrientation();
+        if (orientation == Orientation.Landscape) {
             Log.d(TAG, "initial orientation is landscape");
             setContentView(R.layout.activity_main_land);
-            orientation = Orientation.Landscape;
             setupText(orientation);
+            layout = (ConstraintLayout) findViewById(R.id.activity_main_land);
         } else {
             Log.d(TAG, "initial orientation is portrait");
             setContentView(R.layout.activity_main);
-            orientation = Orientation.Portrait;
             setupText(orientation);
+            layout = (ConstraintLayout) findViewById(R.id.activity_main);
         }
+
+        try {
+            hitLightA = new HitLightView(this, layout, HitLightView.HitLight.HitA, Color.RED);
+        } catch (Exception e) {
+            Log.e(TAG, "Unable to open hit light A view " + e);
+        }
+        try {
+            hitLightB = new HitLightView(this, layout, HitLightView.HitLight.HitB, Color.GREEN);
+        } catch (Exception e) {
+            Log.e(TAG, "Unable to open hit light B view " + e);
+        }
+        try {
+            cardLightA = new CardLightView(this, layout, CardLightView.CardLight.CardA);
+        } catch (Exception e) {
+            Log.e(TAG, "Unable to open card light A view " + e);
+        }
+        try {
+            cardLightB = new CardLightView(this, layout, CardLightView.CardLight.CardB);
+        } catch (Exception e) {
+            Log.e(TAG, "Unable to open card box B view " + e);
+        }
+        layout.setBackgroundColor(Color.BLACK);
+
+        try {
+            // Set status bar to entirely black
+            Window window = thisActivity.getWindow();
+            window.clearFlags(WindowManager.LayoutParams.FLAG_TRANSLUCENT_STATUS);
+            window.addFlags(WindowManager.LayoutParams.FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS);
+            window.setStatusBarColor(Color.BLACK);
+
+            // Set action bar (title bar/app bar) to entirely black
+            ActionBar bar = getSupportActionBar();
+            bar.setBackgroundDrawable(new ColorDrawable(Color.BLACK));
+        } catch (Exception e) {
+            Log.e(TAG, "Unable to change status or action bar color");
+        }
+        showUI();
         Log.d(TAG, "onCreate end");
     }
 
+    @Override
     protected void onStart() {
         Log.d(TAG, "onStart start");
         super.onStart();
         startService(new Intent(this, SerialService.class));
+        orientation = getCurrentOrientation();
         setupText(orientation);
-
+        hideUIIfVisible();
         setHitLights();
         setScore();
         setClock();
@@ -121,49 +174,184 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
         Log.d(TAG, "onStart end");
     }
 
+    @Override
     protected void onStop() {
         Log.d(TAG, "onStop start");
         super.onStop();
         Log.d(TAG, "onStop end");
     }
 
+    @Override
+    public void onWindowFocusChanged(boolean hasFocus) {
+        super.onWindowFocusChanged(hasFocus);
+        Log.d(TAG, "onWindowFocusChanged hasFocus " + hasFocus);
+        if (hasFocus) {
+            hideUI();
+        }
+    }
+
+    @Override
+    public void onDestroy() {
+        Log.d(TAG, "onDestroy start");
+        if (connected != Connected.False)
+            disconnect(true);
+        stopService(new Intent(this, SerialService.class));
+        super.onDestroy();
+        Log.d(TAG, "onDestroy end");
+    }
+
+    @Override
+    protected void onNewIntent(Intent intent) {
+        super.onNewIntent(intent);
+        if ("android.hardware.usb.action.USB_DEVICE_ATTACHED".equals(intent.getAction())) {
+            Log.d(TAG, "USB device attached");
+        }
+    }
+
+    @Override
+    protected void onResume() {
+        Log.d(TAG, "onResume start");
+        super.onResume();
+        if (!isResumed) {
+            isResumed = true;
+            bindService(new Intent(this, SerialService.class), this, Context.BIND_AUTO_CREATE);
+        }
+        getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+        hideUIIfVisible();
+        Log.d(TAG, "onResume end");
+    }
+
+    @Override
+    protected void onPause() {
+        Log.d(TAG, "onPause start");
+        super.onPause();
+        getWindow().clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+        Log.d(TAG, "onPause end");
+    }
+
+    @Override
+    protected void onRestart() {
+        Log.d(TAG, "onRestart start");
+        super.onRestart();
+        setupText(orientation);
+        setHitLights();
+        setScore();
+        setClock();
+        setCard();
+        Log.d(TAG, "onRestart end");
+    }
+
+    @Override
+    public void onConfigurationChanged(Configuration newConf) {
+        super.onConfigurationChanged(newConf);
+        /* Checks the orientation of the screen */
+        orientation = getCurrentOrientation();
+        if (orientation == Orientation.Landscape) {
+            Log.d(TAG, "orientation is now landscape");
+            setContentView(R.layout.activity_main_land);
+            layout = (ConstraintLayout) findViewById(R.id.activity_main_land);
+            orientation = Orientation.Landscape;
+        } else {
+            Log.d(TAG, "orientation is now portrait");
+            setContentView(R.layout.activity_main);
+            layout = (ConstraintLayout) findViewById(R.id.activity_main);
+            orientation = Orientation.Portrait;
+        }
+        hideUI();
+        setupText(orientation);
+        hitLightA.setLayout(layout);
+        hitLightB.setLayout(layout);
+        cardLightA.setLayout(layout);
+        cardLightB.setLayout(layout);
+        layout.setBackgroundColor(Color.BLACK);
+        setHitLights();
+        setScore();
+        setClock();
+        setCard();
+    }
+
+    @Override
+    public boolean onTouchEvent(MotionEvent event) {
+        super.onTouchEvent(event);
+
+        Log.d(TAG, "onTouchEvent " + event);
+        if (event.getAction() == MotionEvent.ACTION_DOWN) {
+            hideUI();
+            return true;
+        }
+        return false;
+    }
+
+    private Orientation getCurrentOrientation() {
+        Configuration newConf = getResources().getConfiguration();
+        return (newConf.orientation == Configuration.ORIENTATION_LANDSCAPE) ?
+                Orientation.Landscape:Orientation.Portrait;
+    }
+
     protected void setupText(Orientation orient) {
         if (orient == Orientation.Landscape) {
-            lightA = findViewById(R.id.textFencerALight_l);
-            lightB = findViewById(R.id.textFencerBLight_l);
             textScoreA = findViewById(R.id.textScoreA_l);
             textScoreB = findViewById(R.id.textScoreB_l);
             textScoreA.setGravity(Gravity.CENTER);
             textScoreB.setGravity(Gravity.CENTER);
             textClock = findViewById(R.id.textClock_l);
-            yellowCardA = findViewById(R.id.yellowCardA_l);
-            redCardA = findViewById(R.id.redCardA_l);
-            yellowCardB = findViewById(R.id.yellowCardB_l);
-            redCardB = findViewById(R.id.redCardB_l);
         } else {
-            lightA = findViewById(R.id.textFencerALight);
-            lightB = findViewById(R.id.textFencerBLight);
             textScore = findViewById(R.id.textScore);
             textScore.setGravity(Gravity.CENTER);
             textClock = findViewById(R.id.textClock);
-            yellowCardA = findViewById(R.id.yellowCardA);
-            redCardA = findViewById(R.id.redCardA);
-            yellowCardB = findViewById(R.id.yellowCardB);
-            redCardB = findViewById(R.id.redCardB);
         }
         try {
             Typeface face = Typeface.createFromAsset(getAssets(), "font/DSEG7Classic-Bold.ttf");
             Log.d(TAG, "typeface for score " + face);
             if (orientation == Orientation.Landscape) {
                 textScoreA.setTypeface(face);
+                textScoreA.setTextColor(Color.RED);
                 textScoreB.setTypeface(face);
+                textScoreB.setTextColor(Color.RED);
             } else {
                 textScore.setTypeface(face);
+                textScore.setTextColor(Color.RED);
             }
             textClock.setTypeface(face);
+            textClock.setTextColor(Color.GREEN);
             textClock.setGravity(Gravity.CENTER);
         } catch (Exception e) {
             Log.d(TAG, "unable to find font " + e);
+        }
+    }
+
+    private void hideUI() {
+        if (controlUI) {
+            View decorView = getWindow().getDecorView();
+            decorView.setSystemUiVisibility(
+                    View.SYSTEM_UI_FLAG_LAYOUT_STABLE
+                                | View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
+                                | View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
+                                | View.SYSTEM_UI_FLAG_LOW_PROFILE
+                                | View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
+                                | View.SYSTEM_UI_FLAG_FULLSCREEN);
+            Log.d(TAG, "hide UI");
+            visibleUI = false;
+        }
+    }
+
+    private void hideUIIfVisible() {
+        if (visibleUI) {
+            hideUI();
+        }
+    }
+
+    private void showUI() {
+        if (controlUI) {
+            if (!visibleUI) {
+                View decorView = getWindow().getDecorView();
+                decorView.setSystemUiVisibility(
+                        View.SYSTEM_UI_FLAG_LAYOUT_STABLE
+                                | View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
+                                | View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN);
+                Log.d(TAG, "show UI");
+                visibleUI = true;
+            }
         }
     }
 
@@ -236,96 +424,21 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
         }
     }
 
-    @Override
-    public void onDestroy() {
-        Log.d(TAG, "onDestroy start");
-        if (connected != Connected.False)
-            disconnect(true);
-        stopService(new Intent(this, SerialService.class));
-        super.onDestroy();
-        Log.d(TAG, "onDestroy end");
-    }
-
-    @Override
-    protected void onNewIntent(Intent intent) {
-        super.onNewIntent(intent);
-        if ("android.hardware.usb.action.USB_DEVICE_ATTACHED".equals(intent.getAction())) {
-            Log.d(TAG, "USB device attached");
-        }
-    }
-
-    @Override
-    protected void onResume() {
-        Log.d(TAG, "onResume start");
-        super.onResume();
-        if (!isResumed) {
-            isResumed = true;
-            bindService(new Intent(this, SerialService.class), this, Context.BIND_AUTO_CREATE);
-        }
-        getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
-        Log.d(TAG, "onResume end");
-    }
-
-    @Override
-    protected void onPause() {
-        Log.d(TAG, "onPause start");
-        super.onPause();
-        getWindow().clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
-        Log.d(TAG, "onPause end");
-    }
-
-    @Override
-    protected void onRestart() {
-        Log.d(TAG, "onRestart start");
-        super.onRestart();
-        setupText(orientation);
-        setHitLights();
-        setScore();
-        setClock();
-        setCard();
-        Log.d(TAG, "onRestart end");
-    }
-
-    @Override
-    public void onConfigurationChanged(Configuration newConf) {
-        super.onConfigurationChanged(newConf);
-        /* Checks the orientation of the screen */
-        if (newConf.orientation == Configuration.ORIENTATION_LANDSCAPE) {
-            Log.d(TAG, "orientation is now landscape");
-            setContentView(R.layout.activity_main_land);
-            orientation = Orientation.Landscape;
-            setupText(orientation);
-            setHitLights();
-            setScore();
-            setClock();
-            setCard();
-        } else if (newConf.orientation == Configuration.ORIENTATION_PORTRAIT) {
-            Log.d(TAG, "orientation is now portrait");
-            setContentView(R.layout.activity_main);
-            orientation = Orientation.Portrait;
-            setupText(orientation);
-            setHitLights();
-            setScore();
-            setClock();
-            setCard();
-        }
-    }
-
     public void setHitLights() {
         setHitLights(hitA, hitB);
     }
 
     public void setHitLights(boolean l_A, boolean l_B) {
-        lightA.setBackgroundColor(l_A ? hitAColor:inactiveColor);
-        lightB.setBackgroundColor(l_B ? hitBColor:inactiveColor);
         Log.d(TAG, "setHitLights: " + (l_A ? "ON":"OFF") + ":" + (l_B ? "ON":"OFF"));
+        hitA = l_A;
+        hitB = l_B;
+        hitLightA.showLights(hitA);
+        hitLightB.showLights(hitB);
     }
 
     public void clearHitLights() {
         Log.d(TAG, "clearing hit lights");
         hitA = hitB = false;
-        lightA.setBackgroundColor(inactiveColor);
-        lightB.setBackgroundColor(inactiveColor);
     }
 
     public void setScoreA(String s_A) {
@@ -424,30 +537,14 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
     public void setCard(String whichFencer, Integer card) {
         /* Cards for fencer A */
         if (whichFencer.equals("0")) {
-            if ((card & yellowCardBit) != 0) {
-                yellowCardA.setBackgroundColor(yellowCardColor);
-            } else {
-                yellowCardA.setBackgroundColor(inactiveColor);
-            }
-            if ((card & redCardBit) != 0) {
-                redCardA.setBackgroundColor(redCardColor);
-            } else {
-                redCardA.setBackgroundColor(inactiveColor);
-            }
+            cardLightA.showYellow(((card & yellowCardBit) != 0) ? true : false);
+            cardLightA.showRed(((card & redCardBit) != 0) ? true : false);
         }
 
         /* Cards for fencer B */
         if (whichFencer.equals("1")) {
-            if ((card & yellowCardBit) != 0) {
-                yellowCardB.setBackgroundColor(yellowCardColor);
-            } else {
-                yellowCardB.setBackgroundColor(inactiveColor);
-            }
-            if ((card & redCardBit) != 0) {
-                redCardB.setBackgroundColor(redCardColor);
-            } else {
-                redCardB.setBackgroundColor(inactiveColor);
-            }
+            cardLightB.showYellow(((card & yellowCardBit) != 0) ? true : false);
+            cardLightB.showRed(((card & redCardBit) != 0) ? true : false);
         }
     }
 
@@ -503,6 +600,7 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
         switch (cmd) {
             case "GO":
                 Log.d(TAG, "fencing box started up");
+                hideUI();
                 clearHitLights();
                 clearScore();
                 clearClock();
@@ -511,13 +609,16 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
 
             case "PC":
                 Log.d(TAG, "choosing priority");
-                Toast.makeText(getApplicationContext(), R.string.choose_priority, Toast.LENGTH_LONG).show();
+                hideUI();
+                Toast.makeText(getApplicationContext(), R.string.choose_priority, Toast.LENGTH_SHORT).show();
                 setHitLights(true, true);
                 break;
 
             case "BS":
                 Log.d(TAG, "bout starting");
+                hideUI();
                 mode = Mode.Bout;
+                Toast.makeText(getApplicationContext(), R.string.mode_bout, Toast.LENGTH_SHORT).show();
                 resetScore();
                 resetClock();
                 resetCard();
@@ -531,17 +632,25 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
                 Log.d(TAG, "bout ending");
                 break;
 
-            case "PS":
-                Log.d(TAG, "priority start");
+            case "P0":
+                hideUI();
+                Log.d(TAG, "priority fencer A start");
                 break;
 
+            case "P1":
+                hideUI();
+                Log.d(TAG, "priority fencer B start");
+
             case "PE":
+                hideUI();
                 Log.d(TAG, "priority end");
                 break;
 
             case "SS":
                 Log.d(TAG, "sparring start");
+                hideUI();
                 mode = Mode.Sparring;
+                Toast.makeText(getApplicationContext(), R.string.mode_spar, Toast.LENGTH_SHORT).show();
                 resetScore();
                 resetClock();
                 resetCard();
@@ -549,12 +658,15 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
 
             case "RS":
                 Log.d(TAG, "1 minute rest start");
-                Toast.makeText(getApplicationContext(), R.string.rest_period, Toast.LENGTH_LONG).show();
+                hideUI();
+                Toast.makeText(getApplicationContext(), R.string.rest_period, Toast.LENGTH_SHORT).show();
                 break;
 
             case "WS":
                 Log.d(TAG, "stopwatch start");
+                hideUI();
                 mode = Mode.Stopwatch;
+                Toast.makeText(getApplicationContext(), R.string.mode_stopwatch, Toast.LENGTH_SHORT).show();
                 resetScore();
                 resetClock();
                 resetCard();
@@ -566,6 +678,7 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
 
             case "RL":
                 Log.d(TAG, "reset lights");
+                hideUI();
                 hitA = hitB = false;
                 setHitLights(hitA, hitB);
                 break;
@@ -576,7 +689,7 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
                 setScore();
                 setClock();
                 setCard();
-                Toast.makeText(getApplicationContext(), R.string.weapon_foil, Toast.LENGTH_LONG).show();
+                Toast.makeText(getApplicationContext(), R.string.weapon_foil, Toast.LENGTH_SHORT).show();
                 break;
 
             case "TE":
@@ -585,7 +698,7 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
                 setScore();
                 setClock();
                 setCard();
-                Toast.makeText(getApplicationContext(), R.string.weapon_epee, Toast.LENGTH_LONG).show();
+                Toast.makeText(getApplicationContext(), R.string.weapon_epee, Toast.LENGTH_SHORT).show();
                 break;
 
             case "TS":
@@ -594,7 +707,7 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
                 setScore();
                 setClock();
                 setCard();
-                Toast.makeText(getApplicationContext(), R.string.weapon_sabre, Toast.LENGTH_LONG).show();
+                Toast.makeText(getApplicationContext(), R.string.weapon_sabre, Toast.LENGTH_SHORT).show();
                 break;
 
             default:
@@ -608,6 +721,7 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
     }
 
     public void processHit(String hit) {
+        hideUI();
         if (hit.equals("H0")) {
             hitA = hitB = false;
         }
@@ -631,6 +745,7 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
     }
 
     public void processCard(String whichFencer, String whichCard) {
+        hideUI();
         if (whichFencer.equals("0")) {
             cardA = Integer.parseInt(whichCard);
             setCard(whichFencer, cardA);
