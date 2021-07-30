@@ -729,6 +729,7 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
                 hideUI();
                 hitA = hitB = false;
                 setHitLights(hitA, hitB);
+                clearPriority();
                 break;
 
             case "TF":

@@ -3041,9 +3041,6 @@ void endOfBout()
 //=============
 void startPriority()
 {
-#ifdef SERIAL_INDICATOR
-   Serial.println(priFencer == FENCER_A ? "!P0":"!P1");
-#endif
 #ifdef DISP_IR_CARDS_BOX
 #ifdef DEBUG_L1
    Serial.println(
@@ -3056,11 +3053,18 @@ void startPriority()
    delay(1000);
    resetLights();
    displayScore();
+#ifdef SERIAL_INDICATOR
+   Serial.println(priFencer == FENCER_A ? "!P0":"!P1");
+#endif
    delay(1000);
    priState = PRI_IDLE;
    setTimer(PRITIME);
    displayTime();
    boutState = STA_PRIORITY;
+#else
+#ifdef SERIAL_INDICATOR
+   Serial.println(priFencer == FENCER_A ? "!P0":"!P1");
+#endif
 #endif
    clearPassivity();
 }
