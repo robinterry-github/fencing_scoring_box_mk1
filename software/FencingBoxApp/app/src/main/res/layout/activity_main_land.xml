@@ -71,4 +71,32 @@
         android:orientation="horizontal"
         app:layout_constraintGuide_begin="218dp" />
 
+    <TextView
+        android:id="@+id/priorityA_l"
+        android:layout_width="33dp"
+        android:layout_height="33dp"
+        android:background="#000000"
+        android:text="P"
+        android:textAlignment="center"
+        android:textColor="#FF0000"
+        android:textSize="24sp"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toStartOf="@+id/textScoreA_l"
+        app:layout_constraintTop_toBottomOf="@+id/textScoreA_l"
+        app:layout_constraintVertical_bias="0.24000001" />
+
+    <TextView
+        android:id="@+id/priorityB_l"
+        android:layout_width="33dp"
+        android:layout_height="33dp"
+        android:background="#000000"
+        android:text="P"
+        android:textAlignment="center"
+        android:textColor="#FF0000"
+        android:textSize="24sp"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="@+id/textScoreB_l"
+        app:layout_constraintTop_toBottomOf="@+id/textScoreB_l"
+        app:layout_constraintVertical_bias="0.238" />
+
 </androidx.constraintlayout.widget.ConstraintLayout>

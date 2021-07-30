@@ -44,11 +44,13 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
     public static Orientation getOrientation() { return orientation; }
 
     public TextView textScore, textScoreA, textScoreB, textClock;
+    public TextView priorityA, priorityB;
     public String scoreA = "00", scoreB = "00";
     public String timeMins = "00", timeSecs = "00";
     private static Integer cardA = 0;
     private static Integer cardB = 0;
     public boolean hitA = false, hitB = false;
+    public boolean priA = false, priB = false;
     private static final String TAG = "FencingBoxApp";
     public static final Integer hitAColor       = 0xFFFF0000;
     public static final Integer hitBColor       = 0xFF00FF00;
@@ -171,6 +173,7 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
         setScore();
         setClock();
         setCard();
+        setPriority();
         Log.d(TAG, "onStart end");
     }
 
@@ -238,6 +241,7 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
         setScore();
         setClock();
         setCard();
+        setPriority();
         Log.d(TAG, "onRestart end");
     }
 
@@ -268,6 +272,7 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
         setScore();
         setClock();
         setCard();
+        setPriority();
     }
 
     @Override
@@ -295,10 +300,14 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
             textScoreA.setGravity(Gravity.CENTER);
             textScoreB.setGravity(Gravity.CENTER);
             textClock = findViewById(R.id.textClock_l);
+            priorityA = findViewById(R.id.priorityA_l);
+            priorityB = findViewById(R.id.priorityB_l);
         } else {
             textScore = findViewById(R.id.textScore);
             textScore.setGravity(Gravity.CENTER);
             textClock = findViewById(R.id.textClock);
+            priorityA = findViewById(R.id.priorityA);
+            priorityB = findViewById(R.id.priorityB);
         }
         try {
             Typeface face = Typeface.createFromAsset(getAssets(), "font/DSEG7Classic-Bold.ttf");
@@ -315,6 +324,10 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
             textClock.setTypeface(face);
             textClock.setTextColor(Color.GREEN);
             textClock.setGravity(Gravity.CENTER);
+            priorityA.setTextColor(Color.BLACK);
+            priorityA.setGravity(Gravity.CENTER);
+            priorityB.setTextColor(Color.BLACK);
+            priorityB.setTextColor(Gravity.CENTER);
         } catch (Exception e) {
             Log.d(TAG, "unable to find font " + e);
         }
@@ -558,6 +571,34 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
         setCard("1", 0);
     }
 
+    public void setPriorityA()
+    {
+        setPriority(true, false);
+    }
+
+    public void setPriorityB()
+    {
+        setPriority(false, true);
+    }
+
+    public void setPriority()
+    {
+        setPriority(this.priA, this.priB);
+    }
+
+    public void setPriority(boolean priA, boolean priB)
+    {
+        this.priA = priA;
+        this.priB = priB;
+        priorityA.setTextColor(this.priA ? Color.RED:Color.BLACK);
+        priorityB.setTextColor(this.priB ? Color.RED:Color.BLACK);
+    }
+
+    public void clearPriority()
+    {
+        setPriority(false, false);
+    }
+
     public void processData(byte data[]) {
         for (int i = 0; i < data.length; i++) {
            if (data[i] == cmdMarker) {
@@ -605,6 +646,7 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
                 clearScore();
                 clearClock();
                 clearCard();
+                clearPriority();
                 break;
 
             case "PC":
@@ -622,6 +664,7 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
                 resetScore();
                 resetClock();
                 resetCard();
+                clearPriority();
                 break;
 
             case "BC":
@@ -634,11 +677,13 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
 
             case "P0":
                 hideUI();
+                setPriorityA();
                 Log.d(TAG, "priority fencer A start");
                 break;
 
             case "P1":
                 hideUI();
+                setPriorityB();
                 Log.d(TAG, "priority fencer B start");
 
             case "PE":
@@ -654,6 +699,7 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
                 resetScore();
                 resetClock();
                 resetCard();
+                clearPriority();
                 break;
 
             case "RS":
@@ -670,6 +716,7 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
                 resetScore();
                 resetClock();
                 resetCard();
+                clearPriority();
                 break;
 
             case "WR":
@@ -774,6 +821,7 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
                 clearScore();
                 clearClock();
                 clearCard();
+                clearPriority();
             }
         });
     }
@@ -804,6 +852,7 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
         clearScore();
         clearClock();
         clearCard();
+        clearPriority();
         reconnect();
     }
 
@@ -822,6 +871,7 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
         clearScore();
         clearClock();
         clearCard();
+        clearPriority();
         reconnect();
     }
 

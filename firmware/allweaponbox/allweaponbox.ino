@@ -67,11 +67,17 @@
 //#define SPAR_INCR_SCORE        // automatically increment score after a hit in sparring mode
 #endif
 
+#define PASSIVITY                // Support for passivity monitoring
+
+#ifdef PASSIVITY
+#define PASSIVITY_SIGNAL         // Enable signalling passivity timeout on the hit LEDs
+#endif
+
 #define BUZZERTIME     (1000)    // length of time the buzzer is kept on after a hit (ms)
 #define TESTPOINTTIME  (500)     // length of time the buzzer and lights are kept on when point testing (ms)
 #define LIGHTTIME      (3000)    // length of time the lights are kept on after a hit (ms)
 #define BAUDRATE       (230400)  // baud rate of the serial debug interface
-#define ONESEC         (1000)
+#define ONESEC         (1000UL)
 #define HUNDSEC        (10)
 #define ONESEC_US      (1000000)
 #define BUTTONSCAN     (200)              // button scan period (ms)
@@ -84,9 +90,14 @@
 #define MAXSCORE       (99)
 #define MAXSHORTCIRC   (3000)    // Short circuit persist time (ms)
 #define MAXSABREHITS   (8)       // If a sabre fencer makes 8 hits in one bout, stop the bout
-#define DIMDELAY       (5UL*60UL*1000UL)  // Delay before starting to dim the LED display (ms)
+#define DIMDELAY       (5UL*60UL*ONESEC)  // Delay before starting to dim the LED display (ms)
 #define DIMINTERVAL    (500)              // Interval between LED display dimming cycle steps (ms)
-#define MAXSTOPWATCH   ((60UL*60UL)-1)    // Maximum stopwatch time (59:59)
+#define MAX_STOPWATCH  ((60UL*60UL)-1)    // Maximum stopwatch time (59:59)
+
+#ifdef PASSIVITY
+#define MAX_PASSIVITY  (60UL*ONESEC)      // Passivity timer (ms)
+#define MAX_PASSIVITY_SIGNAL (100)        // Passivity signal time (ms)
+#endif
 
 #ifdef EEPROM_STORAGE
 #define NV_WEAPON      (16)
@@ -211,6 +222,11 @@ long resetTimer      = 0;
 int  currentFencer   = 0;
 long swMins          = 0;
 long swSecs          = 0;
+
+// Passivity
+long passivityTimer       = 0;
+bool passivityActive      = false;
+long passivitySignalTimer = 0;
 
 // Total score for all bouts since restarting the bout
 int  score[2]        = { 0, 0 };
@@ -376,27 +392,27 @@ Weapon weaponType = FOIL;
 //===============
 // State machines
 //===============
-BoutState       boutState         = STA_NONE;
-TimeState       timeState         = TIM_STOPPED;
-HitDisplay      hitDisplay        = HIT_IDLE;
-Priority        priState          = PRI_IDLE;
-Reset           resetState        = RES_IDLE;
-Key             lastKey           = K_NONE;
-Disp            currentDisp       = DISP_NONE;
+BoutState       boutState            = STA_NONE;
+TimeState       timeState            = TIM_STOPPED;
+HitDisplay      hitDisplay           = HIT_IDLE;
+Priority        priState             = PRI_IDLE;
+Reset           resetState           = RES_IDLE;
+Key             lastKey              = K_NONE;
+Disp            currentDisp          = DISP_NONE;
 #ifdef STOPWATCH
-StopWatchCount  swCount           = SW_UP; 
-StopWatchEdit   swEdit            = SW_NONE;
+StopWatchCount  swCount              = SW_UP; 
+StopWatchEdit   swEdit               = SW_NONE;
 #endif    
-uint8_t         dimSetting        = DIM_BRIGHTEST;
-uint8_t         dimCycle          = 0;
-unsigned long   dimTimer          = 0;
-unsigned long   lastKeyCode       = 0;
-uint8_t         priFencer         = 0; 
-bool            disableScore      = false;
-Hit             hitDisplayFlag[2] = { HIT_NONE, HIT_NONE };
-uint8_t         lastHit           = 0;
-int             ledFlag[2]        = { LED_NONE, LED_NONE };
-const int       ledBits[][4]      = 
+uint8_t         dimSetting           = DIM_BRIGHTEST;
+uint8_t         dimCycle             = 0;
+long            dimTimer             = 0;
+long            lastKeyCode          = 0;
+uint8_t         priFencer            = 0; 
+bool            disableScore         = false;
+Hit             hitDisplayFlag[2]    = { HIT_NONE, HIT_NONE };
+uint8_t         lastHit              = 0;
+int             ledFlag[2]           = { LED_NONE, LED_NONE };
+const int       ledBits[][4]         = 
 {
    { 0, A_YELLOW, A_RED, A_YELLOW | A_RED },
    { 0, B_YELLOW, B_RED, B_YELLOW | B_RED }
@@ -1534,6 +1550,79 @@ void restartTimer()
 #endif
 }
 
+// Passivity processing
+void startPassivity()
+{
+#ifdef PASSIVITY
+   passivityActive = true;
+   passivityTimer  = millis();
+#ifdef SERIAL_INDICATOR
+   Serial.println("!VS");
+#endif
+#endif
+}
+
+void clearPassivity()
+{
+#ifdef PASSIVITY
+   passivityActive = false;
+   passivityTimer  = passivitySignalTimer = 0;
+#ifdef SERIAL_INDICATOR
+   Serial.println("!VC");
+#endif
+#endif
+}
+
+void signalPassivity(bool on)
+{
+#ifdef PASSIVITY
+   if (on)
+   {
+#ifdef PASSIVITY_SIGNAL
+      digitalWrite(onTargetA, HIGH);
+      digitalWrite(onTargetB, HIGH);
+#endif 
+      passivitySignalTimer = millis();
+#ifdef SERIAL_INDICATOR
+      Serial.println("!VT");
+#endif
+   }
+   else
+   {
+#ifdef PASSIVITY_SIGNAL
+      digitalWrite(onTargetA, LOW);
+      digitalWrite(onTargetB, LOW);
+#endif
+      passivityActive = false;
+      passivityTimer  = passivitySignalTimer = 0;
+   }
+#endif
+}
+
+void checkPassivity()
+{
+   if (passivityActive)
+   {
+      if (passivitySignalTimer > 0)
+      {
+         if (millis() > (passivitySignalTimer+MAX_PASSIVITY_SIGNAL))
+         {
+            signalPassivity(false);
+         }
+      }
+      else if (passivityTimer > 0)
+      {
+         if (millis() > (passivityTimer+MAX_PASSIVITY))
+         {
+            Serial.print(millis());
+            Serial.print(">");
+            Serial.print(passivityTimer+MAX_PASSIVITY);
+            signalPassivity(true);
+         }
+      }
+   }
+}
+
 //===================
 // Increment main timer manually
 //===================
@@ -2253,6 +2342,7 @@ void transIR(unsigned long key)
                     else
                     {
                        restartTimer();
+                       startPassivity();
                        boutState = STA_BOUT;
 #ifdef DEBUG_L1
                        Serial.println("start bout timer");
@@ -2305,6 +2395,7 @@ void transIR(unsigned long key)
                     else
                     {
                        restartTimer();
+                       startPassivity();
                        timeState = TIM_BOUT;
                        boutState = STA_BOUT;
 #ifdef DEBUG_L1
@@ -2941,7 +3032,8 @@ void endOfBout()
 #ifdef DEBUG_L1
    Serial.println("end of bout");
 #endif
-#endif   
+#endif
+   clearPassivity();
 }
 
 //=============
@@ -2970,6 +3062,7 @@ void startPriority()
    displayTime();
    boutState = STA_PRIORITY;
 #endif
+   clearPassivity();
 }
 
 void endPriority()
@@ -3027,6 +3120,7 @@ void startSpar()
    resetValues();
    resetCards();
    resetLights();
+   clearPassivity();
    updateCardLeds(0);
    delay(1000);
    displayScore();
@@ -3047,6 +3141,7 @@ void startBreak()
    setTimer(BREAKTIME);
    restartTimer();
 #endif
+   clearPassivity();
 }
 
 void startStopWatch()
@@ -3196,7 +3291,7 @@ int runStopWatch()
       switch (swCount)
       {
          case SW_UP:
-            if (timer < MAXSTOPWATCH)
+            if (timer < MAX_STOPWATCH)
             {
                timer++;
                if (timerSecs >= 59)
@@ -3482,6 +3577,7 @@ void loop()
          else if (timeState != TIM_STOPPED)
          {
             signalHits();
+            clearPassivity();
            
             // Start the reset state machine to turn off buzzer and lights
             if (!resetState)
@@ -3694,6 +3790,13 @@ void loop()
             hitDisplayTimer = millis();
          }
       }
+
+#ifdef PASSIVITY
+      if (timeState != TIM_STOPPED)
+      {
+         checkPassivity();
+      }
+#endif
 
       // Short circuit on fencer A?
       if (shortCircuit[FENCER_A])
@@ -3967,6 +4070,7 @@ void loop()
                   else
                   {
                      timeState = TIM_STOPPED;
+                     clearPassivity();
 #ifdef DEBUG_L6
                      Serial.println("bout timer expired");
 #endif
@@ -3994,6 +4098,12 @@ void loop()
             }
          }
       }
+#ifdef PASSIVITY
+      if (timeState != TIM_STOPPED)
+      {
+         checkPassivity();
+      }
+#endif
 
 #ifdef DEBUG_L3
       long now;

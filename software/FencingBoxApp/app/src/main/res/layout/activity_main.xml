@@ -5,21 +5,20 @@
     android:id="@+id/activity_main"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:textAlignment="center"
     tools:context=".MainActivity">
 
     <TextView
         android:id="@+id/textScore"
         android:layout_width="280dp"
         android:layout_height="96dp"
-        android:layout_marginBottom="52dp"
+        android:layout_marginBottom="96dp"
         android:background="#000000"
         android:textAlignment="center"
         android:textSize="64sp"
         android:textStyle="bold"
         app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintEnd_toEndOf="@+id/textClock"
-        app:layout_constraintHorizontal_bias="0.0"
-        app:layout_constraintStart_toStartOf="@+id/textClock" />
+        app:layout_constraintEnd_toEndOf="@+id/textClock" />
 
     <TextView
         android:id="@+id/textClock"
@@ -37,6 +36,32 @@
         app:layout_constraintTop_toTopOf="@+id/guideline2"
         app:layout_constraintVertical_bias="1.0"
         tools:ignore="MissingPrefix" />
+
+    <TextView
+        android:id="@+id/priorityA"
+        android:layout_width="33dp"
+        android:layout_height="33dp"
+        android:layout_marginTop="16dp"
+        android:background="#000000"
+        android:text="P"
+        android:textAlignment="center"
+        android:textColor="#FF0000"
+        android:textSize="24sp"
+        app:layout_constraintStart_toStartOf="@+id/textScore"
+        app:layout_constraintTop_toBottomOf="@+id/textScore" />
+
+    <TextView
+        android:id="@+id/priorityB"
+        android:layout_width="33dp"
+        android:layout_height="33dp"
+        android:layout_marginTop="16dp"
+        android:background="#000000"
+        android:text="P"
+        android:textAlignment="center"
+        android:textColor="#FF0000"
+        android:textSize="24sp"
+        app:layout_constraintEnd_toEndOf="@+id/textScore"
+        app:layout_constraintTop_toBottomOf="@+id/textScore" />
 
     <androidx.constraintlayout.widget.Barrier
         android:id="@+id/barrier"
@@ -74,6 +99,6 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
-        app:layout_constraintGuide_end="341dp" />
+        app:layout_constraintGuide_end="366dp" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>
