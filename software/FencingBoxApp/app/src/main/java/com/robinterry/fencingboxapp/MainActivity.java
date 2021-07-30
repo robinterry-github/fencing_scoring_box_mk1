@@ -652,6 +652,7 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
             case "PC":
                 Log.d(TAG, "choosing priority");
                 hideUI();
+                clearPriority();
                 Toast.makeText(getApplicationContext(), R.string.choose_priority, Toast.LENGTH_SHORT).show();
                 setHitLights(true, true);
                 break;
