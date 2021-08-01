@@ -47,6 +47,7 @@
         android:textAlignment="center"
         android:textColor="#FF0000"
         android:textSize="24sp"
+        android:textStyle="bold"
         app:layout_constraintStart_toStartOf="@+id/textScore"
         app:layout_constraintTop_toBottomOf="@+id/textScore" />
 
@@ -60,6 +61,7 @@
         android:textAlignment="center"
         android:textColor="#FF0000"
         android:textSize="24sp"
+        android:textStyle="bold"
         app:layout_constraintEnd_toEndOf="@+id/textScore"
         app:layout_constraintTop_toBottomOf="@+id/textScore" />
 
@@ -100,5 +102,18 @@
         android:layout_height="wrap_content"
         android:orientation="horizontal"
         app:layout_constraintGuide_end="366dp" />
+
+    <TextView
+        android:id="@+id/passivityClock"
+        android:layout_width="66dp"
+        android:layout_height="33dp"
+        android:layout_marginTop="16dp"
+        android:background="#000000"
+        android:textAlignment="inherit"
+        android:textColor="#FF0000"
+        android:textSize="24sp"
+        app:layout_constraintEnd_toStartOf="@+id/priorityB"
+        app:layout_constraintStart_toEndOf="@+id/priorityA"
+        app:layout_constraintTop_toBottomOf="@+id/textScore" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>

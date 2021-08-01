@@ -5,6 +5,7 @@
     android:id="@+id/activity_main_land"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:textAlignment="center"
     tools:context=".MainActivity">
 
     <TextView
@@ -50,6 +51,50 @@
         app:layout_constraintStart_toEndOf="@+id/textScoreA_l"
         app:layout_constraintTop_toTopOf="@+id/guideline5" />
 
+    <TextView
+        android:id="@+id/priorityA_l"
+        android:layout_width="33dp"
+        android:layout_height="33dp"
+        android:background="#000000"
+        android:text="P"
+        android:textAlignment="center"
+        android:textColor="#FF0000"
+        android:textSize="24sp"
+        android:textStyle="bold"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toStartOf="@+id/textScoreA_l"
+        app:layout_constraintTop_toBottomOf="@+id/textScoreA_l"
+        app:layout_constraintVertical_bias="0.24000001" />
+
+    <TextView
+        android:id="@+id/priorityB_l"
+        android:layout_width="33dp"
+        android:layout_height="33dp"
+        android:background="#000000"
+        android:text="P"
+        android:textAlignment="center"
+        android:textColor="#FF0000"
+        android:textSize="24sp"
+        android:textStyle="bold"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="@+id/textScoreB_l"
+        app:layout_constraintTop_toBottomOf="@+id/textScoreB_l"
+        app:layout_constraintVertical_bias="0.238" />
+
+    <TextView
+        android:id="@+id/passivityClock_l"
+        android:layout_width="66dp"
+        android:layout_height="32dp"
+        android:layout_marginTop="8dp"
+        android:background="#000000"
+        android:textAlignment="center"
+        android:textColor="#FF0000"
+        android:textSize="24sp"
+        app:layout_constraintEnd_toStartOf="@+id/priorityB_l"
+        app:layout_constraintHorizontal_bias="0.502"
+        app:layout_constraintStart_toEndOf="@+id/priorityA_l"
+        app:layout_constraintTop_toBottomOf="@+id/textClock_l" />
+
     <androidx.constraintlayout.widget.Guideline
         android:id="@+id/guideline"
         android:layout_width="wrap_content"
@@ -70,33 +115,5 @@
         android:layout_height="wrap_content"
         android:orientation="horizontal"
         app:layout_constraintGuide_begin="218dp" />
-
-    <TextView
-        android:id="@+id/priorityA_l"
-        android:layout_width="33dp"
-        android:layout_height="33dp"
-        android:background="#000000"
-        android:text="P"
-        android:textAlignment="center"
-        android:textColor="#FF0000"
-        android:textSize="24sp"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintStart_toStartOf="@+id/textScoreA_l"
-        app:layout_constraintTop_toBottomOf="@+id/textScoreA_l"
-        app:layout_constraintVertical_bias="0.24000001" />
-
-    <TextView
-        android:id="@+id/priorityB_l"
-        android:layout_width="33dp"
-        android:layout_height="33dp"
-        android:background="#000000"
-        android:text="P"
-        android:textAlignment="center"
-        android:textColor="#FF0000"
-        android:textSize="24sp"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintEnd_toEndOf="@+id/textScoreB_l"
-        app:layout_constraintTop_toBottomOf="@+id/textScoreB_l"
-        app:layout_constraintVertical_bias="0.238" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>

@@ -4,7 +4,7 @@
 //  Dev:     Wnew                                                            //
 //  Date:    Nov     2012                                                    //
 //  Updated: Sept    2015                                                    //
-//  Updated: July 25 2021 Robin Terry, Skipton, UK                           //
+//  Updated: August 1 2021 Robin Terry, Skipton, UK                           //
 //                                                                           //
 //  Notes:   1. Basis of algorithm from digitalwestie on github. Thanks Mate //
 //           2. Used uint8_t instead of int where possible to optimise       //
@@ -30,6 +30,7 @@
 //          12. Stores the current mode (spar/bout/stopwatch) in EEPROM      //
 //          13. Added in the serial port indicator (for external indication) //
 //          14. The timer shows 1/100 sec in last 9 seconds                  //
+//          15. Support for a passivity timer                                //
 //===========================================================================//
 
 //============
@@ -95,7 +96,7 @@
 #define MAX_STOPWATCH  ((60UL*60UL)-1)    // Maximum stopwatch time (59:59)
 
 #ifdef PASSIVITY
-#define MAX_PASSIVITY  (60UL*ONESEC)      // Passivity timer (ms)
+#define MAX_PASSIVITY  (60UL)             // Passivity timer (seconds)
 #define MAX_PASSIVITY_SIGNAL (100)        // Passivity signal time (ms)
 #endif
 
@@ -1108,6 +1109,10 @@ void displayScore()
      sprintf(&ind[3], "%02d",   score[FENCER_B]);
      Serial.println(ind);
   }
+  else
+  {
+     Serial.println("!HS");
+  }
 #endif
 }
 
@@ -1202,7 +1207,7 @@ void displayTime()
    {
       if (timerHund >= 0)
       {
-         sprintf(&ind[0], "@%02d",  timerSecs);
+         sprintf(&ind[0], ":%02d",  timerSecs);
          sprintf(&ind[3], "%02d",   timerHund);
          Serial.println(ind);
       }
@@ -1551,11 +1556,17 @@ void restartTimer()
 }
 
 // Passivity processing
-void startPassivity()
+void restartPassivity()
 {
 #ifdef PASSIVITY
    passivityActive = true;
-   passivityTimer  = millis();
+#endif
+}
+
+void startPassivity()
+{
+#ifdef PASSIVITY
+   restartPassivity();
 #ifdef SERIAL_INDICATOR
    Serial.println("!VS");
 #endif
@@ -1576,31 +1587,35 @@ void clearPassivity()
 void signalPassivity(bool on)
 {
 #ifdef PASSIVITY
-   if (on)
+   if (passivityActive)
    {
+      if (on)
+      {
 #ifdef PASSIVITY_SIGNAL
-      digitalWrite(onTargetA, HIGH);
-      digitalWrite(onTargetB, HIGH);
+         digitalWrite(onTargetA, HIGH);
+         digitalWrite(onTargetB, HIGH);
 #endif 
-      passivitySignalTimer = millis();
+         passivitySignalTimer = millis();
 #ifdef SERIAL_INDICATOR
-      Serial.println("!VT");
+         Serial.println("!VT");
 #endif
-   }
-   else
-   {
+      }
+      else
+      {
 #ifdef PASSIVITY_SIGNAL
-      digitalWrite(onTargetA, LOW);
-      digitalWrite(onTargetB, LOW);
+         digitalWrite(onTargetA, LOW);
+         digitalWrite(onTargetB, LOW);
 #endif
-      passivityActive = false;
-      passivityTimer  = passivitySignalTimer = 0;
+         passivityActive = false;
+         passivityTimer = passivitySignalTimer = 0;
+      }
    }
 #endif
 }
 
 void checkPassivity()
 {
+#ifdef PASSIVITY
    if (passivityActive)
    {
       if (passivitySignalTimer > 0)
@@ -1610,17 +1625,12 @@ void checkPassivity()
             signalPassivity(false);
          }
       }
-      else if (passivityTimer > 0)
+      else if (passivityTimer >= MAX_PASSIVITY)
       {
-         if (millis() > (passivityTimer+MAX_PASSIVITY))
-         {
-            Serial.print(millis());
-            Serial.print(">");
-            Serial.print(passivityTimer+MAX_PASSIVITY);
-            signalPassivity(true);
-         }
+         signalPassivity(true);
       }
    }
+#endif
 }
 
 //===================
@@ -1832,28 +1842,6 @@ void updateCardLeds(int Leds)
    digitalWrite(latchPin, HIGH);
 #endif
 #ifdef SERIAL_INDICATOR
-#ifdef STOPWATCH
-   if (inStopWatch())
-   {
-      /* Send card LED message to repeater to light all card LEDs */
-      if (Leds == A_ALL)
-      {
-         Serial.println("?07");
-         Serial.println("?10");
-      }
-      else if (Leds == B_ALL)
-      {
-         Serial.println("?00");
-         Serial.println("?17");
-      }
-      else
-      {
-         Serial.println("?00");
-         Serial.println("?10");
-      }
-   }
-   else
-#endif
    {
       int LedsA = 0;
       if (cardLeds & A_YELLOW)
@@ -1925,6 +1913,15 @@ int countDown(int timerGap)
       /* Counting down in hundredths of seconds */
       if (timerHund < 0)
       {
+#ifdef PASSIVITY
+         if (passivityActive)
+         {
+            if (passivityTimer < MAX_PASSIVITY)
+            {
+               passivityTimer++;
+            }
+         }
+#endif     
          /* Has the timer expired? */
          if (--timerSecs < 0)
          {
@@ -1944,6 +1941,15 @@ int countDown(int timerGap)
    }
    else if (timer > 0)
    {
+#ifdef PASSIVITY
+      if (passivityActive)
+      {
+         if (passivityTimer < MAX_PASSIVITY)
+         {
+            passivityTimer++;
+         }
+      }
+#endif
       timer--;
       if (timerSecs <= 0)
       {
@@ -2395,9 +2401,12 @@ void transIR(unsigned long key)
                     else
                     {
                        restartTimer();
-                       startPassivity();
                        timeState = TIM_BOUT;
                        boutState = STA_BOUT;
+#ifdef SERIAL_INDICATOR
+                       Serial.println("!BR");
+#endif
+                       restartPassivity();
 #ifdef DEBUG_L1
                        Serial.println("bout timer running");
 #endif

@@ -45,13 +45,18 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
 
     public TextView textScore, textScoreA, textScoreB, textClock;
     public TextView priorityA, priorityB;
+    public TextView passivityClock;
     public String scoreA = "00", scoreB = "00";
-    public String timeMins = "00", timeSecs = "00";
+    public String timeMins = "00", timeSecs = "00", timeHund = "00";
+    public int passivityTimer = 0;
+    public boolean passivityActive = false;
     private static Integer cardA = 0;
     private static Integer cardB = 0;
     public boolean hitA = false, hitB = false;
     public boolean priA = false, priB = false;
+    private boolean scoreHidden = false;
     private static final String TAG = "FencingBoxApp";
+    private static int passivityMaxTime = 60;
     public static final Integer hitAColor       = 0xFFFF0000;
     public static final Integer hitBColor       = 0xFF00FF00;
     public static final Integer inactiveColor   = 0xFFE0E0E0;
@@ -65,11 +70,11 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
 
     private enum Connected { False, Pending, True }
     private enum Weapon { Foil, Epee, Sabre }
-    private enum Mode { Sparring, Bout, Stopwatch }
+    private enum Mode { None, Sparring, Bout, Stopwatch }
 
     private Connected connected = Connected.False;
     private Weapon weapon = Weapon.Foil;
-    private Mode mode = Mode.Sparring;
+    private Mode mode = Mode.None;
     private final Integer portNum = 0;
     private final Integer baudRate = 230400;
     private UsbSerialPort usbSerialPort;
@@ -84,7 +89,8 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
     private boolean visibleUI = false;
 
     private final byte cmdMarker = '!';
-    private final byte clockMarker = '@';
+    private final byte clockMarker1 = '@';
+    private final byte clockMarker2 = ':';
     private final byte scoreMarker = '*';
     private final byte hitMarker = '$';
     private final byte cardMarker = '?';
@@ -273,6 +279,7 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
         setClock();
         setCard();
         setPriority();
+        setPassivity();
     }
 
     @Override
@@ -302,12 +309,14 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
             textClock = findViewById(R.id.textClock_l);
             priorityA = findViewById(R.id.priorityA_l);
             priorityB = findViewById(R.id.priorityB_l);
+            passivityClock = findViewById(R.id.passivityClock_l);
         } else {
             textScore = findViewById(R.id.textScore);
             textScore.setGravity(Gravity.CENTER);
             textClock = findViewById(R.id.textClock);
             priorityA = findViewById(R.id.priorityA);
             priorityB = findViewById(R.id.priorityB);
+            passivityClock = findViewById(R.id.passivityClock);
         }
         try {
             Typeface face = Typeface.createFromAsset(getAssets(), "font/DSEG7Classic-Bold.ttf");
@@ -324,6 +333,9 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
             textClock.setTypeface(face);
             textClock.setTextColor(Color.GREEN);
             textClock.setGravity(Gravity.CENTER);
+            passivityClock.setTypeface(face);
+            passivityClock.setTextColor(Color.GREEN);
+            textClock.setGravity(Gravity.CENTER);
             priorityA.setTextColor(Color.BLACK);
             priorityA.setGravity(Gravity.CENTER);
             priorityB.setTextColor(Color.BLACK);
@@ -335,16 +347,18 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
 
     private void hideUI() {
         if (controlUI) {
-            View decorView = getWindow().getDecorView();
-            decorView.setSystemUiVisibility(
-                    View.SYSTEM_UI_FLAG_LAYOUT_STABLE
+            if (mode != Mode.None) {
+                View decorView = getWindow().getDecorView();
+                decorView.setSystemUiVisibility(
+                        View.SYSTEM_UI_FLAG_LAYOUT_STABLE
                                 | View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
                                 | View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
                                 | View.SYSTEM_UI_FLAG_LOW_PROFILE
                                 | View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
                                 | View.SYSTEM_UI_FLAG_FULLSCREEN);
-            Log.d(TAG, "hide UI");
-            visibleUI = false;
+                Log.d(TAG, "hide UI");
+                visibleUI = false;
+            }
         }
     }
 
@@ -475,15 +489,19 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
         scoreB = s_B;
         String score = scoreA + " " + scoreB;
         Log.d(TAG, "setScore: " + score);
-        if (mode != Mode.Bout) {
+
+        if (scoreHidden) {
             clearScore();
+        } else if (mode == Mode.Stopwatch || mode == Mode.None) {
+            clearScore();
+        } else if (orientation == Orientation.Landscape) {
+            textScoreA.setTextColor(Color.RED);
+            textScoreA.setText(scoreA);
+            textScoreB.setTextColor(Color.RED);
+            textScoreB.setText(scoreB);
         } else {
-            if (orientation == Orientation.Landscape) {
-                textScoreA.setText(scoreA);
-                textScoreB.setText(scoreB);
-            } else {
-                textScore.setText(score);
-            }
+            textScore.setTextColor(Color.RED);
+            textScore.setText(score);
         }
     }
 
@@ -491,9 +509,12 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
         Log.d(TAG, "clear score");
         scoreA = scoreB = "00";
         if (orientation == Orientation.Landscape) {
+            textScoreA.setTextColor(Color.BLACK);
+            textScoreB.setTextColor(Color.BLACK);
             textScoreA.setText("--");
             textScoreB.setText("--");
         } else {
+            textScore.setTextColor(Color.BLACK);
             textScore.setText("----");
         }
     }
@@ -505,10 +526,11 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
             timeMins = "00";
         }
         timeSecs = "00";
-        if (mode == Mode.Sparring) {
+        timeHund = "00";
+        if (mode == Mode.Sparring || mode == Mode.None) {
             clearClock();
         } else {
-            setClock(timeMins, timeSecs);
+            setClock(timeMins, timeSecs, timeHund, false);
         }
     }
 
@@ -521,24 +543,40 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
         }
     }
 
-    public void setClock() {
-        setClock(timeMins, timeSecs);
+    public boolean setClock() {
+        return setClock(timeMins, timeSecs, timeHund, false);
     }
 
-    public void setClock(String mins, String secs) {
-        timeMins = mins;
-        timeSecs = secs;
-        String clock = timeMins + ":" + timeSecs;
-        if (mode == Mode.Sparring) {
+    public boolean setClock(String mins, String secs, String hund, boolean hundActive) {
+        boolean clockChanged = true;
+        String clock;
+
+        if (mode == Mode.Sparring || mode == Mode.None) {
             clearClock();
+            clockChanged = false;
         } else {
+            /* Has the clock minutes and seconds changed? */
+            if (mins.equals(timeMins) && secs.equals(timeSecs)) {
+                clockChanged = false;
+            }
+            timeMins = mins;
+            timeSecs = secs;
+            timeHund = hund;
+            if (hundActive) {
+                clock = timeSecs + ":" + timeHund;
+            } else {
+                clock = timeMins + ":" + timeSecs;
+            }
             Log.d(TAG, "setClock: " + clock);
+            textClock.setTextColor(Color.GREEN);
             textClock.setText(clock);
         }
+        return clockChanged;
     }
 
     public void clearClock() {
         Log.d(TAG, "clear clock");
+        textClock.setTextColor(Color.BLACK);
         textClock.setText("----");
     }
 
@@ -599,6 +637,36 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
         setPriority(false, false);
     }
 
+    public void restartPassivity() {
+        passivityActive = true;
+        setPassivity();
+    }
+
+    public void setPassivity() {
+        setPassivity(passivityTimer);
+    }
+
+    public void setPassivity(int pClock)
+    {
+        if (passivityActive) {
+            passivityClock.setTextColor(Color.GREEN);
+            if (pClock > passivityMaxTime) {
+                passivityClock.setText(String.format("%02d", passivityMaxTime));
+            } else {
+                passivityClock.setText(String.format("%02d", pClock));
+            }
+        } else {
+            clearPassivity();
+        }
+    }
+
+    public void clearPassivity() {
+        passivityActive = false;
+        passivityTimer = passivityMaxTime;
+        passivityClock.setTextColor((mode == Mode.Bout) ? Color.GREEN:Color.BLACK);
+        passivityClock.setText("--");
+    }
+
     public void processData(byte data[]) {
         for (int i = 0; i < data.length; i++) {
            if (data[i] == cmdMarker) {
@@ -618,13 +686,18 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
                String hit = new String(data, i, 2, StandardCharsets.UTF_8);
                i += 2;
                processHit(hit);
-           } else if (data[i] == clockMarker) {
+           } else if (data[i] == clockMarker1) {
                i++;
                String min = new String(data, i, 2, StandardCharsets.UTF_8);
                i += 2;
                String sec = new String(data, i, 2, StandardCharsets.UTF_8);
+               processClock(min, sec, "00",false);
+           } else if (data[i] == clockMarker2) {
+               i++;
+               String sec = new String(data, i, 2, StandardCharsets.UTF_8);
                i += 2;
-               processClock(min, sec);
+               String hund = new String(data, i, 2, StandardCharsets.UTF_8);
+               processClock("00", sec, hund, true);
            } else if (data[i] == cardMarker) {
                i++;
                String whichFencer = new String(data, i, 1, StandardCharsets.UTF_8);
@@ -647,6 +720,7 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
                 clearClock();
                 clearCard();
                 clearPriority();
+                clearPassivity();
                 break;
 
             case "PC":
@@ -658,7 +732,7 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
                 break;
 
             case "BS":
-                Log.d(TAG, "bout starting");
+                Log.d(TAG, "bout start");
                 hideUI();
                 mode = Mode.Bout;
                 Toast.makeText(getApplicationContext(), R.string.mode_bout, Toast.LENGTH_SHORT).show();
@@ -666,14 +740,20 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
                 resetClock();
                 resetCard();
                 clearPriority();
+                clearPassivity();
+                break;
+
+            case "BR":
+                Log.d(TAG, "bout resume");
+                restartPassivity();
                 break;
 
             case "BC":
-                Log.d(TAG, "bout continuing");
+                Log.d(TAG, "bout continue");
                 break;
 
             case "BE":
-                Log.d(TAG, "bout ending");
+                Log.d(TAG, "bout end");
                 break;
 
             case "P0":
@@ -701,6 +781,13 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
                 resetClock();
                 resetCard();
                 clearPriority();
+                clearPassivity();
+                break;
+
+            case "HS":
+                Log.d(TAG, "Hide score");
+                scoreHidden = true;
+                clearScore();
                 break;
 
             case "RS":
@@ -718,6 +805,7 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
                 resetClock();
                 resetCard();
                 clearPriority();
+                clearPassivity();
                 break;
 
             case "WR":
@@ -730,6 +818,7 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
                 hitA = hitB = false;
                 setHitLights(hitA, hitB);
                 clearPriority();
+                clearPassivity();
                 break;
 
             case "TF":
@@ -759,6 +848,24 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
                 Toast.makeText(getApplicationContext(), R.string.weapon_sabre, Toast.LENGTH_SHORT).show();
                 break;
 
+            case "VS":
+                Log.d(TAG, "passivity start");
+                passivityActive = true;
+                passivityTimer = passivityMaxTime;
+                setPassivity(passivityTimer);
+                break;
+
+            case "VC":
+                Log.d(TAG, "passivity clear");
+                clearPassivity();
+                break;
+
+            case "VT":
+                Log.d(TAG, "passivity signal");
+                setPassivity(0);
+                passivityActive = false;
+                break;
+
             default:
                 Log.d(TAG, "unknown command " + cmd);
                 break;
@@ -766,6 +873,7 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
     }
 
     public void processScore(String s_A, String s_B) {
+        scoreHidden = false;
         setScore(s_A, s_B);
     }
 
@@ -805,8 +913,13 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
         }
     }
 
-    public void processClock(String min, String sec) {
-        setClock(min, sec);
+    public void processClock(String min, String sec, String hund, boolean hundActive) {
+        if (setClock(min, sec, hund, hundActive)) {
+            if (passivityActive && passivityTimer > 0) {
+                passivityTimer--;
+                setPassivity(passivityTimer);
+            }
+        }
     }
 
     /*
@@ -824,6 +937,7 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
                 clearClock();
                 clearCard();
                 clearPriority();
+                clearPassivity();
             }
         });
     }
@@ -855,6 +969,7 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
         clearClock();
         clearCard();
         clearPriority();
+        clearPassivity();
         reconnect();
     }
 
@@ -869,11 +984,14 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
     @Override
     public void onSerialIoError(Exception e) {
         Log.d(TAG, "connection lost: " + e.getMessage());
+        mode = Mode.None;
+        showUI();
         clearHitLights();
         clearScore();
         clearClock();
         clearCard();
         clearPriority();
+        clearPassivity();
         reconnect();
     }
 
