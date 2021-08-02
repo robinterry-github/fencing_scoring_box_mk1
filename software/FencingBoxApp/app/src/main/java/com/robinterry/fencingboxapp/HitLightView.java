@@ -15,11 +15,12 @@ public class HitLightView extends View {
     private static final String TAG = "HitLightView";
     private ConstraintLayout layout;
     private Paint paint;
-    private boolean lightOn = false;
+    private MainActivity.Hit hit = MainActivity.Hit.None;
     private int leftPos;
     public enum HitLight { HitA, HitB }
     private HitLight hitLight = HitLight.HitA;
-    private int onColor = Color.BLACK;
+    private int onTargetColor = Color.BLACK;
+    private final int offTargetColor = Color.WHITE;
     private final int offColor = Color.BLACK;
     public static final int LED_SIZE_X_DIV_PORT = 4;
     public static final int LED_SIZE_Y_DIV_PORT = 4;
@@ -48,7 +49,9 @@ public class HitLightView extends View {
 
         paint = new Paint();
         paint.setStyle(Paint.Style.FILL);
-        onColor = color;
+
+        /* onTargetColor can be either red or green, depending on the fencer */
+        onTargetColor = color;
         paint.setColor(offColor);
         paint.setAntiAlias(true);
 
@@ -125,11 +128,11 @@ public class HitLightView extends View {
         } catch (Exception e) {
             Log.d(TAG, "Cannot remove view " + this + " exception " + e);
         }
-        showLights(this.lightOn);
+        showLights(this.hit);
     }
 
-    public void showLights(boolean lightOn) {
-        this.lightOn = lightOn;
+    public void showLights(MainActivity.Hit hit) {
+        this.hit = hit;
         invalidate();
     }
 
@@ -142,7 +145,22 @@ public class HitLightView extends View {
         setTop(coords.topPos);
         setBottom(coords.bottomPos);
 
-        paint.setColor(lightOn ? onColor:offColor);
+        int color;
+        switch (hit) {
+            case None:
+            default:
+                color = offColor;
+                break;
+
+            case OnTarget:
+                color = onTargetColor;
+                break;
+
+            case OffTarget:
+                color = offTargetColor;
+                break;
+        }
+        paint.setColor(color);
         canvas.drawRect(
                 (float) 0,
                 (float) 0,

@@ -42,6 +42,7 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
     public static enum Orientation { Portrait, Landscape }
     private static Orientation orientation = Orientation.Portrait;
     public static Orientation getOrientation() { return orientation; }
+    public static enum Hit { None, OnTarget, OffTarget };
 
     public TextView textScore, textScoreA, textScoreB, textClock;
     public TextView priorityA, priorityB;
@@ -52,7 +53,9 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
     public boolean passivityActive = false;
     private static Integer cardA = 0;
     private static Integer cardB = 0;
-    public boolean hitA = false, hitB = false;
+
+
+    public Hit hitA = Hit.None, hitB = Hit.None;
     public boolean priA = false, priB = false;
     private boolean scoreHidden = false;
     private static final String TAG = "FencingBoxApp";
@@ -455,8 +458,7 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
         setHitLights(hitA, hitB);
     }
 
-    public void setHitLights(boolean l_A, boolean l_B) {
-        Log.d(TAG, "setHitLights: " + (l_A ? "ON":"OFF") + ":" + (l_B ? "ON":"OFF"));
+    public void setHitLights(Hit l_A, Hit l_B) {
         hitA = l_A;
         hitB = l_B;
         hitLightA.showLights(hitA);
@@ -465,7 +467,7 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
 
     public void clearHitLights() {
         Log.d(TAG, "clearing hit lights");
-        setHitLights(false, false);
+        setHitLights(Hit.None, Hit.None);
     }
 
     public void setScoreA(String s_A) {
@@ -728,7 +730,7 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
                 hideUI();
                 clearPriority();
                 Toast.makeText(getApplicationContext(), R.string.choose_priority, Toast.LENGTH_SHORT).show();
-                setHitLights(true, true);
+                setHitLights(Hit.OnTarget, Hit.OnTarget);
                 break;
 
             case "BS":
@@ -815,7 +817,7 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
             case "RL":
                 Log.d(TAG, "reset lights");
                 hideUI();
-                hitA = hitB = false;
+                hitA = hitB = Hit.None;
                 setHitLights(hitA, hitB);
                 clearPriority();
                 clearPassivity();
@@ -856,7 +858,7 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
                 break;
 
             case "VC":
-                Log.d(TAG, "passivity clear");
+                Log.d(TAG, "passivity clear"); 
                 clearPassivity();
                 break;
 
@@ -879,26 +881,36 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
 
     public void processHit(String hit) {
         hideUI();
+
+        /* Process off-target hits first */
+        if (weapon == Weapon.Foil) {
+            if (hit.equals("O0")) {
+                hitA = Hit.OffTarget;
+            }
+            if (hit.equals("O1")) {
+                hitB = Hit.OffTarget;
+            }
+        }
+
+        /* Process on-target hits */
         if (hit.equals("H0")) {
-            hitA = hitB = false;
+            hitA = hitB = Hit.None;
         }
         if (hit.equals("H1")) {
-            hitA = true;
+            hitA = Hit.OnTarget;
         }
         if (hit.equals("H2")) {
-            hitB = true;
+            hitB = Hit.OnTarget;
         }
         if (hit.equals("H3")) {
-            hitA = true;
-            hitB = false;
+            hitA = Hit.OnTarget;
+            hitB = Hit.None;
         }
         if (hit.equals("H4")) {
-            hitA = false;
-            hitB = true;
+            hitA = Hit.None;
+            hitB = Hit.OnTarget;
         }
         setHitLights(hitA, hitB);
-
-        /* Ignore the off-target hits for now */
     }
 
     public void processCard(String whichFencer, String whichCard) {
