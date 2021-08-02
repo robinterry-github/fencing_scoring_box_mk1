@@ -465,7 +465,7 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
 
     public void clearHitLights() {
         Log.d(TAG, "clearing hit lights");
-        hitA = hitB = false;
+        setHitLights(false, false);
     }
 
     public void setScoreA(String s_A) {
@@ -964,6 +964,7 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
     @Override
     public void onSerialConnectError(Exception e) {
         Log.d(TAG, "connection failed: " + e.getMessage());
+        showUI();
         clearHitLights();
         clearScore();
         clearClock();
