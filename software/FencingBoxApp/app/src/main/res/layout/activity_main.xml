@@ -116,4 +116,17 @@
         app:layout_constraintStart_toEndOf="@+id/priorityA"
         app:layout_constraintTop_toBottomOf="@+id/textScore" />
 
+    <TextView
+        android:id="@+id/battery_level"
+        android:layout_width="30dp"
+        android:layout_height="19dp"
+        android:layout_marginEnd="28dp"
+        android:background="#000000"
+        android:textAlignment="center"
+        android:textColor="#FF0000"
+        android:textSize="14sp"
+        android:textStyle="bold"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
+
 </androidx.constraintlayout.widget.ConstraintLayout>

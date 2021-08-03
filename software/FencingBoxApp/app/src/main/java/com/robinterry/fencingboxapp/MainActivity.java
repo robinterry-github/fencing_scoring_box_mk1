@@ -30,6 +30,8 @@ import android.view.Window;
 import android.view.Gravity;
 import android.view.MotionEvent;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.BatteryManager;
 import java.lang.String;
 import java.lang.Integer;
 import java.nio.charset.StandardCharsets;
@@ -47,6 +49,7 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
     public TextView textScore, textScoreA, textScoreB, textClock;
     public TextView priorityA, priorityB;
     public TextView passivityClock;
+    public TextView batteryLevel;
     public String scoreA = "00", scoreB = "00";
     public String timeMins = "00", timeSecs = "00", timeHund = "00";
     public int passivityTimer = 0;
@@ -59,7 +62,8 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
     public boolean priA = false, priB = false;
     private boolean scoreHidden = false;
     private static final String TAG = "FencingBoxApp";
-    private static int passivityMaxTime = 60;
+    private final int passivityMaxTime = 60;
+    private final int batteryDangerLevel = 10;
     public static final Integer hitAColor       = 0xFFFF0000;
     public static final Integer hitBColor       = 0xFF00FF00;
     public static final Integer inactiveColor   = 0xFFE0E0E0;
@@ -183,6 +187,7 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
         setClock();
         setCard();
         setPriority();
+        startBatteryMonitor();
         Log.d(TAG, "onStart end");
     }
 
@@ -297,6 +302,31 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
         return false;
     }
 
+    void startBatteryMonitor() {
+        final int delayMillis = 1000;
+
+        Handler handler = new Handler();
+        final Runnable r = new Runnable() {
+            public void run() {
+                if (!visibleUI) {
+                    BatteryManager batt = (BatteryManager) getApplicationContext().getSystemService(BATTERY_SERVICE);
+                    int level = batt.getIntProperty(BatteryManager.BATTERY_PROPERTY_CAPACITY);
+                    if (level < batteryDangerLevel) {
+                        batteryLevel.setTextColor(Color.RED);
+                    } else {
+                        batteryLevel.setTextColor(Color.GREEN);
+                    }
+                    Log.d(TAG, "Battery level " + level);
+                    batteryLevel.setText(String.valueOf(level) + "%");
+                } else {
+                    batteryLevel.setTextColor(Color.BLACK);
+                }
+                handler.postDelayed(this, delayMillis);
+            }
+        };
+        handler.postDelayed(r, delayMillis);
+    }
+
     private Orientation getCurrentOrientation() {
         Configuration newConf = getResources().getConfiguration();
         return (newConf.orientation == Configuration.ORIENTATION_LANDSCAPE) ?
@@ -313,6 +343,7 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
             priorityA = findViewById(R.id.priorityA_l);
             priorityB = findViewById(R.id.priorityB_l);
             passivityClock = findViewById(R.id.passivityClock_l);
+            batteryLevel = findViewById(R.id.battery_level_land);
         } else {
             textScore = findViewById(R.id.textScore);
             textScore.setGravity(Gravity.CENTER);
@@ -320,6 +351,7 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
             priorityA = findViewById(R.id.priorityA);
             priorityB = findViewById(R.id.priorityB);
             passivityClock = findViewById(R.id.passivityClock);
+            batteryLevel = findViewById(R.id.battery_level);
         }
         try {
             Typeface face = Typeface.createFromAsset(getAssets(), "font/DSEG7Classic-Bold.ttf");
@@ -338,11 +370,13 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
             textClock.setGravity(Gravity.CENTER);
             passivityClock.setTypeface(face);
             passivityClock.setTextColor(Color.GREEN);
-            textClock.setGravity(Gravity.CENTER);
+            passivityClock.setGravity(Gravity.CENTER);
+            batteryLevel.setTextColor(Color.GREEN);
+            batteryLevel.setGravity(Gravity.CENTER);
             priorityA.setTextColor(Color.BLACK);
             priorityA.setGravity(Gravity.CENTER);
             priorityB.setTextColor(Color.BLACK);
-            priorityB.setTextColor(Gravity.CENTER);
+            priorityB.setGravity(Gravity.CENTER);
         } catch (Exception e) {
             Log.d(TAG, "unable to find font " + e);
         }
