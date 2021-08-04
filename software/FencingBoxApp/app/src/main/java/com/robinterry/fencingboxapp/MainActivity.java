@@ -187,6 +187,7 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
         setClock();
         setCard();
         setPriority();
+        setPassivity();
         startBatteryMonitor();
         Log.d(TAG, "onStart end");
     }
@@ -256,6 +257,7 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
         setClock();
         setCard();
         setPriority();
+        setPassivity();
         Log.d(TAG, "onRestart end");
     }
 
@@ -428,7 +430,9 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
         UsbDevice device = null;
         UsbManager usbManager = (UsbManager) getSystemService(Context.USB_SERVICE);
         for (UsbDevice v : usbManager.getDeviceList().values()) {
-            Log.d(TAG, "Found USB device " + v.getProductName());
+            Log.d(TAG, "Found USB device");
+            Log.d(TAG, "Product: " + v.getProductName() + " Vendor: "
+                    + v.getVendorId() + " Device: " + v.getDeviceName());
             if (v.getProductName().equals("USB Serial")) {
                 device = v;
                 break;
