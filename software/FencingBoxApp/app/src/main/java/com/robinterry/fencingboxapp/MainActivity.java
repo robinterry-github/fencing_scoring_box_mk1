@@ -35,6 +35,9 @@ import android.os.BatteryManager;
 import java.lang.String;
 import java.lang.Integer;
 import java.nio.charset.StandardCharsets;
+import java.text.SimpleDateFormat;
+import java.util.Calendar;
+import java.util.Date;
 
 import android.util.Log;
 
@@ -48,15 +51,16 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
 
     public TextView textScore, textScoreA, textScoreB, textClock;
     public TextView priorityA, priorityB;
-    public TextView passivityClock;
-    public TextView batteryLevel;
+    public TextView passivityClock, batteryLevel, time;
+    private boolean batteryDangerActive = false;
+    private boolean batteryDangerFlash = false;
     public String scoreA = "00", scoreB = "00";
     public String timeMins = "00", timeSecs = "00", timeHund = "00";
     public int passivityTimer = 0;
     public boolean passivityActive = false;
     private static Integer cardA = 0;
     private static Integer cardB = 0;
-
+    public int stopwatchHours = 0;
 
     public Hit hitA = Hit.None, hitB = Hit.None;
     public boolean priA = false, priB = false;
@@ -83,7 +87,7 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
     private Weapon weapon = Weapon.Foil;
     private Mode mode = Mode.None;
     private final Integer portNum = 0;
-    private final Integer baudRate = 230400;
+    private final Integer baudRate = 500000;
     private UsbSerialPort usbSerialPort;
     private SerialService service;
     private boolean initialStart = true;
@@ -188,7 +192,7 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
         setCard();
         setPriority();
         setPassivity();
-        startBatteryMonitor();
+        startBatteryMonitorAndTime();
         Log.d(TAG, "onStart end");
     }
 
@@ -304,8 +308,8 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
         return false;
     }
 
-    void startBatteryMonitor() {
-        final int delayMillis = 1000;
+    void startBatteryMonitorAndTime() {
+        final int delayMillis = 500;
 
         Handler handler = new Handler();
         final Runnable r = new Runnable() {
@@ -314,12 +318,21 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
                     BatteryManager batt = (BatteryManager) getApplicationContext().getSystemService(BATTERY_SERVICE);
                     int level = batt.getIntProperty(BatteryManager.BATTERY_PROPERTY_CAPACITY);
                     if (level < batteryDangerLevel) {
-                        batteryLevel.setTextColor(Color.RED);
+                        if (!batteryDangerActive) {
+                            batteryDangerActive = batteryDangerFlash = true;
+                        } else {
+                            batteryDangerFlash = batteryDangerFlash ? false:true;
+                        }
                     } else {
-                        batteryLevel.setTextColor(Color.GREEN);
+                        batteryDangerActive = batteryDangerActive = false;
                     }
-                    Log.d(TAG, "Battery level " + level);
+                    batteryLevel.setTextColor(batteryDangerFlash ? Color.BLACK:Color.WHITE);
                     batteryLevel.setText(String.valueOf(level) + "%");
+
+                    Date curTime = Calendar.getInstance().getTime();
+                    SimpleDateFormat dateFormat = new SimpleDateFormat("hh:mm");
+                    String tm = dateFormat.format(curTime);
+                    time.setText(tm);
                 } else {
                     batteryLevel.setTextColor(Color.BLACK);
                 }
@@ -346,6 +359,7 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
             priorityB = findViewById(R.id.priorityB_l);
             passivityClock = findViewById(R.id.passivityClock_l);
             batteryLevel = findViewById(R.id.battery_level_land);
+            time = findViewById(R.id.time_land);
         } else {
             textScore = findViewById(R.id.textScore);
             textScore.setGravity(Gravity.CENTER);
@@ -354,6 +368,7 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
             priorityB = findViewById(R.id.priorityB);
             passivityClock = findViewById(R.id.passivityClock);
             batteryLevel = findViewById(R.id.battery_level);
+            time = findViewById(R.id.time);
         }
         try {
             Typeface face = Typeface.createFromAsset(getAssets(), "font/DSEG7Classic-Bold.ttf");
@@ -373,12 +388,14 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
             passivityClock.setTypeface(face);
             passivityClock.setTextColor(Color.GREEN);
             passivityClock.setGravity(Gravity.CENTER);
-            batteryLevel.setTextColor(Color.GREEN);
+            batteryLevel.setTextColor(Color.WHITE);
             batteryLevel.setGravity(Gravity.CENTER);
             priorityA.setTextColor(Color.BLACK);
             priorityA.setGravity(Gravity.CENTER);
             priorityB.setTextColor(Color.BLACK);
             priorityB.setGravity(Gravity.CENTER);
+            time.setTextColor(Color.WHITE);
+            time.setGravity(Gravity.CENTER);
         } catch (Exception e) {
             Log.d(TAG, "unable to find font " + e);
         }
@@ -677,6 +694,11 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
         setPriority(false, false);
     }
 
+    public void restartPassivity(int pClock) {
+        passivityActive = true;
+        setPassivity(pClock);
+    }
+
     public void restartPassivity() {
         passivityActive = true;
         setPassivity();
@@ -690,13 +712,18 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
     {
         if (passivityActive) {
             passivityClock.setTextColor(Color.GREEN);
-            if (pClock > passivityMaxTime) {
-                passivityClock.setText(String.format("%02d", passivityMaxTime));
-            } else {
+            if (mode == Mode.Bout) {
+                if (pClock > passivityMaxTime) {
+                    passivityClock.setText(String.format("%02d", passivityMaxTime));
+                } else {
+                    passivityClock.setText(String.format("%02d", pClock));
+                }
+            } else if (mode == Mode.Stopwatch) {
+                passivityTimer = pClock;
                 passivityClock.setText(String.format("%02d", pClock));
+            } else {
+                clearPassivity();
             }
-        } else {
-            clearPassivity();
         }
     }
 
@@ -846,10 +873,25 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
                 resetCard();
                 clearPriority();
                 clearPassivity();
+                stopwatchHours = 0;
+                restartPassivity(stopwatchHours);
                 break;
 
             case "WR":
                 Log.d(TAG, "stopwatch reset");
+                clearPassivity();
+                stopwatchHours = 0;
+                restartPassivity(stopwatchHours);
+                break;
+
+            case "WW":
+                Log.d(TAG, "stopwatch wrap");
+                if (stopwatchHours >= 99) {
+                    stopwatchHours = 0;
+                } else {
+                    stopwatchHours++;
+                }
+                setPassivity(stopwatchHours);
                 break;
 
             case "RL":
@@ -965,9 +1007,11 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
 
     public void processClock(String min, String sec, String hund, boolean hundActive) {
         if (setClock(min, sec, hund, hundActive)) {
-            if (passivityActive && passivityTimer > 0) {
-                passivityTimer--;
-                setPassivity(passivityTimer);
+            if (mode == Mode.Bout) {
+                if (passivityActive && passivityTimer > 0) {
+                    passivityTimer--;
+                    setPassivity(passivityTimer);
+                }
             }
         }
     }

@@ -77,7 +77,7 @@
 #define BUZZERTIME     (1000)    // length of time the buzzer is kept on after a hit (ms)
 #define TESTPOINTTIME  (500)     // length of time the buzzer and lights are kept on when point testing (ms)
 #define LIGHTTIME      (3000)    // length of time the lights are kept on after a hit (ms)
-#define BAUDRATE       (230400)  // baud rate of the serial debug interface
+#define BAUDRATE       (500000)  // baud rate of the serial debug interface
 #define ONESEC         (1000UL)
 #define HUNDSEC        (10)
 #define ONESEC_US      (1000000)
@@ -420,7 +420,7 @@ const int       ledBits[][4]         =
 };
 
 #ifdef DEBUG_L3
-long now, loopCount = 0;
+long loopNow = 0, loopCount = 0;
 #endif
 
 // 7-segment display
@@ -3212,9 +3212,6 @@ void resetStopWatch(bool restart)
 void resetStopWatch(bool restart, bool lightLeds)
 {
 #ifdef STOPWATCH
-#ifdef SERIAL_INDICATOR
-   Serial.println("!WR");
-#endif
 #ifdef DEBUG_L4
    Serial.println("reset stopwatch");
 #endif
@@ -3243,9 +3240,12 @@ void resetStopWatch(bool restart, bool lightLeds)
       digitalWrite(onTargetB, LOW);
       updateCardLeds(0);
 #ifdef SERIAL_INDICATOR
-     Serial.println("!RL");
+      Serial.println("!RL");
 #endif
    }
+#ifdef SERIAL_INDICATOR
+   Serial.println("!WR");
+#endif
 #endif
 }
 
@@ -3322,6 +3322,9 @@ int runStopWatch()
             else
             {
                timer = timerMins = timerSecs = 0;
+#ifdef SERIAL_INDICATOR
+               Serial.println("!WW");
+#endif
             }
             displayTime();
             stopWatchLeds();
@@ -3480,6 +3483,65 @@ void adcOpt()
    bitSet  (ADCSRA, ADPS2);
 }
 
+void doWeapon()
+{
+   // Don't read the analogue pins if not a bout nor sparring
+   if (!inStopWatch())
+   {
+      // read analogue pins
+      weapon[FENCER_A] = analogRead(weaponPinA);
+      weapon[FENCER_B] = analogRead(weaponPinB);
+      lame[FENCER_A]   = analogRead(lamePinA);
+      lame[FENCER_B]   = analogRead(lamePinB);
+
+      switch (weaponType)
+      {
+         case EPEE:
+            epee();
+            break;
+
+         case FOIL:
+            foil();
+            break;
+            
+         case SABRE:
+            // We need a ground pin measurement for sabre
+            ground[FENCER_A] = analogRead(groundPinA);
+            ground[FENCER_B] = analogRead(groundPinB);
+            sabre();
+            break;
+            
+         default:
+            break;
+      }
+#ifdef DEBUG_L3
+      if (loopCount == 0) 
+      {
+         loopNow = micros();
+      }
+      loopCount++;
+      if ((micros() - loopNow) >= ONESEC_US) 
+      {
+         Serial.print(loopCount);
+         Serial.print(" readings in 1 sec");
+         Serial.print(" weapon[FENCER_A] ");
+         Serial.print(weapon[FENCER_A]);
+         Serial.print(" lame[FENCER_A] ");
+         Serial.print(lame[FENCER_A]);
+         Serial.print(" ground[FENCER_A] ");
+         Serial.print(ground[FENCER_A]);
+         Serial.print(" weapon[FENCER_B] ");
+         Serial.print(weapon[FENCER_B]);
+         Serial.print(" lame[FENCER_B] ");
+         Serial.print(lame[FENCER_B]);
+         Serial.print(" ground[FENCER_B] ");
+         Serial.println(ground[FENCER_B]);
+         loopCount = 0;
+      }
+#endif
+   }
+}
+
 //============
 // Main loop
 //============
@@ -3487,46 +3549,11 @@ void loop()
 {
    int    expired, timerGap;
    long   now;
-   
-   // use a for() as a main loop as the loop() has too much overhead for fast analogReads
-   // we get a 3-4% speed up on the loop this way
+
    for (;;) 
    {
-      // Don't read the analogue pins if not a bout nor sparring
-      if (!inStopWatch())
-      {
-         // read analogue pins
-         weapon[FENCER_A] = analogRead(weaponPinA);
-         weapon[FENCER_B] = analogRead(weaponPinB);
-         lame[FENCER_A]   = analogRead(lamePinA);
-         lame[FENCER_B]   = analogRead(lamePinB);
-
-         // We need a ground pin measurement for sabre
-         if (weaponType == SABRE)
-         {
-            ground[FENCER_A] = analogRead(groundPinA);
-            ground[FENCER_B] = analogRead(groundPinB);
-         }
-
-         // Do processing for a given weapon
-         switch (weaponType)
-         {
-            case EPEE:
-               epee();
-               break;
-
-            case FOIL:
-               foil();
-               break;
-            
-            case SABRE:
-               sabre();
-               break;
-            
-            default:
-               break;
-         }
-      }
+      // Do processing for a given weapon
+      doWeapon();
 
       // Check LED display dimming and 'screen saver'
 #ifdef DISP_IR_CARDS_BOX
@@ -3568,6 +3595,8 @@ void loop()
       // Poll the IR to see if a key has been pressed
       pollIR();
 #endif
+      // Do processing for a given weapon
+      doWeapon();
 
       // Check for hits and signal
       if (isHit())
@@ -3655,6 +3684,9 @@ void loop()
       pollIR();
 #endif
 #endif
+      // Do processing for a given weapon
+      doWeapon();
+
       // Is the box changing mode?
       if (modeChange)
       {
@@ -3703,6 +3735,8 @@ void loop()
       pollIR();
 #endif
 #endif
+      // Do processing for a given weapon
+      doWeapon();
 
 #ifdef DISP_IR_CARDS_BOX
       // Check for priority
@@ -3792,6 +3826,8 @@ void loop()
       pollIR();
 #endif
 #endif
+      // Do processing for a given weapon
+      doWeapon();
 
       // Flash the display when a hit is active?
       if (hitDisplay)
@@ -3810,6 +3846,8 @@ void loop()
          checkPassivity();
       }
 #endif
+      // Do processing for a given weapon
+      doWeapon();
 
       // Short circuit on fencer A?
       if (shortCircuit[FENCER_A])
@@ -3903,6 +3941,8 @@ void loop()
       pollIR();
 #endif
 #endif
+      // Do processing for a given weapon
+      doWeapon();
 
       // Do we need to flash up the score?
       if (scoreFlash)
@@ -3922,6 +3962,9 @@ void loop()
              }
           }
       }
+            
+      // Do processing for a given weapon
+      doWeapon();
 
       // Button scan
       if ((millis() - buttonScan) > BUTTONSCAN)
@@ -3976,6 +4019,8 @@ void loop()
       pollIR();
 #endif
 #endif
+      // Do processing for a given weapon
+      doWeapon();
 
       // Start the timer for the start of a bout
       if (timerStart)
@@ -4026,6 +4071,8 @@ void loop()
       pollIR();
 #endif
 #endif
+      // Do processing for a given weapon
+      doWeapon();
 
       // Handle main timer
       if (timeState != TIM_STOPPED)
@@ -4115,34 +4162,6 @@ void loop()
       if (timeState != TIM_STOPPED)
       {
          checkPassivity();
-      }
-#endif
-
-#ifdef DEBUG_L3
-      long now;
-
-      if (loopCount == 0) 
-      {
-         now = micros();
-      }
-      loopCount++;
-      if ((micros() - now) >= ONESEC_US) 
-      {
-         Serial.print(loopCount);
-         Serial.print(" readings in 1 sec");
-         loopCount = 0;
-         Serial.print(" weapon[FENCER_A] ");
-         Serial.print(weapon[FENCER_A]);
-         Serial.print(" lame[FENCER_A] ");
-         Serial.print(lame[FENCER_A]);
-         Serial.print(" ground[FENCER_A] ");
-         Serial.print(ground[FENCER_A]);
-         Serial.print(" weapon[FENCER_B] ");
-         Serial.print(weapon[FENCER_B]);
-         Serial.print(" lame[FENCER_B] ");
-         Serial.print(lame[FENCER_B]);
-         Serial.print(" ground[FENCER_B] ");
-         Serial.println(ground[FENCER_B]);
       }
 #endif
    }

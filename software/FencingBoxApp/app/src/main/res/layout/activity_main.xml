@@ -118,8 +118,8 @@
 
     <TextView
         android:id="@+id/battery_level"
-        android:layout_width="30dp"
-        android:layout_height="19dp"
+        android:layout_width="38dp"
+        android:layout_height="20dp"
         android:layout_marginEnd="28dp"
         android:background="#000000"
         android:textAlignment="center"
@@ -128,5 +128,18 @@
         android:textStyle="bold"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintTop_toTopOf="parent" />
+
+    <TextView
+        android:id="@+id/time"
+        android:layout_width="50dp"
+        android:layout_height="19dp"
+        android:layout_marginStart="28dp"
+        android:autoText="false"
+        android:background="#000000"
+        android:textAlignment="center"
+        android:textColor="#00FF00"
+        android:textSize="14sp"
+        app:layout_constraintStart_toStartOf="@+id/guideline"
+        tools:layout_editor_absoluteY="1dp" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>
