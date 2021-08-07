@@ -224,11 +224,6 @@ int  currentFencer   = 0;
 long swMins          = 0;
 long swSecs          = 0;
 
-// Passivity
-long passivityTimer       = 0;
-bool passivityActive      = false;
-long passivitySignalTimer = 0;
-
 // Total score for all bouts since restarting the bout
 int  score[2]        = { 0, 0 };
 
@@ -597,6 +592,23 @@ const uint8_t touchDisp[][2] =
       SEG_A | SEG_D | SEG_E | SEG_F
    }
 };
+#endif
+
+// Passivity
+#ifdef PASSIVITY
+enum PassivityCard
+{
+   P_CARD_NONE, 
+   P_CARD_YELLOW, 
+   P_CARD_RED_1, 
+   P_CARD_RED_2
+};
+
+long passivityTimer       = 0;
+bool passivityActive      = false;
+bool passivitySignalled   = false;
+long passivitySignalTimer = 0;
+PassivityCard pCard[2]    = { P_CARD_NONE, P_CARD_NONE };
 #endif
 
 bool inBout()
@@ -1559,7 +1571,8 @@ void restartTimer()
 void restartPassivity()
 {
 #ifdef PASSIVITY
-   passivityActive = true;
+   passivityActive    = true;
+   passivitySignalled = false;
 #endif
 }
 
@@ -1576,7 +1589,7 @@ void startPassivity()
 void clearPassivity()
 {
 #ifdef PASSIVITY
-   passivityActive = false;
+   passivityActive = passivitySignalled = false;
    passivityTimer  = passivitySignalTimer = 0;
 #ifdef SERIAL_INDICATOR
    Serial.println("!VC");
@@ -1596,6 +1609,7 @@ void signalPassivity(bool on)
          digitalWrite(onTargetB, HIGH);
 #endif 
          passivitySignalTimer = millis();
+         passivitySignalled   = true;
 #ifdef SERIAL_INDICATOR
          Serial.println("!VT");
 #endif
@@ -1628,6 +1642,62 @@ void checkPassivity()
       else if (passivityTimer >= MAX_PASSIVITY)
       {
          signalPassivity(true);
+      }
+   }
+#endif
+}
+
+void awardPCard(int fencer)
+{
+   switch (pCard[fencer])
+   {
+      case P_CARD_NONE:
+         pCard[fencer] = P_CARD_YELLOW;
+         break;
+
+       case P_CARD_YELLOW:
+          pCard[fencer] = P_CARD_RED_1;
+          break;
+
+       case P_CARD_RED_1:
+          pCard[fencer] = P_CARD_RED_2;
+          break;
+
+       case P_CARD_RED_2:
+          pCard[fencer] = P_CARD_NONE;
+          break;
+
+       default:
+          break;
+   }
+}
+
+void awardPassivity()
+{
+#ifdef PASSIVITY
+   if (inBout() && passivitySignalled)
+   {
+      if (score[FENCER_A] < score[FENCER_B])
+      {
+         awardPCard(FENCER_A);
+#ifdef SERIAL_INDICATOR
+         Serial.println("!V0");
+#endif
+      }
+      else if (score[FENCER_B] < score[FENCER_A])
+      {
+         awardPCard(FENCER_B);
+#ifdef SERIAL_INDICATOR
+         Serial.println("!V1");
+#endif
+      }
+      else
+      {
+         awardPCard(FENCER_A);
+         awardPCard(FENCER_B);
+#ifdef SERIAL_INDICATOR
+         Serial.println("!V2");
+#endif
       }
    }
 #endif
@@ -2885,10 +2955,16 @@ void transIR(unsigned long key)
      if (priorityInactive())
      {
         if (inBout())
-        {
+        {  
            if (timeState == TIM_STOPPED)
            {
               keyClick();
+#ifdef PASSIVITY
+              awardPassivity();
+#ifdef DEBUG_L1
+              Serial.println("award passivity card");
+#endif
+#else
               ledFlag[FENCER_A]  = ledFlag[FENCER_B] = LED_NONE;
 
               cardLeds          &= ~ledBits[FENCER_A][LED_BOTH];
@@ -2896,6 +2972,7 @@ void transIR(unsigned long key)
               cardLedUpdate      = true;
 #ifdef DEBUG_L1
               Serial.println("clear all cards");
+#endif
 #endif
            }
         }

@@ -52,6 +52,7 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
     public TextView textScore, textScoreA, textScoreB, textClock;
     public TextView priorityA, priorityB;
     public TextView passivityClock, batteryLevel, time;
+    public TextView[] passCard = new TextView[]{ null, null };
     private boolean batteryDangerActive = false;
     private boolean batteryDangerFlash = false;
     public String scoreA = "00", scoreB = "00";
@@ -82,10 +83,12 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
     private enum Connected { False, Pending, True }
     private enum Weapon { Foil, Epee, Sabre }
     private enum Mode { None, Sparring, Bout, Stopwatch }
+    private enum PassivityCard { None, Yellow, Red1, Red2 }
 
     private Connected connected = Connected.False;
     private Weapon weapon = Weapon.Foil;
     private Mode mode = Mode.None;
+    private PassivityCard[] pCard = new PassivityCard[] { PassivityCard.None, PassivityCard.None };
     private final Integer portNum = 0;
     private final Integer baudRate = 500000;
     private UsbSerialPort usbSerialPort;
@@ -192,6 +195,7 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
         setCard();
         setPriority();
         setPassivity();
+        setPassivityCard();
         startBatteryMonitorAndTime();
         Log.d(TAG, "onStart end");
     }
@@ -262,6 +266,7 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
         setCard();
         setPriority();
         setPassivity();
+        setPassivityCard();
         Log.d(TAG, "onRestart end");
     }
 
@@ -294,6 +299,7 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
         setCard();
         setPriority();
         setPassivity();
+        setPassivityCard();
     }
 
     @Override
@@ -360,6 +366,8 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
             passivityClock = findViewById(R.id.passivityClock_l);
             batteryLevel = findViewById(R.id.battery_level_land);
             time = findViewById(R.id.time_land);
+            passCard[0] = findViewById(R.id.pCardA_land);
+            passCard[1] = findViewById(R.id.pCardB_land);
         } else {
             textScore = findViewById(R.id.textScore);
             textScore.setGravity(Gravity.CENTER);
@@ -369,6 +377,8 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
             passivityClock = findViewById(R.id.passivityClock);
             batteryLevel = findViewById(R.id.battery_level);
             time = findViewById(R.id.time);
+            passCard[0] = findViewById(R.id.pCardA);
+            passCard[1] = findViewById(R.id.pCardB);
         }
         try {
             Typeface face = Typeface.createFromAsset(getAssets(), "font/DSEG7Classic-Bold.ttf");
@@ -396,6 +406,14 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
             priorityB.setGravity(Gravity.CENTER);
             time.setTextColor(Color.WHITE);
             time.setGravity(Gravity.CENTER);
+            //passCard[0].setTypeface(face);
+            passCard[0].setTypeface(null, Typeface.BOLD);
+            passCard[0].setTextColor(Color.BLACK);
+            passCard[0].setGravity(Gravity.CENTER);
+            //passCard[1].setTypeface(face);
+            passCard[1].setTypeface(null, Typeface.BOLD);
+            passCard[1].setTextColor(Color.BLACK);
+            passCard[1].setGravity(Gravity.CENTER);
         } catch (Exception e) {
             Log.d(TAG, "unable to find font " + e);
         }
@@ -732,6 +750,76 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
         passivityTimer = passivityMaxTime;
         passivityClock.setTextColor((mode == Mode.Bout) ? Color.GREEN:Color.BLACK);
         passivityClock.setText("--");
+        displayPassivityCard();
+    }
+
+    public void clearPassivityCard() {
+        setPassivityCard(0, PassivityCard.None);
+        setPassivityCard(1, PassivityCard.None);
+    }
+
+    public void displayPassivityCard() {
+        displayPassivityCard(0);
+        displayPassivityCard(1);
+    }
+
+    public void displayPassivityCard(int fencer) {
+        switch (pCard[fencer]) {
+            case None:
+                passCard[fencer].setTextColor(Color.BLACK);
+                passCard[fencer].setText("-");
+                break;
+            case Yellow:
+                passCard[fencer].setTextColor(Color.YELLOW);
+                passCard[fencer].setText("1");
+                break;
+
+            case Red1:
+                passCard[fencer].setTextColor(Color.RED);
+                passCard[fencer].setText("1");
+                break;
+
+            case Red2:
+                passCard[fencer].setTextColor(Color.RED);
+                passCard[fencer].setText("2");
+                break;
+
+            default:
+                break;
+        }
+    }
+
+    public void setPassivityCard() {
+        displayPassivityCard();
+    }
+
+    public void setPassivityCard(int fencer, PassivityCard card) {
+        pCard[fencer] = card;
+        displayPassivityCard(fencer);
+    }
+
+    public void setPassivityCard(int fencer) {
+        /* Move the card to the next in the sequence */
+        switch (pCard[fencer]) {
+            case None:
+                pCard[fencer] = PassivityCard.Yellow;
+                break;
+            case Yellow:
+                pCard[fencer] = PassivityCard.Red1;
+                break;
+
+            case Red1:
+                pCard[fencer] = PassivityCard.Red2;
+                break;
+
+            case Red2:
+                pCard[fencer] = PassivityCard.None;
+                break;
+
+            default:
+                break;
+        }
+        displayPassivityCard(fencer);
     }
 
     public void processData(byte data[]) {
@@ -788,6 +876,7 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
                 clearCard();
                 clearPriority();
                 clearPassivity();
+                clearPassivityCard();
                 break;
 
             case "PC":
@@ -808,11 +897,13 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
                 resetCard();
                 clearPriority();
                 clearPassivity();
+                clearPassivityCard();
                 break;
 
             case "BR":
                 Log.d(TAG, "bout resume");
                 restartPassivity();
+                displayPassivityCard();
                 break;
 
             case "BC":
@@ -849,6 +940,7 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
                 resetCard();
                 clearPriority();
                 clearPassivity();
+                clearPassivityCard();
                 break;
 
             case "HS":
@@ -873,6 +965,7 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
                 resetCard();
                 clearPriority();
                 clearPassivity();
+                clearPassivityCard();
                 stopwatchHours = 0;
                 restartPassivity(stopwatchHours);
                 break;
@@ -880,6 +973,7 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
             case "WR":
                 Log.d(TAG, "stopwatch reset");
                 clearPassivity();
+                clearPassivityCard();
                 stopwatchHours = 0;
                 restartPassivity(stopwatchHours);
                 break;
@@ -935,17 +1029,41 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
                 passivityActive = true;
                 passivityTimer = passivityMaxTime;
                 setPassivity(passivityTimer);
+                displayPassivityCard();
                 break;
 
             case "VC":
                 Log.d(TAG, "passivity clear"); 
                 clearPassivity();
+                displayPassivityCard();
                 break;
 
             case "VT":
                 Log.d(TAG, "passivity signal");
                 setPassivity(0);
                 passivityActive = false;
+                break;
+
+            case "V0":
+                Log.d(TAG, "passivity card for fencer A");
+                setPassivityCard(0);
+                passivityTimer = passivityMaxTime;
+                setPassivity(passivityTimer);
+                break;
+
+            case "V1":
+                Log.d(TAG, "passivity card for fencer B");
+                setPassivityCard(1);
+                passivityTimer = passivityMaxTime;
+                setPassivity(passivityTimer);
+                break;
+
+            case "V2":
+                Log.d(TAG, "passivity card for both fencers");
+                setPassivityCard(0);
+                setPassivityCard(1);
+                passivityTimer = passivityMaxTime;
+                setPassivity(passivityTimer);
                 break;
 
             default:
@@ -1032,6 +1150,7 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
                 clearCard();
                 clearPriority();
                 clearPassivity();
+                clearPassivityCard();
             }
         });
     }
@@ -1065,6 +1184,7 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
         clearCard();
         clearPriority();
         clearPassivity();
+        clearPassivityCard();
         reconnect();
     }
 
@@ -1087,6 +1207,7 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
         clearCard();
         clearPriority();
         clearPassivity();
+        clearPassivityCard();
         reconnect();
     }
 

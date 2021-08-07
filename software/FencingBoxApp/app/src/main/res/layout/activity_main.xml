@@ -107,13 +107,13 @@
         android:id="@+id/passivityClock"
         android:layout_width="66dp"
         android:layout_height="33dp"
+        android:layout_marginStart="20dp"
         android:layout_marginTop="16dp"
         android:background="#000000"
         android:textAlignment="inherit"
         android:textColor="#FF0000"
         android:textSize="24sp"
-        app:layout_constraintEnd_toStartOf="@+id/priorityB"
-        app:layout_constraintStart_toEndOf="@+id/priorityA"
+        app:layout_constraintStart_toEndOf="@+id/pCardA"
         app:layout_constraintTop_toBottomOf="@+id/textScore" />
 
     <TextView
@@ -141,5 +141,32 @@
         android:textSize="14sp"
         app:layout_constraintStart_toStartOf="@+id/guideline"
         tools:layout_editor_absoluteY="1dp" />
+
+    <TextView
+        android:id="@+id/pCardA"
+        android:layout_width="33dp"
+        android:layout_height="33dp"
+        android:layout_marginStart="20dp"
+        android:layout_marginTop="16dp"
+        android:layout_marginEnd="20dp"
+        android:background="#000000"
+        android:textSize="24sp"
+        app:layout_constraintEnd_toStartOf="@+id/passivityClock"
+        app:layout_constraintStart_toEndOf="@+id/priorityA"
+        app:layout_constraintTop_toBottomOf="@+id/textScore" />
+
+    <TextView
+        android:id="@+id/pCardB"
+        android:layout_width="33dp"
+        android:layout_height="33dp"
+        android:layout_marginStart="20dp"
+        android:layout_marginTop="16dp"
+        android:layout_marginEnd="20dp"
+        android:background="#000000"
+        android:textSize="24sp"
+        app:layout_constraintEnd_toStartOf="@+id/priorityB"
+        app:layout_constraintHorizontal_bias="1.0"
+        app:layout_constraintStart_toEndOf="@+id/passivityClock"
+        app:layout_constraintTop_toBottomOf="@+id/textScore" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>
