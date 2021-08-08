@@ -38,21 +38,32 @@ import java.nio.charset.StandardCharsets;
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
 import java.util.Date;
+import java.io.IOException;
 
 import android.util.Log;
 
 @SuppressWarnings("ALL")
 public class MainActivity extends AppCompatActivity implements ServiceConnection, SerialListener {
 
-    public static enum Orientation { Portrait, Landscape }
+    private enum Connected {False, Pending, True}
+    private enum Weapon {Foil, Epee, Sabre}
+    private enum Mode {None, Sparring, Bout, Stopwatch, Demo}
+    private enum PassivityCard {None, Yellow, Red1, Red2  }
+    public static enum Orientation {Portrait, Landscape}
+    public static enum Hit {None, OnTarget, OffTarget}
+
+    private Mode mode = Mode.None; /* Mode.Demo */
     private static Orientation orientation = Orientation.Portrait;
-    public static Orientation getOrientation() { return orientation; }
-    public static enum Hit { None, OnTarget, OffTarget };
+    private Weapon weapon = Weapon.Foil;
+
+    public static Orientation getOrientation() {
+        return orientation;
+    }
 
     public TextView textScore, textScoreA, textScoreB, textClock;
     public TextView priorityA, priorityB;
     public TextView passivityClock, batteryLevel, time;
-    public TextView[] passCard = new TextView[]{ null, null };
+    public TextView[] passCard = new TextView[]{null, null};
     private boolean batteryDangerActive = false;
     private boolean batteryDangerFlash = false;
     public String scoreA = "00", scoreB = "00";
@@ -62,33 +73,24 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
     private static Integer cardA = 0;
     private static Integer cardB = 0;
     public int stopwatchHours = 0;
-
     public Hit hitA = Hit.None, hitB = Hit.None;
     public boolean priA = false, priB = false;
     private boolean scoreHidden = false;
     private static final String TAG = "FencingBoxApp";
     private final int passivityMaxTime = 60;
     private final int batteryDangerLevel = 10;
-    public static final Integer hitAColor       = 0xFFFF0000;
-    public static final Integer hitBColor       = 0xFF00FF00;
-    public static final Integer inactiveColor   = 0xFFE0E0E0;
+    public static final Integer hitAColor = 0xFFFF0000;
+    public static final Integer hitBColor = 0xFF00FF00;
+    public static final Integer inactiveColor = 0xFFE0E0E0;
     public static final Integer yellowCardColor = 0xFFFFFF00;
-    public static final Integer redCardColor    = 0xFFFF0000;
-    public static final Integer yellowCardBit   = 0x01;
-    public static final Integer redCardBit      = 0x02;
+    public static final Integer redCardColor = 0xFFFF0000;
+    public static final Integer yellowCardBit = 0x01;
+    public static final Integer redCardBit = 0x02;
     public static final Integer shortCircuitBit = 0x04;
     public MainActivity thisActivity;
     public static ConstraintLayout layout;
-
-    private enum Connected { False, Pending, True }
-    private enum Weapon { Foil, Epee, Sabre }
-    private enum Mode { None, Sparring, Bout, Stopwatch }
-    private enum PassivityCard { None, Yellow, Red1, Red2 }
-
     private Connected connected = Connected.False;
-    private Weapon weapon = Weapon.Foil;
-    private Mode mode = Mode.None;
-    private PassivityCard[] pCard = new PassivityCard[] { PassivityCard.None, PassivityCard.None };
+    private PassivityCard[] pCard = new PassivityCard[]{PassivityCard.None, PassivityCard.None};
     private final Integer portNum = 0;
     private final Integer baudRate = 500000;
     private UsbSerialPort usbSerialPort;
@@ -102,27 +104,29 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
     private final boolean controlUI = true;
     private boolean visibleUI = false;
 
+    /* Commands from the fencing scoring box */
     private final byte cmdMarker = '!';
     private final byte clockMarker1 = '@';
     private final byte clockMarker2 = ':';
     private final byte scoreMarker = '*';
     private final byte hitMarker = '$';
     private final byte cardMarker = '?';
+    private final byte passivityCardMarker = '+';
 
     public MainActivity() {
-         Log.d(TAG, "Initialising broadcast receiver");
-         thisActivity = this;
-         final BroadcastReceiver broadcastReceiver = new BroadcastReceiver() {
-             @Override
-             public void onReceive(Context context, Intent intent) {
+        Log.d(TAG, "Initialising broadcast receiver");
+        thisActivity = this;
+        final BroadcastReceiver broadcastReceiver = new BroadcastReceiver() {
+            @Override
+            public void onReceive(Context context, Intent intent) {
                 Log.d(TAG, "Broadcast receiver intent " + intent);
                 if (com.robinterry.fencingboxapp.Constants.INTENT_ACTION_GRANT_USB.equals(intent.getAction())) {
                     Boolean granted = intent.getBooleanExtra(UsbManager.EXTRA_PERMISSION_GRANTED, false);
                     Log.d(TAG, "GRANT_USB intent " + granted + " received, trying to connect");
                     connect(granted);
                 }
-             }
-         };
+            }
+        };
     }
 
     @Override
@@ -189,13 +193,17 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
         orientation = getCurrentOrientation();
         setupText(orientation);
         hideUIIfVisible();
-        setHitLights();
-        setScore();
-        setClock();
-        setCard();
-        setPriority();
-        setPassivity();
-        setPassivityCard();
+        if (mode == Mode.Demo) {
+            showDemo();
+        } else {
+            setHitLights();
+            setScore();
+            setClock();
+            setCard();
+            setPriority();
+            setPassivity();
+            setPassivityCard();
+        }
         startBatteryMonitorAndTime();
         Log.d(TAG, "onStart end");
     }
@@ -293,13 +301,17 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
         cardLightA.setLayout(layout);
         cardLightB.setLayout(layout);
         layout.setBackgroundColor(Color.BLACK);
-        setHitLights();
-        setScore();
-        setClock();
-        setCard();
-        setPriority();
-        setPassivity();
-        setPassivityCard();
+        if (mode == Mode.Demo) {
+            showDemo();
+        } else {
+            setHitLights();
+            setScore();
+            setClock();
+            setCard();
+            setPriority();
+            setPassivity();
+            setPassivityCard();
+        }
     }
 
     @Override
@@ -314,7 +326,20 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
         return false;
     }
 
-    void startBatteryMonitorAndTime() {
+    public void showDemo() {
+        hideUI();
+        displayHitLights(Hit.OnTarget, Hit.OnTarget);
+        displayScore("00", "00");
+        displayClock("00", "00", "00", false);
+        displayCardA(true, true);
+        displayCardB(true, true);
+        displayPriority(true, true);
+        displayPassivity(passivityMaxTime);
+        displayPassivityCard(0, PassivityCard.Red2);
+        displayPassivityCard(1, PassivityCard.Yellow);
+    }
+
+    public void startBatteryMonitorAndTime() {
         final int delayMillis = 500;
 
         Handler handler = new Handler();
@@ -327,12 +352,12 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
                         if (!batteryDangerActive) {
                             batteryDangerActive = batteryDangerFlash = true;
                         } else {
-                            batteryDangerFlash = batteryDangerFlash ? false:true;
+                            batteryDangerFlash = batteryDangerFlash ? false : true;
                         }
                     } else {
                         batteryDangerActive = batteryDangerActive = false;
                     }
-                    batteryLevel.setTextColor(batteryDangerFlash ? Color.BLACK:Color.WHITE);
+                    batteryLevel.setTextColor(batteryDangerFlash ? Color.BLACK : Color.WHITE);
                     batteryLevel.setText(String.valueOf(level) + "%");
 
                     Date curTime = Calendar.getInstance().getTime();
@@ -351,7 +376,7 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
     private Orientation getCurrentOrientation() {
         Configuration newConf = getResources().getConfiguration();
         return (newConf.orientation == Configuration.ORIENTATION_LANDSCAPE) ?
-                Orientation.Landscape:Orientation.Portrait;
+                Orientation.Landscape : Orientation.Portrait;
     }
 
     protected void setupText(Orientation orient) {
@@ -531,11 +556,15 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
         setHitLights(hitA, hitB);
     }
 
-    public void setHitLights(Hit l_A, Hit l_B) {
-        hitA = l_A;
-        hitB = l_B;
-        hitLightA.showLights(hitA);
-        hitLightB.showLights(hitB);
+    public void setHitLights(Hit h_A, Hit h_B) {
+        hitA = h_A;
+        hitB = h_B;
+        displayHitLights(hitA, hitB);
+    }
+
+    public void displayHitLights(Hit h_A, Hit h_B) {
+        hitLightA.showLights(h_A);
+        hitLightB.showLights(h_B);
     }
 
     public void clearHitLights() {
@@ -562,6 +591,10 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
     public void setScore(String s_A, String s_B) {
         scoreA = s_A;
         scoreB = s_B;
+        displayScore(scoreA, scoreB);
+    }
+
+    public void displayScore(String scoreA, String scoreB) {
         String score = scoreA + " " + scoreB;
         Log.d(TAG, "setScore: " + score);
 
@@ -624,7 +657,6 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
 
     public boolean setClock(String mins, String secs, String hund, boolean hundActive) {
         boolean clockChanged = true;
-        String clock;
 
         if (mode == Mode.Sparring || mode == Mode.None) {
             clearClock();
@@ -637,16 +669,22 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
             timeMins = mins;
             timeSecs = secs;
             timeHund = hund;
-            if (hundActive) {
-                clock = timeSecs + ":" + timeHund;
-            } else {
-                clock = timeMins + ":" + timeSecs;
-            }
-            Log.d(TAG, "setClock: " + clock);
-            textClock.setTextColor(Color.GREEN);
-            textClock.setText(clock);
+            displayClock(timeMins, timeSecs, timeHund, hundActive);
         }
         return clockChanged;
+    }
+
+    public void displayClock(String timeMins, String timeSecs, String timeHund, boolean hundActive) {
+        String clock;
+
+        if (hundActive) {
+            clock = timeSecs + ":" + timeHund;
+        } else {
+            clock = timeMins + ":" + timeSecs;
+        }
+        Log.d(TAG, "setClock: " + clock);
+        textClock.setTextColor(Color.GREEN);
+        textClock.setText(clock);
     }
 
     public void clearClock() {
@@ -660,17 +698,28 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
         setCard("1", cardB);
     }
 
+    public void displayCardA(boolean yellowCard, boolean redCard) {
+        cardLightA.showYellow(yellowCard);
+        cardLightA.showRed(redCard);
+    }
+
+    public void displayCardB(boolean yellowCard, boolean redCard) {
+        cardLightB.showYellow(yellowCard);
+        cardLightB.showRed(redCard);
+    }
+
     public void setCard(String whichFencer, Integer card) {
+        boolean yellowCard = ((card & yellowCardBit) != 0) ? true : false;
+        boolean redCard = ((card & redCardBit) != 0) ? true : false;
+
         /* Cards for fencer A */
         if (whichFencer.equals("0")) {
-            cardLightA.showYellow(((card & yellowCardBit) != 0) ? true : false);
-            cardLightA.showRed(((card & redCardBit) != 0) ? true : false);
+            displayCardA(yellowCard, redCard);
         }
 
         /* Cards for fencer B */
         if (whichFencer.equals("1")) {
-            cardLightB.showYellow(((card & yellowCardBit) != 0) ? true : false);
-            cardLightB.showRed(((card & redCardBit) != 0) ? true : false);
+            displayCardB(yellowCard, redCard);
         }
     }
 
@@ -699,12 +748,15 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
         setPriority(this.priA, this.priB);
     }
 
-    public void setPriority(boolean priA, boolean priB)
-    {
+    public void setPriority(boolean priA, boolean priB) {
         this.priA = priA;
         this.priB = priB;
-        priorityA.setTextColor(this.priA ? Color.RED:Color.BLACK);
-        priorityB.setTextColor(this.priB ? Color.RED:Color.BLACK);
+        displayPriority(priA, priB);
+    }
+
+    public void displayPriority(boolean priA, boolean priB) {
+        priorityA.setTextColor(priA ? Color.RED:Color.BLACK);
+        priorityB.setTextColor(priB ? Color.RED:Color.BLACK);
     }
 
     public void clearPriority()
@@ -732,17 +784,21 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
             passivityClock.setTextColor(Color.GREEN);
             if (mode == Mode.Bout) {
                 if (pClock > passivityMaxTime) {
-                    passivityClock.setText(String.format("%02d", passivityMaxTime));
+                    displayPassivity(passivityMaxTime);
                 } else {
-                    passivityClock.setText(String.format("%02d", pClock));
+                    displayPassivity(pClock);
                 }
             } else if (mode == Mode.Stopwatch) {
                 passivityTimer = pClock;
-                passivityClock.setText(String.format("%02d", pClock));
+                displayPassivity(pClock);
             } else {
                 clearPassivity();
             }
         }
+    }
+
+    public void displayPassivity(int pClock) {
+        passivityClock.setText(String.format("%02d", pClock));
     }
 
     public void clearPassivity() {
@@ -764,7 +820,11 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
     }
 
     public void displayPassivityCard(int fencer) {
-        switch (pCard[fencer]) {
+        displayPassivityCard(fencer, pCard[fencer]);
+    }
+
+    public void displayPassivityCard(int fencer, PassivityCard pCard) {
+        switch (pCard) {
             case None:
                 passCard[fencer].setTextColor(Color.BLACK);
                 passCard[fencer].setText("-");
@@ -793,32 +853,27 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
         displayPassivityCard();
     }
 
-    public void setPassivityCard(int fencer, PassivityCard card) {
-        pCard[fencer] = card;
-        displayPassivityCard(fencer);
+    public void setPassivityCard(String whichFencer, String whichCard) {
+        final PassivityCard[] cards = {
+                PassivityCard.None,
+                PassivityCard.Yellow,
+                PassivityCard.Red1,
+                PassivityCard.Red2
+        };
+
+        int card = Integer.parseInt(whichCard);
+
+        if (card >= 0 && card < PassivityCard.values().length) {
+            if (whichFencer.equals("0")) {
+                setPassivityCard(0, cards[card]);
+            } else if (whichFencer.equals("1")) {
+                setPassivityCard(1, cards[card]);
+            }
+        }
     }
 
-    public void setPassivityCard(int fencer) {
-        /* Move the card to the next in the sequence */
-        switch (pCard[fencer]) {
-            case None:
-                pCard[fencer] = PassivityCard.Yellow;
-                break;
-            case Yellow:
-                pCard[fencer] = PassivityCard.Red1;
-                break;
-
-            case Red1:
-                pCard[fencer] = PassivityCard.Red2;
-                break;
-
-            case Red2:
-                pCard[fencer] = PassivityCard.None;
-                break;
-
-            default:
-                break;
-        }
+    public void setPassivityCard(int fencer, PassivityCard card) {
+        pCard[fencer] = card;
         displayPassivityCard(fencer);
     }
 
@@ -860,6 +915,14 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
                String whichCard = new String(data, i, 1, StandardCharsets.UTF_8);
                i++;
                processCard(whichFencer, whichCard);
+           } else if (data[i] == passivityCardMarker) {
+               i++;
+               String whichFencer = new String(data, i, 1, StandardCharsets.UTF_8);
+               i++;
+               String whichCard = new String(data, i, 1, StandardCharsets.UTF_8);
+               i++;
+               clearPassivity();
+               setPassivityCard(whichFencer, whichCard);
            }
         }
     }
@@ -877,6 +940,11 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
                 clearPriority();
                 clearPassivity();
                 clearPassivityCard();
+                try {
+                    socket.write("OK".getBytes(StandardCharsets.UTF_8));
+                } catch (IOException e) {
+                    Log.d(TAG, "Unable to respond to fencing scoring box");
+                }
                 break;
 
             case "PC":
@@ -1044,28 +1112,6 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
                 passivityActive = false;
                 break;
 
-            case "V0":
-                Log.d(TAG, "passivity card for fencer A");
-                setPassivityCard(0);
-                passivityTimer = passivityMaxTime;
-                setPassivity(passivityTimer);
-                break;
-
-            case "V1":
-                Log.d(TAG, "passivity card for fencer B");
-                setPassivityCard(1);
-                passivityTimer = passivityMaxTime;
-                setPassivity(passivityTimer);
-                break;
-
-            case "V2":
-                Log.d(TAG, "passivity card for both fencers");
-                setPassivityCard(0);
-                setPassivityCard(1);
-                passivityTimer = passivityMaxTime;
-                setPassivity(passivityTimer);
-                break;
-
             default:
                 Log.d(TAG, "unknown command " + cmd);
                 break;
@@ -1113,11 +1159,11 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
 
     public void processCard(String whichFencer, String whichCard) {
         hideUI();
+
         if (whichFencer.equals("0")) {
             cardA = Integer.parseInt(whichCard);
             setCard(whichFencer, cardA);
-        }
-        if (whichFencer.equals("1")) {
+        } else if (whichFencer.equals("1")) {
             cardB = Integer.parseInt(whichCard);
             setCard(whichFencer, cardB);
         }

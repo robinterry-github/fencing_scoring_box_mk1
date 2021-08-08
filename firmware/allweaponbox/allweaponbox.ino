@@ -4,7 +4,7 @@
 //  Dev:     Wnew                                                            //
 //  Date:    Nov     2012                                                    //
 //  Updated: Sept    2015                                                    //
-//  Updated: August 1 2021 Robin Terry, Skipton, UK                           //
+//  Updated: August 8 2021 Robin Terry, Skipton, UK                           //
 //                                                                           //
 //  Notes:   1. Basis of algorithm from digitalwestie on github. Thanks Mate //
 //           2. Used uint8_t instead of int where possible to optimise       //
@@ -30,7 +30,7 @@
 //          12. Stores the current mode (spar/bout/stopwatch) in EEPROM      //
 //          13. Added in the serial port indicator (for external indication) //
 //          14. The timer shows 1/100 sec in last 9 seconds                  //
-//          15. Support for a passivity timer                                //
+//          15. Support for a passivity timer and cards                              //
 //===========================================================================//
 
 //============
@@ -611,6 +611,10 @@ long passivitySignalTimer = 0;
 PassivityCard pCard[2]    = { P_CARD_NONE, P_CARD_NONE };
 #endif
 
+#ifdef SERIAL_INDICATOR
+bool repeaterPresent      = false;
+#endif
+
 bool inBout()
 {
    return ((boutState != STA_SPAR) && (boutState != STA_BREAK) && (boutState != STA_STOPWATCH)) ? true:false;
@@ -1112,18 +1116,21 @@ void displayScore()
      currentDisp = DISP_SCORE;
   }
 #ifdef SERIAL_INDICATOR
-  if (!disableScore)
+  if (repeaterPresent)
   {
-     char ind[10];
-     /* Two sprintfs are needed because of an awful bug in the Arduino
-        libraries which means that sprintf() can't take more than one argument! */
-     sprintf(&ind[0], "*%02d",  score[FENCER_A]);
-     sprintf(&ind[3], "%02d",   score[FENCER_B]);
-     Serial.println(ind);
-  }
-  else
-  {
-     Serial.println("!HS");
+     if (!disableScore)
+     {
+        char ind[10];
+        /* Two sprintfs are needed because of an awful bug in the Arduino
+           libraries which means that sprintf() can't take more than one argument! */
+        sprintf(&ind[0], "*%02d",  score[FENCER_A]);
+        sprintf(&ind[3], "%02d",   score[FENCER_B]);
+        Serial.println(ind);
+     }
+     else
+     {
+        Serial.println("!HS");
+     }
   }
 #endif
 }
@@ -1194,43 +1201,46 @@ void displayTime()
       currentDisp = DISP_TIME;
    }
 #ifdef SERIAL_INDICATOR
-   char ind[10];
+   if (repeaterPresent)
+   {
+      char ind[10];
 
-   /* Two sprintfs are needed because of an awful bug in the Arduino
-      libraries which means that sprintf() can't take more than one argument! */
-#ifdef STOPWATCH
-   if (inStopWatch())
-   {
-      if (swEdit != SW_NONE)
-      {
-         sprintf(&ind[0], "@%02d",  swMins);
-         sprintf(&ind[3], "%02d",   swSecs);
-      }
-      else
-      {
-         sprintf(&ind[0], "@%02d",  timerMins);
-         sprintf(&ind[3], "%02d",   timerSecs);
-      }
-      Serial.println(ind);
-   }
-   else
-#endif
-   if (timerLast9s)
-   {
-      if (timerHund >= 0)
-      {
-         sprintf(&ind[0], ":%02d",  timerSecs);
-         sprintf(&ind[3], "%02d",   timerHund);
-         Serial.println(ind);
-      }
-   }
-   else
-   {
       /* Two sprintfs are needed because of an awful bug in the Arduino
          libraries which means that sprintf() can't take more than one argument! */
-      sprintf(&ind[0], "@%02d",  timerMins);
-      sprintf(&ind[3], "%02d",   timerSecs);
-      Serial.println(ind);
+#ifdef STOPWATCH
+      if (inStopWatch())
+      {
+         if (swEdit != SW_NONE)
+         {
+            sprintf(&ind[0], "@%02d",  swMins);
+            sprintf(&ind[3], "%02d",   swSecs);
+         }
+         else
+         {
+            sprintf(&ind[0], "@%02d",  timerMins);
+            sprintf(&ind[3], "%02d",   timerSecs);
+         }
+         Serial.println(ind);
+      }
+      else
+#endif
+      if (timerLast9s)
+      {
+         if (timerHund >= 0)
+         {
+            sprintf(&ind[0], ":%02d",  timerSecs);
+            sprintf(&ind[3], "%02d",   timerHund);
+            Serial.println(ind);
+         }
+      }
+      else
+      { 
+         /* Two sprintfs are needed because of an awful bug in the Arduino
+            libraries which means that sprintf() can't take more than one argument! */
+         sprintf(&ind[0], "@%02d",  timerMins);
+         sprintf(&ind[3], "%02d",   timerSecs);
+         Serial.println(ind);
+      }
    }
 #endif
 }
@@ -1257,7 +1267,10 @@ void displayPriority()
             digitalWrite(onTargetA, HIGH);
             digitalWrite(onTargetB, LOW);
 #ifdef SERIAL_INDICATOR
-            Serial.println("$H3");
+            if (repeaterPresent)
+            {
+               Serial.println("$H3");
+            }
 #endif
          }
       }
@@ -1271,7 +1284,10 @@ void displayPriority()
             digitalWrite(onTargetA, LOW);
             digitalWrite(onTargetB, HIGH);
 #ifdef SERIAL_INDICATOR
-            Serial.println("$H4");
+            if (repeaterPresent)
+            {
+               Serial.println("$H4");
+            }
 #endif
          }
       }
@@ -1419,6 +1435,40 @@ void setup()
    Serial.begin(BAUDRATE);
    Serial.println("");
    Serial.println("!GO");
+
+   /* Wait one second for "OK" response from repeater */
+   long serialWaitTime = millis() + ONESEC;
+   int  rxData[] = { 0, 0 };
+   int  response[] = { 'O', 'K' };
+
+   for (int i = 0; millis() < serialWaitTime;)
+   {
+      if (Serial.available())
+      {
+         rxData[i] = Serial.read();
+
+         /* Valid response character? */
+         if (rxData[i] == response[i])
+         {
+            if (i >= 1)
+            {
+               repeaterPresent = true;
+               break;
+            }
+            else
+            {
+               i++;
+            }
+         }
+
+         /* Bad response */
+         else
+         {
+            repeaterPresent = false;
+            break;
+         }
+      }
+   }
    indicateWeapon();
 #endif
 
@@ -1436,20 +1486,23 @@ void setup()
 #ifdef SERIAL_INDICATOR
 void indicateWeapon()
 {
-   switch (weaponType)
+   if (repeaterPresent)
    {
-      case FOIL:
-      default:
-         Serial.println("!TF");
-         break;
+      switch (weaponType)
+      {
+         case FOIL:
+         default:
+            Serial.println("!TF");
+            break;
 
-      case EPEE:
-         Serial.println("!TE");
-         break;
+         case EPEE:
+            Serial.println("!TE");
+            break;
 
-      case SABRE:
-         Serial.println("!TS");
-         break;
+         case SABRE:
+            Serial.println("!TS");
+            break;
+      }
    }
 }
 #endif
@@ -1516,7 +1569,10 @@ void restartBox(BoutState state)
 void choosePriority()
 {
 #ifdef SERIAL_INDICATOR
-   Serial.println("!PC");
+   if (repeaterPresent)
+   {
+      Serial.println("!PC");
+   }
 #endif
 #ifdef DISP_IR_CARDS_BOX
    displayState(STA_PRIORITY);
@@ -1581,7 +1637,10 @@ void startPassivity()
 #ifdef PASSIVITY
    restartPassivity();
 #ifdef SERIAL_INDICATOR
-   Serial.println("!VS");
+   if (repeaterPresent)
+   {
+      Serial.println("!VS");
+   }
 #endif
 #endif
 }
@@ -1592,7 +1651,10 @@ void clearPassivity()
    passivityActive = passivitySignalled = false;
    passivityTimer  = passivitySignalTimer = 0;
 #ifdef SERIAL_INDICATOR
-   Serial.println("!VC");
+   if (repeaterPresent)
+   {
+      Serial.println("!VC");
+   }
 #endif
 #endif
 }
@@ -1611,7 +1673,10 @@ void signalPassivity(bool on)
          passivitySignalTimer = millis();
          passivitySignalled   = true;
 #ifdef SERIAL_INDICATOR
-         Serial.println("!VT");
+         if (repeaterPresent)
+         {
+            Serial.println("!VT");
+         }
 #endif
       }
       else
@@ -1653,18 +1718,42 @@ void awardPCard(int fencer)
    {
       case P_CARD_NONE:
          pCard[fencer] = P_CARD_YELLOW;
+#ifdef SERIAL_INDICATOR
+         if (repeaterPresent)
+         {
+            Serial.println("+" + String(fencer) + "1");
+         }
+#endif
          break;
 
        case P_CARD_YELLOW:
           pCard[fencer] = P_CARD_RED_1;
+#ifdef SERIAL_INDICATOR
+          if (repeaterPresent)
+          {
+             Serial.println("+" + String(fencer) + "2");
+          }
+#endif
           break;
 
        case P_CARD_RED_1:
           pCard[fencer] = P_CARD_RED_2;
+#ifdef SERIAL_INDICATOR
+          if (repeaterPresent)
+          {
+             Serial.println("+" + String(fencer) + "3");
+          }
+#endif
           break;
 
        case P_CARD_RED_2:
           pCard[fencer] = P_CARD_NONE;
+#ifdef SERIAL_INDICATOR
+          if (repeaterPresent)
+          {
+             Serial.println("+" + String(fencer) + "0");
+          }
+#endif
           break;
 
        default:
@@ -1680,24 +1769,15 @@ void awardPassivity()
       if (score[FENCER_A] < score[FENCER_B])
       {
          awardPCard(FENCER_A);
-#ifdef SERIAL_INDICATOR
-         Serial.println("!V0");
-#endif
       }
       else if (score[FENCER_B] < score[FENCER_A])
       {
          awardPCard(FENCER_B);
-#ifdef SERIAL_INDICATOR
-         Serial.println("!V1");
-#endif
       }
       else
       {
          awardPCard(FENCER_A);
          awardPCard(FENCER_B);
-#ifdef SERIAL_INDICATOR
-         Serial.println("!V2");
-#endif
       }
    }
 #endif
@@ -1912,6 +1992,7 @@ void updateCardLeds(int Leds)
    digitalWrite(latchPin, HIGH);
 #endif
 #ifdef SERIAL_INDICATOR
+   if (repeaterPresent)
    {
       int LedsA = 0;
       if (cardLeds & A_YELLOW)
@@ -2474,7 +2555,10 @@ void transIR(unsigned long key)
                        timeState = TIM_BOUT;
                        boutState = STA_BOUT;
 #ifdef SERIAL_INDICATOR
-                       Serial.println("!BR");
+                       if (repeaterPresent)
+                       {
+                          Serial.println("!BR");
+                       }
 #endif
                        restartPassivity();
 #ifdef DEBUG_L1
@@ -3038,8 +3122,11 @@ void transIR(unsigned long key)
 void startBout()
 {
 #ifdef SERIAL_INDICATOR
-   Serial.println("!BS");
-   Serial.println("*0000");
+   if (repeaterPresent)
+   {
+      Serial.println("!BS");
+      Serial.println("*0000");
+   }
 #endif
 #ifdef DISP_IR_CARDS_BOX
    priState                = PRI_IDLE;
@@ -3053,7 +3140,7 @@ void startBout()
    maxSabreHits[FENCER_B]  = false;
    scoreThisBout[FENCER_A] = 0;
    scoreThisBout[FENCER_B] = 0;
-   boutState              = STA_STARTBOUT;
+   boutState               = STA_STARTBOUT;
    resetState              = RES_IDLE;
    hitDisplay              = HIT_IDLE;
    resetHits();
@@ -3079,7 +3166,10 @@ void startBout()
 void continueBout()
 {
 #ifdef SERIAL_INDICATOR
-   Serial.println("!BC");
+   if (repeaterPresent)
+   {
+      Serial.println("!BC");
+   }
 #endif
 #ifdef DISP_IR_CARDS_BOX
    priState = PRI_IDLE;
@@ -3109,7 +3199,10 @@ void buzzerTimeout()
 void endOfBout()
 {
 #ifdef SERIAL_INDICATOR
-   Serial.println("!BE");
+   if (repeaterPresent)
+   {
+      Serial.println("!BE");
+   }
 #endif
 #ifdef DISP_IR_CARDS_BOX
    buzzerTimeout();
@@ -3140,7 +3233,10 @@ void startPriority()
    resetLights();
    displayScore();
 #ifdef SERIAL_INDICATOR
-   Serial.println(priFencer == FENCER_A ? "!P0":"!P1");
+   if (repeaterPresent)
+   {
+      Serial.println(priFencer == FENCER_A ? "!P0":"!P1");
+   }
 #endif
    delay(1000);
    priState = PRI_IDLE;
@@ -3149,7 +3245,10 @@ void startPriority()
    boutState = STA_PRIORITY;
 #else
 #ifdef SERIAL_INDICATOR
-   Serial.println(priFencer == FENCER_A ? "!P0":"!P1");
+   if (repeaterPresent)
+   {
+      Serial.println(priFencer == FENCER_A ? "!P0":"!P1");
+   }
 #endif
 #endif
    clearPassivity();
@@ -3173,8 +3272,11 @@ void endPriority()
       priFencer = FENCER_B;
    }
 #ifdef SERIAL_INDICATOR
-   Serial.println("!PE");
-   Serial.println(priFencer == FENCER_A ? "$H3":"$H4");
+   if (repeaterPresent)
+   {
+      Serial.println("!PE");
+      Serial.println(priFencer == FENCER_A ? "$H3":"$H4");
+   }
 #endif
    startHitDisplay();
    displayScore();
@@ -3187,7 +3289,10 @@ void endPriority()
 void startSpar()
 {
 #ifdef SERIAL_INDICATOR
-   Serial.println("!SS");
+   if (repeaterPresent)
+   {
+      Serial.println("!SS");
+   }
 #endif
 #ifdef DEBUG_L1
    Serial.println("sparring mode - no timer");
@@ -3220,7 +3325,10 @@ void startBreak()
 {
 #ifdef DISP_IR_CARDS_BOX
 #ifdef SERIAL_INDICATOR
-   Serial.println("!RS");
+   if (repeaterPresent)
+   {
+      Serial.println("!RS");
+   }
 #endif
 #ifdef DEBUG_L1
    Serial.println("1 minute break"); 
@@ -3239,7 +3347,10 @@ void startStopWatch()
 #ifdef STOPWATCH
    boutState = STA_STOPWATCH;
 #ifdef SERIAL_INDICATOR
-   Serial.println("!WS");
+   if (repeaterPresent)
+   {
+      Serial.println("!WS");
+   }
 #endif
 #ifdef EEPROM_STORAGE
    writeState(boutState);
@@ -3308,7 +3419,10 @@ void resetStopWatch(bool restart, bool lightLeds)
       digitalWrite(onTargetB, LOW);
       updateCardLeds(A_ALL);
 #ifdef SERIAL_INDICATOR
-     Serial.println("$H3");
+     if (repeaterPresent)
+     {
+        Serial.println("$H3");
+     }
 #endif
    }
    else
@@ -3317,11 +3431,17 @@ void resetStopWatch(bool restart, bool lightLeds)
       digitalWrite(onTargetB, LOW);
       updateCardLeds(0);
 #ifdef SERIAL_INDICATOR
-      Serial.println("!RL");
+      if (repeaterPresent)
+      {
+         Serial.println("!RL");
+      }
 #endif
    }
 #ifdef SERIAL_INDICATOR
-   Serial.println("!WR");
+   if (repeaterPresent)
+   {
+      Serial.println("!WR");
+   }
 #endif
 #endif
 }
@@ -3341,7 +3461,10 @@ void stopWatchLeds()
      digitalWrite(onTargetB, LOW);
      updateCardLeds(0);
 #ifdef SERIAL_INDICATOR
-     Serial.println("!RL");
+     if (repeaterPresent)
+     {
+        Serial.println("!RL");
+     }
 #endif
   }
   else
@@ -3350,7 +3473,10 @@ void stopWatchLeds()
      digitalWrite(onTargetB, stopWatchLeds ? HIGH:LOW);
      updateCardLeds(stopWatchLeds ? B_ALL:A_ALL);
 #ifdef SERIAL_INDICATOR
-     Serial.println(stopWatchLeds ? "$H4":"$H3");
+     if (repeaterPresent)
+     {
+        Serial.println(stopWatchLeds ? "$H4":"$H3");
+     }
 #endif
   }
 #endif
@@ -3400,7 +3526,10 @@ int runStopWatch()
             {
                timer = timerMins = timerSecs = 0;
 #ifdef SERIAL_INDICATOR
-               Serial.println("!WW");
+               if (repeaterPresent)
+               {
+                  Serial.println("!WW");
+               }
 #endif
             }
             displayTime();
@@ -4700,25 +4829,28 @@ void signalHits()
       digitalWrite(onTargetB,  (hitOnTarg[FENCER_B] | hitOffTarg[FENCER_B]) ? HIGH:LOW);
 #endif
 #ifdef SERIAL_INDICATOR
-      String ind = String("");
+      if (repeaterPresent)
+      {
+         String ind = String("");
 
-      if (hitOnTarg[FENCER_A])
-      {
-         ind += String("$H1\n");
+         if (hitOnTarg[FENCER_A])
+         {
+            ind += String("$H1\n");
+         }
+         if (hitOnTarg[FENCER_B])
+         {
+            ind += String("$H2\n");
+         }
+         if (hitOffTarg[FENCER_A])
+         {
+            ind += String("$O0\n");
+         }
+         if (hitOffTarg[FENCER_B])
+         {
+            ind += String("$O1\n");
+         }
+         Serial.print(ind);
       }
-      if (hitOnTarg[FENCER_B])
-      {
-         ind += String("$H2\n");
-      }
-      if (hitOffTarg[FENCER_A])
-      {
-         ind += String("$O0\n");
-      }
-      if (hitOffTarg[FENCER_B])
-      {
-         ind += String("$O1\n");
-      }
-      Serial.print(ind);
 #endif
       buzzer(true);
 #ifdef DEBUG_L2
@@ -4771,8 +4903,11 @@ void resetCards()
 #endif
 #endif
 #ifdef SERIAL_INDICATOR
-   Serial.println("?C0");
-   Serial.println("?D0");
+   if (repeaterPresent)
+   {
+      Serial.println("?C0");
+      Serial.println("?D0");
+   }
 #endif
 }
 
@@ -4849,7 +4984,10 @@ void resetLights()
       resetHits();
    }
 #ifdef SERIAL_INDICATOR
-   Serial.println("!RL");
+   if (repeaterPresent)
+   {
+      Serial.println("!RL");
+   }
 #endif
 }
 
