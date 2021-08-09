@@ -1469,6 +1469,7 @@ void setup()
          }
       }
    }
+   repeaterPresent = true; // TESTRT
    indicateWeapon();
 #endif
 
@@ -4083,6 +4084,12 @@ void loop()
                Serial.println("short circuit on fencer A");
 #endif
                scDisplay[FENCER_A] = true;
+#ifdef SERIAL_INDICATOR
+               if (repeaterPresent)
+               {
+                  Serial.println("<01");
+               }
+#endif
                displayShortCircuit();
             }
          }
@@ -4097,6 +4104,12 @@ void loop()
          displayTouch(false);
 #ifdef DEBUG_L5
          Serial.println("short circuit LED off fencer A");
+#endif
+#ifdef SERIAL_INDICATOR
+         if (repeaterPresent)
+         {
+            Serial.println("<00");
+         }
 #endif
       }
 
@@ -4123,6 +4136,12 @@ void loop()
                Serial.println("short circuit on fencer B");
 #endif
                scDisplay[FENCER_B] = true;
+#ifdef SERIAL_INDICATOR
+               if (repeaterPresent)
+               {
+                  Serial.println("<11");
+               }
+#endif
                displayShortCircuit();
             }
          }
@@ -4137,6 +4156,12 @@ void loop()
          displayTouch(false);
 #ifdef DEBUG_L5
          Serial.println("short circuit LED off fencer B");
+#endif
+#ifdef SERIAL_INDICATOR
+         if (repeaterPresent)
+         {
+            Serial.println("<10");
+         }
 #endif
       }
 

@@ -331,8 +331,8 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
         displayHitLights(Hit.OnTarget, Hit.OnTarget);
         displayScore("00", "00");
         displayClock("00", "00", "00", false);
-        displayCardA(true, true);
-        displayCardB(true, true);
+        displayCardA(true, true, true);
+        displayCardB(true, true, true);
         displayPriority(true, true);
         displayPassivity(passivityMaxTime);
         displayPassivityCard(0, PassivityCard.Red2);
@@ -698,28 +698,31 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
         setCard("1", cardB);
     }
 
-    public void displayCardA(boolean yellowCard, boolean redCard) {
+    public void displayCardA(boolean yellowCard, boolean redCard, boolean shortCircuit) {
         cardLightA.showYellow(yellowCard);
         cardLightA.showRed(redCard);
+        cardLightA.showShortCircuit(shortCircuit);
     }
 
-    public void displayCardB(boolean yellowCard, boolean redCard) {
+    public void displayCardB(boolean yellowCard, boolean redCard, boolean shortCircuit) {
         cardLightB.showYellow(yellowCard);
         cardLightB.showRed(redCard);
+        cardLightB.showShortCircuit(shortCircuit);
     }
 
     public void setCard(String whichFencer, Integer card) {
         boolean yellowCard = ((card & yellowCardBit) != 0) ? true : false;
         boolean redCard = ((card & redCardBit) != 0) ? true : false;
+        boolean shortCircuit = ((card & shortCircuitBit) != 0) ? true : false;
 
         /* Cards for fencer A */
         if (whichFencer.equals("0")) {
-            displayCardA(yellowCard, redCard);
+            displayCardA(yellowCard, redCard, shortCircuit);
         }
 
         /* Cards for fencer B */
         if (whichFencer.equals("1")) {
-            displayCardB(yellowCard, redCard);
+            displayCardB(yellowCard, redCard, shortCircuit);
         }
     }
 

@@ -22,7 +22,7 @@ public class HitLightView extends View {
     private int onTargetColor = Color.BLACK;
     private final int offTargetColor = Color.WHITE;
     private final int offColor = Color.BLACK;
-    public static final int LED_SIZE_X_DIV_PORT = 4;
+    public static final int LED_SIZE_X_DIV_PORT = 3;
     public static final int LED_SIZE_Y_DIV_PORT = 4;
     public static final int LED_SIZE_X_DIV_LAND = 3;
     public static final int LED_SIZE_Y_DIV_LAND = 4;
@@ -117,7 +117,8 @@ public class HitLightView extends View {
         } else {
             leftPos = screenWidth/LEFT_MARGIN_DIV;
         }
-        Log.d(TAG, "ledSizeX " + coords.ledSizeX + " ledSizeY " + coords.ledSizeY + " leftPos " + leftPos + " topPos " + coords.topPos);
+        Log.d(TAG, "ledSizeX " + coords.ledSizeX + " ledSizeY " + coords.ledSizeY
+                + " leftPos " + leftPos + " topPos " + coords.topPos);
     }
 
     public void setLayout(ConstraintLayout layout) {

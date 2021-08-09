@@ -14,12 +14,13 @@ public class CardLightView extends View {
 
     private static final String TAG = "CardLightView";
     private ConstraintLayout layout;
-    private Paint paintYellow, paintRed;
+    private Paint yellowLed, redLed, whiteLed;
     private int areaXSize = 0;
     private int areaYSize = 0;
     private int leftPos, topPos;
     private boolean redCardOn = false;
     private boolean yellowCardOn = false;
+    private boolean shortCircuitOn = false;
     public enum CardLight { CardA, CardB }
     private CardLight cardLight = CardLight.CardA;
     private final int offColor = Color.BLACK;
@@ -30,7 +31,6 @@ public class CardLightView extends View {
 
     public CardLightView(Context context, ConstraintLayout layout, CardLight cardLight) {
         super(context);
-        Log.d(TAG, "CardLightView constructor start, left " + leftPos);
         if (MainActivity.getOrientation() == MainActivity.Orientation.Portrait) {
             Log.d(TAG, "Orientation: portrait");
         } else {
@@ -39,22 +39,26 @@ public class CardLightView extends View {
         Log.d(TAG, "layout " + layout);
 
         // Yellow LED
-        paintYellow = new Paint();
-        paintYellow.setStyle(Paint.Style.FILL);
-        paintYellow.setColor(offColor);
-        paintYellow.setAntiAlias(true);
+        yellowLed = new Paint();
+        yellowLed.setStyle(Paint.Style.FILL);
+        yellowLed.setColor(offColor);
+        yellowLed.setAntiAlias(true);
 
         // Red LED
-        paintRed = new Paint();
-        paintRed.setStyle(Paint.Style.FILL);
-        paintRed.setColor(offColor);
-        paintRed.setAntiAlias(true);
+        redLed = new Paint();
+        redLed.setStyle(Paint.Style.FILL);
+        redLed.setColor(offColor);
+        redLed.setAntiAlias(true);
+
+        // White LED
+        whiteLed = new Paint();
+        whiteLed.setStyle(Paint.Style.FILL);
+        whiteLed.setColor(offColor);
+        whiteLed.setAntiAlias(true);
+        
         this.layout = layout;
         this.cardLight = cardLight;
-
         layout.addView(this);
-
-        Log.d(TAG, "CardLightView constructor end " + this);
     }
 
     @Override
@@ -95,7 +99,7 @@ public class CardLightView extends View {
         setMeasuredDimension(width, height);
 
         if (MainActivity.getOrientation() == MainActivity.Orientation.Portrait) {
-            areaXSize = screenWidth / HitLightView.LED_SIZE_X_DIV_PORT;
+            areaXSize = HitLightView.coords.ledSizeX;
             areaYSize = screenHeight / CARD_SIZE_Y_DIV_PORT;
             topPos = HitLightView.coords.bottomPos;
 
@@ -106,7 +110,7 @@ public class CardLightView extends View {
                 leftPos = screenWidth / LEFT_MARGIN_DIV;
             }
         } else {
-            areaXSize = screenHeight / HitLightView.LED_SIZE_X_DIV_LAND;
+            areaXSize = HitLightView.coords.ledSizeX;
             areaYSize = screenHeight / CARD_SIZE_Y_DIV_LAND;
             topPos = HitLightView.coords.bottomPos;
 
@@ -131,6 +135,7 @@ public class CardLightView extends View {
         }
         showYellow(this.yellowCardOn);
         showRed(this.redCardOn);
+        showShortCircuit(this.shortCircuitOn);
     }
 
     public void showYellow(boolean yellowCardOn) {
@@ -140,6 +145,11 @@ public class CardLightView extends View {
 
     public void showRed(boolean redCardOn) {
         this.redCardOn = redCardOn;
+        invalidate();
+    }
+
+    public void showShortCircuit(boolean scOn) {
+        this.shortCircuitOn = scOn;
         invalidate();
     }
 
@@ -154,17 +164,47 @@ public class CardLightView extends View {
 
         canvas.drawColor(Color.TRANSPARENT);
 
-        float cx = (float) getWidth()/4;
+        float cx;
         float cy = (float) getHeight()/2;
-        float radius = (float) areaYSize/3;
+        float radius;
+        if (MainActivity.getOrientation() == MainActivity.Orientation.Landscape) {
+            radius = (float) areaXSize/16;
+        } else {
+            radius = (float) areaXSize/8;
+        }
 
-        // Plot yellow LED
-        paintYellow.setColor(yellowCardOn ? Color.YELLOW:offColor);
-        canvas.drawCircle(cx, cy, radius, paintYellow);
+        if (cardLight == CardLight.CardA) {
+            cx = radius;
 
-        // Change position and plot red LED
-        cx = (float) getWidth()*3/4;
-        paintRed.setColor(redCardOn ? Color.RED:offColor);
-        canvas.drawCircle(cx, cy, radius, paintRed);
+            // Plot yellow LED first
+            yellowLed.setColor(yellowCardOn ? Color.YELLOW : offColor);
+            canvas.drawCircle(cx, cy, radius, yellowLed);
+
+            // Change position and plot red LED second
+            cx += (float) (radius * 3);
+            redLed.setColor(redCardOn ? Color.RED : offColor);
+            canvas.drawCircle(cx, cy, radius, redLed);
+
+            // Change position and plot white LED third
+            cx += (float) (radius * 3);
+            whiteLed.setColor(shortCircuitOn ? Color.WHITE : offColor);
+            canvas.drawCircle(cx, cy, radius, whiteLed);
+        } else {
+            cx = areaXSize - radius;
+
+            // Plot yellow LED first
+            yellowLed.setColor(yellowCardOn ? Color.YELLOW : offColor);
+            canvas.drawCircle(cx, cy, radius, yellowLed);
+
+            // Change position and plot red LED second
+            cx -= (float) (radius * 3);
+            redLed.setColor(redCardOn ? Color.RED : offColor);
+            canvas.drawCircle(cx, cy, radius, redLed);
+
+            // Change position and plot white LED third
+            cx -= (float) (radius * 3);
+            whiteLed.setColor(shortCircuitOn ? Color.WHITE : offColor);
+            canvas.drawCircle(cx, cy, radius, whiteLed);
+        }
     }
 }
