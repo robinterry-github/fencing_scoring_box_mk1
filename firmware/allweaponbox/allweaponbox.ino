@@ -3044,20 +3044,25 @@ void transIR(unsigned long key)
            {
               keyClick();
 #ifdef PASSIVITY
-              awardPassivity();
+              if (repeaterPresent)
+              {
+                 awardPassivity();
 #ifdef DEBUG_L1
-              Serial.println("award passivity card");
+                 Serial.println("award passivity card");
 #endif
-#else
-              ledFlag[FENCER_A]  = ledFlag[FENCER_B] = LED_NONE;
+              }
+              else
+#endif
+              {
+                 ledFlag[FENCER_A]  = ledFlag[FENCER_B] = LED_NONE;
 
-              cardLeds          &= ~ledBits[FENCER_A][LED_BOTH];
-              cardLeds          &= ~ledBits[FENCER_B][LED_BOTH];
-              cardLedUpdate      = true;
+                 cardLeds          &= ~ledBits[FENCER_A][LED_BOTH];
+                 cardLeds          &= ~ledBits[FENCER_B][LED_BOTH];
+                 cardLedUpdate      = true;
 #ifdef DEBUG_L1
-              Serial.println("clear all cards");
+                Serial.println("clear all cards");
 #endif
-#endif
+              }
            }
         }
      }

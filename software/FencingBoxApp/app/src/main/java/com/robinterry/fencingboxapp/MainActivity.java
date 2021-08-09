@@ -48,11 +48,11 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
     private enum Connected {False, Pending, True}
     private enum Weapon {Foil, Epee, Sabre}
     private enum Mode {None, Sparring, Bout, Stopwatch, Demo}
-    private enum PassivityCard {None, Yellow, Red1, Red2  }
+    private enum PassivityCard {None, Yellow, Red1, Red2}
     public static enum Orientation {Portrait, Landscape}
     public static enum Hit {None, OnTarget, OffTarget}
 
-    private Mode mode = Mode.None; /* Mode.Demo */
+    private Mode mode = Mode.Demo;
     private static Orientation orientation = Orientation.Portrait;
     private Weapon weapon = Weapon.Foil;
 
@@ -932,6 +932,7 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
         switch (cmd) {
             case "GO":
                 Log.d(TAG, "fencing box started up");
+                mode = Mode.None;
                 hideUI();
                 clearHitLights();
                 clearScore();
