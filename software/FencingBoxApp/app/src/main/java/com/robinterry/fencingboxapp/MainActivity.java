@@ -112,6 +112,7 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
     private final byte hitMarker = '$';
     private final byte cardMarker = '?';
     private final byte passivityCardMarker = '+';
+    private final byte shortCircuitMarker = '<';
 
     public MainActivity() {
         Log.d(TAG, "Initialising broadcast receiver");
@@ -926,6 +927,14 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
                i++;
                clearPassivity();
                setPassivityCard(whichFencer, whichCard);
+           } else if (data[i] == shortCircuitMarker) {
+               i++;
+               String whichFencer = new String(data, i, 1, StandardCharsets.UTF_8);
+               i++;
+               String scState = new String(data, i, 1, StandardCharsets.UTF_8);
+               i++;
+               clearPassivity();
+               setShortCircuit(whichFencer, scState);
            }
         }
     }
@@ -1182,6 +1191,12 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
                 }
             }
         }
+    }
+
+    public void setShortCircuit(String fencer, String scState) {
+        Log.d(TAG, "Short-circuit: fencer " + fencer + " state " + scState);
+
+        // Ignore for now, as the short-circuit LED already works
     }
 
     /*

@@ -173,7 +173,13 @@ public class CardLightView extends View {
             radius = (float) areaXSize/8;
         }
 
+        /* We want to keep the yellow and red LEDs in the same order,
+           so for  fencer A: yellow, red, white
+           and for fencer B: white, yellow red
+         */
+
         if (cardLight == CardLight.CardA) {
+            // For fencer A, plot the LEDs forwards
             cx = radius;
 
             // Plot yellow LED first
@@ -190,16 +196,17 @@ public class CardLightView extends View {
             whiteLed.setColor(shortCircuitOn ? Color.WHITE : offColor);
             canvas.drawCircle(cx, cy, radius, whiteLed);
         } else {
+            // For fencer B, plot the LEDs backwards
             cx = areaXSize - radius;
 
-            // Plot yellow LED first
-            yellowLed.setColor(yellowCardOn ? Color.YELLOW : offColor);
-            canvas.drawCircle(cx, cy, radius, yellowLed);
-
-            // Change position and plot red LED second
-            cx -= (float) (radius * 3);
+            // Plot red LED first
             redLed.setColor(redCardOn ? Color.RED : offColor);
             canvas.drawCircle(cx, cy, radius, redLed);
+
+            // Change position and plot yellow LED second
+            cx -= (float) (radius * 3);
+            yellowLed.setColor(yellowCardOn ? Color.YELLOW : offColor);
+            canvas.drawCircle(cx, cy, radius, yellowLed);
 
             // Change position and plot white LED third
             cx -= (float) (radius * 3);
