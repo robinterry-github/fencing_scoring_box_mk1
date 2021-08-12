@@ -169,4 +169,14 @@
         app:layout_constraintStart_toEndOf="@+id/passivityClock"
         app:layout_constraintTop_toBottomOf="@+id/textScore" />
 
+    <ImageView
+        android:id="@+id/icon_mute"
+        android:layout_width="20dp"
+        android:layout_height="20dp"
+        android:background="#000000"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:srcCompat="@android:drawable/ic_lock_silent_mode"
+        tools:layout_editor_absoluteY="2dp" />
+
 </androidx.constraintlayout.widget.ConstraintLayout>

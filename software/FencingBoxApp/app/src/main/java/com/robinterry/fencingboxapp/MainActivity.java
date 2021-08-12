@@ -24,6 +24,7 @@ import android.hardware.usb.UsbManager;
 import android.os.IBinder;
 import android.widget.TextView;
 import android.widget.Toast;
+import android.widget.ImageView;
 import android.view.View;
 import android.view.WindowManager;
 import android.view.Window;
@@ -63,7 +64,8 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
     public TextView textScore, textScoreA, textScoreB, textClock;
     public TextView priorityA, priorityB;
     public TextView passivityClock, batteryLevel, time;
-    public TextView[] passCard = new TextView[]{null, null};
+    public TextView[] passCard = new TextView[] {null, null};
+    private ImageView muteIcon;
     private boolean batteryDangerActive = false;
     private boolean batteryDangerFlash = false;
     public String scoreA = "00", scoreB = "00";
@@ -78,7 +80,7 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
     private boolean scoreHidden = false;
     private static final String TAG = "FencingBoxApp";
     private final int passivityMaxTime = 60;
-    private final int batteryDangerLevel = 10;
+    private final int batteryDangerLevel = 15;
     public static final Integer hitAColor = 0xFFFF0000;
     public static final Integer hitBColor = 0xFF00FF00;
     public static final Integer inactiveColor = 0xFFE0E0E0;
@@ -90,7 +92,7 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
     public MainActivity thisActivity;
     public static ConstraintLayout layout;
     private Connected connected = Connected.False;
-    private PassivityCard[] pCard = new PassivityCard[]{PassivityCard.None, PassivityCard.None};
+    private PassivityCard[] pCard = new PassivityCard[] {PassivityCard.None, PassivityCard.None};
     private final Integer portNum = 0;
     private final Integer baudRate = 500000;
     private UsbSerialPort usbSerialPort;
@@ -103,6 +105,7 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
     private final int ledSize = 200;
     private final boolean controlUI = true;
     private boolean visibleUI = false;
+    private FencingBoxSound sound;
 
     /* Commands from the fencing scoring box */
     private final byte cmdMarker = '!';
@@ -183,6 +186,14 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
             Log.e(TAG, "Unable to change status or action bar color");
         }
         showUI();
+
+        sound = new FencingBoxSound(2400,
+                48000,
+                FencingBoxSound.waveformType.SQUARE,
+                32767,
+                getApplicationContext());
+        sound.enable();
+
         Log.d(TAG, "onCreate end");
     }
 
@@ -205,7 +216,7 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
             setPassivity();
             setPassivityCard();
         }
-        startBatteryMonitorAndTime();
+        startSystemMonitor();
         Log.d(TAG, "onStart end");
     }
 
@@ -213,6 +224,7 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
     protected void onStop() {
         Log.d(TAG, "onStop start");
         super.onStop();
+        sound.soundOff(true);
         Log.d(TAG, "onStop end");
     }
 
@@ -232,6 +244,7 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
             disconnect(true);
         stopService(new Intent(this, SerialService.class));
         super.onDestroy();
+        sound.soundOff(true);
         Log.d(TAG, "onDestroy end");
     }
 
@@ -253,6 +266,7 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
         }
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
         hideUIIfVisible();
+        sound.soundOff();
         Log.d(TAG, "onResume end");
     }
 
@@ -261,6 +275,7 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
         Log.d(TAG, "onPause start");
         super.onPause();
         getWindow().clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+        sound.soundOff(true);
         Log.d(TAG, "onPause end");
     }
 
@@ -276,6 +291,7 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
         setPriority();
         setPassivity();
         setPassivityCard();
+        sound.soundOff();
         Log.d(TAG, "onRestart end");
     }
 
@@ -338,9 +354,10 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
         displayPassivity(passivityMaxTime);
         displayPassivityCard(0, PassivityCard.Red2);
         displayPassivityCard(1, PassivityCard.Yellow);
+        sound.soundOn(1000);
     }
 
-    public void startBatteryMonitorAndTime() {
+    public void startSystemMonitor() {
         final int delayMillis = 500;
 
         Handler handler = new Handler();
@@ -365,6 +382,9 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
                     SimpleDateFormat dateFormat = new SimpleDateFormat("hh:mm");
                     String tm = dateFormat.format(curTime);
                     time.setText(tm);
+
+                    // Control the "volume muted" icon
+                    muteIcon.setImageAlpha(sound.isMuted() ? 255:0);
                 } else {
                     batteryLevel.setTextColor(Color.BLACK);
                 }
@@ -394,6 +414,7 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
             time = findViewById(R.id.time_land);
             passCard[0] = findViewById(R.id.pCardA_land);
             passCard[1] = findViewById(R.id.pCardB_land);
+            muteIcon = (ImageView) findViewById(R.id.icon_mute_land);
         } else {
             textScore = findViewById(R.id.textScore);
             textScore.setGravity(Gravity.CENTER);
@@ -405,6 +426,7 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
             time = findViewById(R.id.time);
             passCard[0] = findViewById(R.id.pCardA);
             passCard[1] = findViewById(R.id.pCardB);
+            muteIcon = (ImageView) findViewById(R.id.icon_mute);
         }
         try {
             Typeface face = Typeface.createFromAsset(getAssets(), "font/DSEG7Classic-Bold.ttf");
@@ -1076,6 +1098,7 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
                 setHitLights(hitA, hitB);
                 clearPriority();
                 clearPassivity();
+                sound.soundOff(true);
                 break;
 
             case "TF":
@@ -1123,6 +1146,14 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
                 Log.d(TAG, "passivity signal");
                 setPassivity(0);
                 passivityActive = false;
+                break;
+
+            case "Z1":
+                sound.soundOn();
+                break;
+
+            case "Z0":
+                sound.soundOff();
                 break;
 
             default:

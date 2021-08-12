@@ -3,6 +3,8 @@ package com.robinterry.fencingboxapp;
 import android.media.AudioTrack;
 import android.media.AudioFormat;
 import android.media.AudioAttributes;
+import android.media.AudioManager;
+import android.content.Context;
 import android.util.Log;
 import java.lang.Thread;
 import java.lang.Math;
@@ -19,11 +21,13 @@ public class FencingBoxSound implements Runnable {
     private static final String TAG = "FencingBoxSound";
     private boolean soundDelay = false;
     private boolean soundEnable = false;
+    private AudioManager audioMgr;
 
     public FencingBoxSound(int frequencyInHz,
                            int sampleRateInHz,
                            waveformType waveform,
-                           int level) {
+                           int level,
+                           Context context) {
         Log.d(TAG, "constructor start");
         Log.d(TAG, "frequency " + frequencyInHz +
                 " sample rate " + sampleRateInHz +
@@ -68,6 +72,10 @@ public class FencingBoxSound implements Runnable {
         if (audioTrack == null) {
             throw new RuntimeException("Unable to create an audio track");
         }
+
+        // Get the AudioManager service for checking the music volume
+        audioMgr = (AudioManager) context.getSystemService(Context.AUDIO_SERVICE);
+
         Log.d(TAG, "constructor end");
     }
 
@@ -77,6 +85,12 @@ public class FencingBoxSound implements Runnable {
 
     public void disable() {
         soundEnable = false;
+    }
+
+    public boolean isMuted() {
+        int volume = audioMgr.getStreamVolume(AudioManager.STREAM_MUSIC);
+
+        return (volume == 0);
     }
 
     private void generateTone() {
@@ -147,16 +161,14 @@ public class FencingBoxSound implements Runnable {
         // Sound the tone for a period
         if (soundThread == null && soundEnable) {
             Log.d(TAG, "sound on for " + periodMillis + "ms");
-            Thread t = new Thread(new Runnable() {
-                public void run() {
-                    try {
-                        soundDelay = true;
-                        soundOn();
-                        Thread.sleep(periodMillis);
-                        soundOff(true);
-                        soundDelay = false;
-                    } catch (InterruptedException e) {}
-                }
+            Thread t = new Thread(() -> {
+                try {
+                    soundDelay = true;
+                    soundOn();
+                    Thread.sleep(periodMillis);
+                    soundOff(true);
+                    soundDelay = false;
+                } catch (InterruptedException e) {}
             });
             t.start();
         }

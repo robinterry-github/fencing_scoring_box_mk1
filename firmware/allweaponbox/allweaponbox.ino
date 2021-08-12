@@ -730,6 +730,7 @@ void displayWeapon(bool lights)
       digitalWrite(offTargetA, LOW);
       digitalWrite(offTargetB, LOW);
 #endif
+      buzzer(false);
       updateCardLeds(0);
    }
 }
@@ -1469,7 +1470,6 @@ void setup()
          }
       }
    }
-   repeaterPresent = true; // TESTRT
    indicateWeapon();
 #endif
 
@@ -2036,14 +2036,35 @@ void updateCardLeds(int Leds)
 //===================
 void buzzer(bool buzz)
 {
-   digitalWrite(buzzerPin,  buzz ? HIGH:LOW);
+   buzzer(buzz, true);
+}
+
+void buzzer(bool buzz, bool indicate)
+{
+#ifdef SERIAL_INDICATOR
+   if (repeaterPresent)
+   {
+      if (!indicate)
+      {
+         digitalWrite(buzzerPin,  buzz ? HIGH:LOW);
+      }
+      else
+      {
+         Serial.println(buzz ? "!Z1":"!Z0");
+      }
+   }
+   else
+#endif
+   {
+      digitalWrite(buzzerPin,  buzz ? HIGH:LOW);
+   }
 }
 
 void keyClick()
 {
-   buzzer(true);
+   buzzer(true, false);
    delay(5);
-   buzzer(false);
+   buzzer(false, false);
 }
 
 void shortBeep()
