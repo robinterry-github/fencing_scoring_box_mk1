@@ -30,6 +30,7 @@ import android.view.WindowManager;
 import android.view.Window;
 import android.view.Gravity;
 import android.view.MotionEvent;
+import android.view.KeyEvent;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.BatteryManager;
@@ -42,6 +43,8 @@ import java.util.Date;
 import java.io.IOException;
 
 import android.util.Log;
+import com.robinterry.fencingboxapp.databinding.ActivityMainBinding;
+import com.robinterry.fencingboxapp.databinding.ActivityMainLandBinding;
 
 @SuppressWarnings("ALL")
 public class MainActivity extends AppCompatActivity implements ServiceConnection, SerialListener {
@@ -107,6 +110,11 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
     private boolean visibleUI = false;
     private FencingBoxSound sound;
 
+    /* View bindings */
+    private ActivityMainBinding activityMainPortBinding;
+    private ActivityMainLandBinding activityMainLandBinding;
+    private View mainBinding;
+
     /* Commands from the fencing scoring box */
     private final byte cmdMarker = '!';
     private final byte clockMarker1 = '@';
@@ -137,18 +145,29 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
     protected void onCreate(Bundle savedInstanceState) {
         Log.d(TAG, "onCreate start");
         super.onCreate(savedInstanceState);
+
+        // Get the view bindings for each orientation layout
+        activityMainLandBinding = ActivityMainLandBinding.inflate(getLayoutInflater());
+        activityMainPortBinding = ActivityMainBinding.inflate(getLayoutInflater());
+
+        // Get the current orientation
         orientation = getCurrentOrientation();
         if (orientation == Orientation.Landscape) {
             Log.d(TAG, "initial orientation is landscape");
-            setContentView(R.layout.activity_main_land);
-            setupText(orientation);
-            layout = (ConstraintLayout) findViewById(R.id.activity_main_land);
+            mainBinding = activityMainLandBinding.getRoot();
+            layout = (ConstraintLayout) mainBinding;
+
         } else {
             Log.d(TAG, "initial orientation is portrait");
-            setContentView(R.layout.activity_main);
-            setupText(orientation);
-            layout = (ConstraintLayout) findViewById(R.id.activity_main);
+            mainBinding = activityMainPortBinding.getRoot();
+            layout = (ConstraintLayout) mainBinding;
         }
+
+        // Set the content view from the view binding for the new orientation
+        setContentView(mainBinding);
+
+        // Set up the display
+        setupText(orientation);
 
         try {
             hitLightA = new HitLightView(this, layout, HitLightView.HitLight.HitA, Color.RED);
@@ -302,15 +321,19 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
         orientation = getCurrentOrientation();
         if (orientation == Orientation.Landscape) {
             Log.d(TAG, "orientation is now landscape");
-            setContentView(R.layout.activity_main_land);
-            layout = (ConstraintLayout) findViewById(R.id.activity_main_land);
+            mainBinding = activityMainLandBinding.getRoot();
             orientation = Orientation.Landscape;
         } else {
             Log.d(TAG, "orientation is now portrait");
-            setContentView(R.layout.activity_main);
-            layout = (ConstraintLayout) findViewById(R.id.activity_main);
+            mainBinding = activityMainPortBinding.getRoot();
             orientation = Orientation.Portrait;
         }
+
+        // Set the content view from the view binding for the new orientation
+        setContentView(mainBinding);
+        layout = (ConstraintLayout) mainBinding;
+
+        // Display the screen in the new orientation
         hideUI();
         setupText(orientation);
         hitLightA.setLayout(layout);
@@ -341,6 +364,39 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
             return true;
         }
         return false;
+    }
+
+    @Override
+    public boolean onKeyUp(int keyCode, KeyEvent event) {
+        switch (keyCode) {
+            case KeyEvent.KEYCODE_DPAD_DOWN:
+                Log.d(TAG, "Keycode DOWN");
+                return true;
+            case KeyEvent.KEYCODE_DPAD_LEFT:
+                Log.d(TAG, "Keycode LEFT");
+                return true;
+            case KeyEvent.KEYCODE_DPAD_UP:
+                Log.d(TAG, "Keycode UP");
+                return true;
+            case KeyEvent.KEYCODE_DPAD_RIGHT:
+                Log.d(TAG, "Keycode RIGHT");
+                return true;
+            case KeyEvent.KEYCODE_DPAD_CENTER:
+                Log.d(TAG, "Keycode OK");
+                return true;
+            case KeyEvent.KEYCODE_CHANNEL_UP:
+                Log.d(TAG, "Keycode CHANNEL UP");
+                return true;
+            case KeyEvent.KEYCODE_CHANNEL_DOWN:
+                Log.d(TAG, "Keycode CHANNEL DOWN");
+                return true;
+            case KeyEvent.KEYCODE_BACK:
+                Log.d(TAG, "Keycode BACK");
+                return true;
+            default:
+                Log.d(TAG, "Keycode " + keyCode);
+                return super.onKeyUp(keyCode, event);
+        }
     }
 
     public void showDemo() {
@@ -402,31 +458,31 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
 
     protected void setupText(Orientation orient) {
         if (orient == Orientation.Landscape) {
-            textScoreA = findViewById(R.id.textScoreA_l);
-            textScoreB = findViewById(R.id.textScoreB_l);
+            textScoreA = activityMainLandBinding.textScoreAL;
+            textScoreB = activityMainLandBinding.textScoreBL;
             textScoreA.setGravity(Gravity.CENTER);
             textScoreB.setGravity(Gravity.CENTER);
-            textClock = findViewById(R.id.textClock_l);
-            priorityA = findViewById(R.id.priorityA_l);
-            priorityB = findViewById(R.id.priorityB_l);
-            passivityClock = findViewById(R.id.passivityClock_l);
-            batteryLevel = findViewById(R.id.battery_level_land);
-            time = findViewById(R.id.time_land);
-            passCard[0] = findViewById(R.id.pCardA_land);
-            passCard[1] = findViewById(R.id.pCardB_land);
-            muteIcon = (ImageView) findViewById(R.id.icon_mute_land);
+            textClock = activityMainLandBinding.textClockL;
+            priorityA = activityMainLandBinding.priorityAL;
+            priorityB = activityMainLandBinding.priorityBL;
+            passivityClock = activityMainLandBinding.passivityClockL;
+            batteryLevel = activityMainLandBinding.batteryLevelL;
+            time = activityMainLandBinding.timeL;
+            passCard[0] = activityMainLandBinding.pCardAL;
+            passCard[1] = activityMainLandBinding.pCardBL;
+            muteIcon = (ImageView) activityMainLandBinding.iconMuteL;
         } else {
-            textScore = findViewById(R.id.textScore);
+            textScore = activityMainPortBinding.textScore;
             textScore.setGravity(Gravity.CENTER);
-            textClock = findViewById(R.id.textClock);
-            priorityA = findViewById(R.id.priorityA);
-            priorityB = findViewById(R.id.priorityB);
-            passivityClock = findViewById(R.id.passivityClock);
-            batteryLevel = findViewById(R.id.battery_level);
-            time = findViewById(R.id.time);
-            passCard[0] = findViewById(R.id.pCardA);
-            passCard[1] = findViewById(R.id.pCardB);
-            muteIcon = (ImageView) findViewById(R.id.icon_mute);
+            textClock = activityMainPortBinding.textClock;
+            priorityA = activityMainPortBinding.priorityA;
+            priorityB = activityMainPortBinding.priorityB;
+            passivityClock = activityMainPortBinding.passivityClock;
+            batteryLevel = activityMainPortBinding.batteryLevel;
+            time = activityMainPortBinding.time;
+            passCard[0] = activityMainPortBinding.pCardA;
+            passCard[1] = activityMainPortBinding.pCardB;
+            muteIcon = (ImageView) activityMainPortBinding.iconMute;
         }
         try {
             Typeface face = Typeface.createFromAsset(getAssets(), "font/DSEG7Classic-Bold.ttf");

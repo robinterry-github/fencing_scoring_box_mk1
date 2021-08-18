@@ -92,12 +92,12 @@
         android:textAlignment="center"
         android:textColor="#FF0000"
         android:textSize="24sp"
-        app:layout_constraintEnd_toStartOf="@+id/pCardB_land"
-        app:layout_constraintStart_toEndOf="@+id/pCardA_land"
+        app:layout_constraintEnd_toStartOf="@+id/pCardB_l"
+        app:layout_constraintStart_toEndOf="@+id/pCardA_l"
         app:layout_constraintTop_toBottomOf="@+id/textClock_l" />
 
     <TextView
-        android:id="@+id/battery_level_land"
+        android:id="@+id/battery_level_l"
         android:layout_width="38dp"
         android:layout_height="19dp"
         android:layout_marginEnd="28dp"
@@ -110,7 +110,7 @@
         app:layout_constraintTop_toTopOf="@+id/guideline3" />
 
     <TextView
-        android:id="@+id/time_land"
+        android:id="@+id/time_l"
         android:layout_width="50dp"
         android:layout_height="19dp"
         android:layout_marginStart="28dp"
@@ -143,7 +143,7 @@
         app:layout_constraintGuide_begin="218dp" />
 
     <TextView
-        android:id="@+id/pCardA_land"
+        android:id="@+id/pCardA_l"
         android:layout_width="33dp"
         android:layout_height="33dp"
         android:layout_marginStart="72dp"
@@ -154,7 +154,7 @@
         app:layout_constraintTop_toBottomOf="@+id/textScoreA_l" />
 
     <TextView
-        android:id="@+id/pCardB_land"
+        android:id="@+id/pCardB_l"
         android:layout_width="33dp"
         android:layout_height="33dp"
         android:layout_marginTop="8dp"
@@ -167,7 +167,7 @@
         app:layout_constraintVertical_bias="0.0" />
 
     <ImageView
-        android:id="@+id/icon_mute_land"
+        android:id="@+id/icon_mute_l"
         android:layout_width="19dp"
         android:layout_height="19dp"
         android:background="#000000"
