@@ -111,8 +111,8 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
     private FencingBoxSound sound;
 
     /* View bindings */
-    private ActivityMainBinding activityMainPortBinding;
-    private ActivityMainLandBinding activityMainLandBinding;
+    private ActivityMainBinding portBinding = null;
+    private ActivityMainLandBinding landBinding = null;
     private View mainBinding;
 
     /* Commands from the fencing scoring box */
@@ -147,19 +147,19 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
         super.onCreate(savedInstanceState);
 
         // Get the view bindings for each orientation layout
-        activityMainLandBinding = ActivityMainLandBinding.inflate(getLayoutInflater());
-        activityMainPortBinding = ActivityMainBinding.inflate(getLayoutInflater());
+        landBinding = ActivityMainLandBinding.inflate(getLayoutInflater());
+        portBinding = ActivityMainBinding.inflate(getLayoutInflater());
 
         // Get the current orientation
         orientation = getCurrentOrientation();
         if (orientation == Orientation.Landscape) {
             Log.d(TAG, "initial orientation is landscape");
-            mainBinding = activityMainLandBinding.getRoot();
+            mainBinding = landBinding.getRoot();
             layout = (ConstraintLayout) mainBinding;
 
         } else {
             Log.d(TAG, "initial orientation is portrait");
-            mainBinding = activityMainPortBinding.getRoot();
+            mainBinding = portBinding.getRoot();
             layout = (ConstraintLayout) mainBinding;
         }
 
@@ -264,6 +264,8 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
         stopService(new Intent(this, SerialService.class));
         super.onDestroy();
         sound.soundOff(true);
+        landBinding = null;
+        portBinding = null;
         Log.d(TAG, "onDestroy end");
     }
 
@@ -321,11 +323,11 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
         orientation = getCurrentOrientation();
         if (orientation == Orientation.Landscape) {
             Log.d(TAG, "orientation is now landscape");
-            mainBinding = activityMainLandBinding.getRoot();
+            mainBinding = landBinding.getRoot();
             orientation = Orientation.Landscape;
         } else {
             Log.d(TAG, "orientation is now portrait");
-            mainBinding = activityMainPortBinding.getRoot();
+            mainBinding = portBinding.getRoot();
             orientation = Orientation.Portrait;
         }
 
@@ -458,31 +460,31 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
 
     protected void setupText(Orientation orient) {
         if (orient == Orientation.Landscape) {
-            textScoreA = activityMainLandBinding.textScoreAL;
-            textScoreB = activityMainLandBinding.textScoreBL;
+            textScoreA = landBinding.textScoreAL;
+            textScoreB = landBinding.textScoreBL;
             textScoreA.setGravity(Gravity.CENTER);
             textScoreB.setGravity(Gravity.CENTER);
-            textClock = activityMainLandBinding.textClockL;
-            priorityA = activityMainLandBinding.priorityAL;
-            priorityB = activityMainLandBinding.priorityBL;
-            passivityClock = activityMainLandBinding.passivityClockL;
-            batteryLevel = activityMainLandBinding.batteryLevelL;
-            time = activityMainLandBinding.timeL;
-            passCard[0] = activityMainLandBinding.pCardAL;
-            passCard[1] = activityMainLandBinding.pCardBL;
-            muteIcon = (ImageView) activityMainLandBinding.iconMuteL;
+            textClock = landBinding.textClockL;
+            priorityA = landBinding.priorityAL;
+            priorityB = landBinding.priorityBL;
+            passivityClock = landBinding.passivityClockL;
+            batteryLevel = landBinding.batteryLevelL;
+            time = landBinding.timeL;
+            passCard[0] = landBinding.pCardAL;
+            passCard[1] = landBinding.pCardBL;
+            muteIcon = (ImageView) landBinding.iconMuteL;
         } else {
-            textScore = activityMainPortBinding.textScore;
+            textScore = portBinding.textScore;
             textScore.setGravity(Gravity.CENTER);
-            textClock = activityMainPortBinding.textClock;
-            priorityA = activityMainPortBinding.priorityA;
-            priorityB = activityMainPortBinding.priorityB;
-            passivityClock = activityMainPortBinding.passivityClock;
-            batteryLevel = activityMainPortBinding.batteryLevel;
-            time = activityMainPortBinding.time;
-            passCard[0] = activityMainPortBinding.pCardA;
-            passCard[1] = activityMainPortBinding.pCardB;
-            muteIcon = (ImageView) activityMainPortBinding.iconMute;
+            textClock = portBinding.textClock;
+            priorityA = portBinding.priorityA;
+            priorityB = portBinding.priorityB;
+            passivityClock = portBinding.passivityClock;
+            batteryLevel = portBinding.batteryLevel;
+            time = portBinding.time;
+            passCard[0] = portBinding.pCardA;
+            passCard[1] = portBinding.pCardB;
+            muteIcon = (ImageView) portBinding.iconMute;
         }
         try {
             Typeface face = Typeface.createFromAsset(getAssets(), "font/DSEG7Classic-Bold.ttf");
