@@ -40,6 +40,9 @@ import java.nio.charset.StandardCharsets;
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
 import java.util.Date;
+import java.util.Queue;
+import java.util.LinkedList;
+import java.util.Iterator;
 import java.io.IOException;
 
 import android.util.Log;
@@ -115,6 +118,8 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
     private ActivityMainLandBinding landBinding = null;
     private View mainBinding;
 
+    private Queue<Character> keyQ;
+
     /* Commands from the fencing scoring box */
     private final byte cmdMarker = '!';
     private final byte clockMarker1 = '@';
@@ -124,14 +129,15 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
     private final byte cardMarker = '?';
     private final byte passivityCardMarker = '+';
     private final byte shortCircuitMarker = '<';
+    private final byte pollMarker = '/';
 
     public MainActivity() {
-        Log.d(TAG, "Initialising broadcast receiver");
+        Log.d(TAG, "initialising broadcast receiver");
         thisActivity = this;
         final BroadcastReceiver broadcastReceiver = new BroadcastReceiver() {
             @Override
             public void onReceive(Context context, Intent intent) {
-                Log.d(TAG, "Broadcast receiver intent " + intent);
+                Log.d(TAG, "broadcast receiver intent " + intent);
                 if (com.robinterry.fencingboxapp.Constants.INTENT_ACTION_GRANT_USB.equals(intent.getAction())) {
                     Boolean granted = intent.getBooleanExtra(UsbManager.EXTRA_PERMISSION_GRANTED, false);
                     Log.d(TAG, "GRANT_USB intent " + granted + " received, trying to connect");
@@ -139,6 +145,8 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
                 }
             }
         };
+
+        keyQ = new LinkedList<Character>();
     }
 
     @Override
@@ -372,31 +380,70 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
     public boolean onKeyUp(int keyCode, KeyEvent event) {
         switch (keyCode) {
             case KeyEvent.KEYCODE_DPAD_DOWN:
-                Log.d(TAG, "Keycode DOWN");
+                keyQ.add('D');
                 return true;
             case KeyEvent.KEYCODE_DPAD_LEFT:
-                Log.d(TAG, "Keycode LEFT");
+                keyQ.add('L');
                 return true;
             case KeyEvent.KEYCODE_DPAD_UP:
-                Log.d(TAG, "Keycode UP");
+                keyQ.add('U');
                 return true;
             case KeyEvent.KEYCODE_DPAD_RIGHT:
-                Log.d(TAG, "Keycode RIGHT");
+                keyQ.add('R');
                 return true;
             case KeyEvent.KEYCODE_DPAD_CENTER:
-                Log.d(TAG, "Keycode OK");
+            case KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE:
+                keyQ.add('K');
                 return true;
             case KeyEvent.KEYCODE_CHANNEL_UP:
-                Log.d(TAG, "Keycode CHANNEL UP");
+            case KeyEvent.KEYCODE_MEDIA_REWIND:
+            case KeyEvent.KEYCODE_PAGE_UP:
+            case KeyEvent.KEYCODE_STAR:
+            case KeyEvent.KEYCODE_SEARCH:
+                keyQ.add('*');
                 return true;
             case KeyEvent.KEYCODE_CHANNEL_DOWN:
-                Log.d(TAG, "Keycode CHANNEL DOWN");
+            case KeyEvent.KEYCODE_MEDIA_FAST_FORWARD:
+            case KeyEvent.KEYCODE_PAGE_DOWN:
+            case KeyEvent.KEYCODE_POUND:
+                keyQ.add('#');
                 return true;
             case KeyEvent.KEYCODE_BACK:
-                Log.d(TAG, "Keycode BACK");
+                keyQ.add('B');
+                return true;
+            case KeyEvent.KEYCODE_0:
+            case KeyEvent.KEYCODE_MEDIA_RECORD:
+                keyQ.add('0');
+                return true;
+            case KeyEvent.KEYCODE_1:
+                keyQ.add('1');
+                return true;
+            case KeyEvent.KEYCODE_2:
+                keyQ.add('2');
+                return true;
+            case KeyEvent.KEYCODE_3:
+                keyQ.add('3');
+                return true;
+            case KeyEvent.KEYCODE_4:
+                keyQ.add('4');
+                return true;
+            case KeyEvent.KEYCODE_5:
+                keyQ.add('5');
+                return true;
+            case KeyEvent.KEYCODE_6:
+                keyQ.add('6');
+                return true;
+            case KeyEvent.KEYCODE_7:
+                keyQ.add('7');
+                return true;
+            case KeyEvent.KEYCODE_8:
+                keyQ.add('8');
+                return true;
+            case KeyEvent.KEYCODE_9:
+                keyQ.add('9');
                 return true;
             default:
-                Log.d(TAG, "Keycode " + keyCode);
+                Log.d(TAG, "unrecognised keycode " + keyCode);
                 return super.onKeyUp(keyCode, event);
         }
     }
@@ -536,7 +583,6 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
                                 | View.SYSTEM_UI_FLAG_LOW_PROFILE
                                 | View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
                                 | View.SYSTEM_UI_FLAG_FULLSCREEN);
-                Log.d(TAG, "hide UI");
                 visibleUI = false;
             }
         }
@@ -556,7 +602,6 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
                         View.SYSTEM_UI_FLAG_LAYOUT_STABLE
                                 | View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
                                 | View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN);
-                Log.d(TAG, "show UI");
                 visibleUI = true;
             }
         }
@@ -571,9 +616,8 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
         UsbDevice device = null;
         UsbManager usbManager = (UsbManager) getSystemService(Context.USB_SERVICE);
         for (UsbDevice v : usbManager.getDeviceList().values()) {
-            Log.d(TAG, "Found USB device");
-            Log.d(TAG, "Product: " + v.getProductName() + " Vendor: "
-                    + v.getVendorId() + " Device: " + v.getDeviceName());
+            Log.d(TAG, "found USB product: " + v.getProductName() + " vendor: "
+                    + v.getVendorId() + " device: " + v.getDeviceName());
             if (v.getProductName().equals("USB Serial")) {
                 device = v;
                 break;
@@ -649,19 +693,16 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
     }
 
     public void clearHitLights() {
-        Log.d(TAG, "clearing hit lights");
         setHitLights(Hit.None, Hit.None);
     }
 
     public void setScoreA(String s_A) {
         scoreA = s_A;
-        Log.d(TAG, "set score A " + s_A);
         setScore(scoreA, scoreB);
     }
 
     public void setScoreB(String s_B) {
         scoreB = s_B;
-        Log.d(TAG, "set score B " + s_B);
         setScore(scoreA, scoreB);
     }
 
@@ -677,7 +718,6 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
 
     public void displayScore(String scoreA, String scoreB) {
         String score = scoreA + " " + scoreB;
-        Log.d(TAG, "setScore: " + score);
 
         if (scoreHidden) {
             clearScore();
@@ -695,7 +735,6 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
     }
 
     public void clearScore() {
-        Log.d(TAG, "clear score");
         scoreA = scoreB = "00";
         if (orientation == Orientation.Landscape) {
             textScoreA.setTextColor(Color.BLACK);
@@ -763,13 +802,11 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
         } else {
             clock = timeMins + ":" + timeSecs;
         }
-        Log.d(TAG, "setClock: " + clock);
         textClock.setTextColor(Color.GREEN);
         textClock.setText(clock);
     }
 
     public void clearClock() {
-        Log.d(TAG, "clear clock");
         textClock.setTextColor(Color.BLACK);
         textClock.setText("----");
     }
@@ -1015,12 +1052,13 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
                i++;
                clearPassivity();
                setShortCircuit(whichFencer, scState);
+           } else if (data[i] == pollMarker && data[i+1] == '?') {
+               processPoll();
            }
         }
     }
 
     public void processCmd(String cmd) {
-        Log.d(TAG, "Command: " + cmd);
         switch (cmd) {
             case "GO":
                 Log.d(TAG, "fencing box started up");
@@ -1036,7 +1074,7 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
                 try {
                     socket.write("OK".getBytes(StandardCharsets.UTF_8));
                 } catch (IOException e) {
-                    Log.d(TAG, "Unable to respond to fencing scoring box");
+                    Log.d(TAG, "unable to respond to GO command");
                 }
                 break;
 
@@ -1105,7 +1143,7 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
                 break;
 
             case "HS":
-                Log.d(TAG, "Hide score");
+                Log.d(TAG, "hide score");
                 scoreHidden = true;
                 clearScore();
                 break;
@@ -1207,10 +1245,12 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
                 break;
 
             case "Z1":
+                Log.d(TAG, "sound on");
                 sound.soundOn();
                 break;
 
             case "Z0":
+                Log.d(TAG, "sound off");
                 sound.soundOff();
                 break;
 
@@ -1282,8 +1322,39 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
         }
     }
 
+    public void processPoll() {
+        /* If one or more keys has been pressed, send them back one by one.
+           The poll command sent by the fencing scoring box is '/?' and the
+           repeater responds with '/' plus a key, for example '/K' for OK.
+           Key list:
+           0-9
+           * (CHANNEL UP)
+           # (CHANNEL DOWN)
+           K (OK)
+           U (UP)
+           D (DOWN)
+           L (LEFT)
+           R (RIGHT)
+           B (BACK)
+        */
+        Iterator it = keyQ.iterator();
+        String msg;
+
+        while (it.hasNext()) {
+            Character key = (Character) it.next();
+            msg = "/" + key.toString();
+            it.remove();
+
+            try {
+                socket.write(msg.getBytes(StandardCharsets.UTF_8));
+            } catch (IOException e) {
+                Log.d(TAG, "unable to respond to poll");
+            }
+        }
+    }
+
     public void setShortCircuit(String fencer, String scState) {
-        Log.d(TAG, "Short-circuit: fencer " + fencer + " state " + scState);
+        Log.d(TAG, "short-circuit: fencer " + fencer + " state " + scState);
 
         // Ignore for now, as the short-circuit LED already works
     }
@@ -1346,7 +1417,6 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
     public void onSerialRead(byte[] data) {
         /* Process the incoming data here */
         String s = new String(data, StandardCharsets.UTF_8);
-        Log.d(TAG, "data: " + s);
         processData(data);
     }
 

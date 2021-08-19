@@ -4,7 +4,7 @@
 //  Dev:     Wnew                                                            //
 //  Date:    Nov     2012                                                    //
 //  Updated: Sept    2015                                                    //
-//  Updated: August 8 2021 Robin Terry, Skipton, UK                           //
+//  Updated: August 18 2021 Robin Terry, Skipton, UK                         //
 //                                                                           //
 //  Notes:   1. Basis of algorithm from digitalwestie on github. Thanks Mate //
 //           2. Used uint8_t instead of int where possible to optimise       //
@@ -28,9 +28,10 @@
 //          10. Added a up/down-counting stopwatch                           //
 //          11. Stores the selected weapon type in EEPROM                    //
 //          12. Stores the current mode (spar/bout/stopwatch) in EEPROM      //
-//          13. Added in the serial port indicator (for external indication) //
+//          13. Added in the serial port indicator (for repeater)            //
 //          14. The timer shows 1/100 sec in last 9 seconds                  //
-//          15. Support for a passivity timer and cards                              //
+//          15. Support for a passivity timer and cards                      //
+//          16. Support for polling the repeater for keypresses              //
 //===========================================================================//
 
 //============
@@ -94,6 +95,7 @@
 #define DIMDELAY       (5UL*60UL*ONESEC)  // Delay before starting to dim the LED display (ms)
 #define DIMINTERVAL    (500)              // Interval between LED display dimming cycle steps (ms)
 #define MAX_STOPWATCH  ((60UL*60UL)-1)    // Maximum stopwatch time (59:59)
+#define REPEATERPOLL   (100)
 
 #ifdef PASSIVITY
 #define MAX_PASSIVITY  (60UL)             // Passivity timer (seconds)
@@ -612,6 +614,7 @@ PassivityCard pCard[2]    = { P_CARD_NONE, P_CARD_NONE };
 #endif
 
 #ifdef SERIAL_INDICATOR
+long repeaterPollTime     = 0;
 bool repeaterPresent      = false;
 #endif
 
@@ -1365,6 +1368,38 @@ bool restoreDisplay()
 //================
 // Configuration
 //================
+#ifdef SERIAL_INDICATOR
+bool waitSerial(int response[], int rxData[], long waitMs)
+{
+   long serialWaitTime = millis() + waitMs;
+   
+   for (int i = 0; millis() < serialWaitTime;)
+   {
+      if (Serial.available())
+      {
+         rxData[i] = Serial.read();
+         
+         /* Wildcard in response, or valid response character? */
+         if (response[i] == '*' || rxData[i] == response[i])
+         {
+            i++;
+            if (response[i] == '\0')
+            {
+               return true;
+            }
+         }
+
+         /* Bad response */
+         else
+         {
+            break;
+         }
+      }
+   }
+   return false;
+}
+#endif
+
 void setup() 
 {
 #ifdef DEBUG_ALL
@@ -1438,37 +1473,15 @@ void setup()
    Serial.println("!GO");
 
    /* Wait one second for "OK" response from repeater */
-   long serialWaitTime = millis() + ONESEC;
+   int  response[] = { 'O', 'K', '\0' };
    int  rxData[] = { 0, 0 };
-   int  response[] = { 'O', 'K' };
 
-   for (int i = 0; millis() < serialWaitTime;)
+   repeaterPresent = false;
+   if (waitSerial(response, rxData, ONESEC))
    {
-      if (Serial.available())
-      {
-         rxData[i] = Serial.read();
-
-         /* Valid response character? */
-         if (rxData[i] == response[i])
-         {
-            if (i >= 1)
-            {
-               repeaterPresent = true;
-               break;
-            }
-            else
-            {
-               i++;
-            }
-         }
-
-         /* Bad response */
-         else
-         {
-            repeaterPresent = false;
-            break;
-         }
-      }
+      repeaterPresent = true;
+      // Initial poll delayed for one second
+      repeaterPollTime = millis()+ONESEC;
    }
    indicateWeapon();
 #endif
@@ -2184,11 +2197,23 @@ void transIR(unsigned long key)
    }
 
   //=============================
-  // Hobby Components handset
+  // Hobby Components handset and repeater control
   //=============================
   switch (key)
   {
+  case 'B': // BACK key on repeater control
+     if (timeState != TIM_STOPPED)
+     {
+        keyClick();
+        timeState = TIM_STOPPED;
+        displayTime();
+        break;
+     }
+
+     /* Otherwise drop through */
+     
   case 0xFF6897: // *
+  case '*':
      if (priorityInactive())
      {
         // In SPARRING mode? Go into BOUT mode
@@ -2261,6 +2286,7 @@ void transIR(unsigned long key)
      }
      break;
   case 0xFF629D: // 2
+  case '2':
      if (priorityInactive())
      {
         if (timeState == TIM_STOPPED)
@@ -2307,6 +2333,7 @@ void transIR(unsigned long key)
      }
      break;
   case 0xFF10EF: // LEFT
+  case 'L':
      if (priorityInactive())
      {
         if (inBoutOrSpar())
@@ -2381,6 +2408,7 @@ void transIR(unsigned long key)
      }
      break;
   case 0xFF38C7: // OK
+  case 'K':
      if (priorityInactive())
      {
 #ifdef STOPWATCH
@@ -2610,6 +2638,7 @@ void transIR(unsigned long key)
      lastKey = K_OK;
      break;
   case 0xFF5AA5: // RIGHT
+  case 'R':
      if (priorityInactive())
      {
         if (inBoutOrSpar())
@@ -2678,6 +2707,7 @@ void transIR(unsigned long key)
      }
      break;
   case 0xFF4AB5: // DOWN
+  case 'D':
      if (priorityInactive())
      {
         if (inBoutOrSpar())
@@ -2769,6 +2799,7 @@ void transIR(unsigned long key)
      }
      break;
   case 0xFF9867: // 0
+  case '0':
      if (priorityInactive())
      {
         if (inBoutOrBreak())
@@ -2791,6 +2822,7 @@ void transIR(unsigned long key)
      }
      break;
   case 0xFF18E7: // UP
+  case 'U':
      if (priorityInactive())
      {
         if (inBoutOrSpar())
@@ -2882,6 +2914,7 @@ void transIR(unsigned long key)
      }
      break;
   case 0xFFB04F: // #
+  case '#':
 #ifdef STOPWATCH
      if (inStopWatch())
      {
@@ -2949,6 +2982,7 @@ void transIR(unsigned long key)
      resetHits();
      break;
   case 0xFFA25D: // 1
+  case '1':
      if (priorityInactive())
      {
         // If in a bout, wind back timer
@@ -2978,6 +3012,7 @@ void transIR(unsigned long key)
      }
      break;
   case 0xFFE21D: // 3
+  case '3':
      if (priorityInactive())
      {
         // If in a bout, wind forward timer
@@ -3007,8 +3042,10 @@ void transIR(unsigned long key)
      }
      break;
   case 0xFF22DD: // 4
+  case '4':
      break;
   case 0xFF02FD: // 5
+  case '5':
      if (priorityInactive())
      {
         if (inBoutOrSpar())
@@ -3027,8 +3064,10 @@ void transIR(unsigned long key)
      }
      break;
   case 0xFFC23D: // 6
+  case '6':
      break;
   case 0xFFE01F: // 7
+  case '7':
      if (priorityInactive())
      {
         if (inBout())
@@ -3058,6 +3097,7 @@ void transIR(unsigned long key)
      }
      break;
   case 0xFFA857: // 8
+  case '8':
      if (priorityInactive())
      {
         if (inBout())
@@ -3092,6 +3132,7 @@ void transIR(unsigned long key)
      resetHits();
      break;
   case 0xFF906F: // 9
+  case '9':
      if (priorityInactive())
      {
         if (inBout())
@@ -3120,7 +3161,7 @@ void transIR(unsigned long key)
         resetHits();
      }
      break;
-  case 0xFFFFFFFF: // repeat
+  case 0xFFFFFFFF: // IR repeat
      // Only certain keys can repeat
      if (lastKey == K_WIND_BACK 
          || 
@@ -3830,6 +3871,9 @@ void loop()
 #endif
       // Do processing for a given weapon
       doWeapon();
+#ifdef SERIAL_INDICATOR
+      repeaterPollForKey();
+#endif      
 
       // Check for hits and signal
       if (isHit())
@@ -4061,6 +4105,9 @@ void loop()
 #endif
       // Do processing for a given weapon
       doWeapon();
+#ifdef SERIAL_INDICATOR
+      repeaterPollForKey();
+#endif
 
       // Flash the display when a hit is active?
       if (hitDisplay)
@@ -4200,6 +4247,9 @@ void loop()
 #endif
       // Do processing for a given weapon
       doWeapon();
+#ifdef SERIAL_INDICATOR
+      repeaterPollForKey();
+#endif
 
       // Do we need to flash up the score?
       if (scoreFlash)
@@ -4330,6 +4380,9 @@ void loop()
 #endif
       // Do processing for a given weapon
       doWeapon();
+#ifdef SERIAL_INDICATOR
+      repeaterPollForKey();
+#endif 
 
       // Handle main timer
       if (timeState != TIM_STOPPED)
@@ -4421,6 +4474,9 @@ void loop()
          checkPassivity();
       }
 #endif
+#ifdef SERIAL_INDICATOR
+      repeaterPollForKey();
+#endif      
    }
 }
 
@@ -4918,7 +4974,6 @@ void signalHits()
 //======================
 // Reset all variables
 //======================
-
 void resetValues() 
 {
    // Turn off buzzer
@@ -5107,6 +5162,36 @@ BoutState readState()
 
       default:
          return STA_NONE;
+   }
+}
+#endif
+
+#ifdef SERIAL_INDICATOR
+bool repeaterPollForKey()
+{
+   if (repeaterPresent)
+   {
+      /* Poll the repeater after a period of time */
+      if (millis() >= repeaterPollTime)
+      {
+         repeaterPollTime = millis()+REPEATERPOLL;
+         Serial.println("/?");
+         int response[] = { '/', '*', '\0' };
+         int rxData[] = { 0, 0 };
+
+         /* Wait for 10ms for a key back from the repeater, if any */
+         if (waitSerial(response, rxData, 10))
+         {
+            unsigned long key = (unsigned long) rxData[1];
+
+            /* Valid keypress? ('-' means 'no key') */
+            if (key != '-')
+            {
+               /* Process the key */
+               transIR(key);
+            }
+         }
+      }
    }
 }
 #endif

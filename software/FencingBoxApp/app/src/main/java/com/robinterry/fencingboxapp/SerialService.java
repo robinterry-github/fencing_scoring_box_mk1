@@ -178,7 +178,6 @@ public class SerialService extends Service implements SerialListener {
     }
 
     public void onSerialRead(byte[] data) {
-        Log.d(TAG, "onSerialRead data " + data.length);
         if(connected) {
             synchronized (this) {
                 if (listener != null) {
