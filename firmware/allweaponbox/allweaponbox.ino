@@ -5179,8 +5179,8 @@ bool repeaterPollForKey()
          int response[] = { '/', '*', '\0' };
          int rxData[] = { 0, 0 };
 
-         /* Wait for 10ms for a key back from the repeater, if any */
-         if (waitSerial(response, rxData, 10))
+         /* Wait for 5ms for a key back from the repeater, if any */
+         if (waitSerial(response, rxData, 5))
          {
             unsigned long key = (unsigned long) rxData[1];
 
