@@ -21,6 +21,7 @@ import android.graphics.drawable.ColorDrawable;
 import android.hardware.usb.UsbDevice;
 import android.hardware.usb.UsbDeviceConnection;
 import android.hardware.usb.UsbManager;
+import android.os.Build;
 import android.os.IBinder;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -31,6 +32,8 @@ import android.view.Window;
 import android.view.Gravity;
 import android.view.MotionEvent;
 import android.view.KeyEvent;
+import android.view.WindowInsets;
+import android.view.WindowInsetsController;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.BatteryManager;
@@ -110,7 +113,7 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
     private CardLightView cardLightA, cardLightB;
     private final int ledSize = 200;
     private final boolean controlUI = true;
-    private boolean visibleUI = false;
+    private boolean visibleUI = true;
     private boolean soundMute = false;
     private FencingBoxSound sound;
 
@@ -232,7 +235,7 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
         startService(new Intent(this, SerialService.class));
         orientation = getCurrentOrientation();
         setupText(orientation);
-        hideUIIfVisible();
+        hideUI();
         if (mode == Mode.Demo) {
             showDemo();
         } else {
@@ -295,7 +298,7 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
             bindService(new Intent(this, SerialService.class), this, Context.BIND_AUTO_CREATE);
         }
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
-        hideUIIfVisible();
+        hideUI();
         sound.soundOff();
         Log.d(TAG, "onResume end");
     }
@@ -454,6 +457,7 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
     }
 
     public void showDemo() {
+        Log.d(TAG, "demo");
         hideUI();
         displayHitLights(Hit.OnTarget, Hit.OnTarget);
         displayScore("00", "00");
@@ -513,83 +517,97 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
     }
 
     protected void setupText(Orientation orient) {
-        if (orient == Orientation.Landscape) {
-            textScoreA = landBinding.textScoreAL;
-            textScoreB = landBinding.textScoreBL;
-            textScoreA.setGravity(Gravity.CENTER);
-            textScoreB.setGravity(Gravity.CENTER);
-            textClock = landBinding.textClockL;
-            priorityA = landBinding.priorityAL;
-            priorityB = landBinding.priorityBL;
-            passivityClock = landBinding.passivityClockL;
-            batteryLevel = landBinding.batteryLevelL;
-            time = landBinding.timeL;
-            passCard[0] = landBinding.pCardAL;
-            passCard[1] = landBinding.pCardBL;
-            muteIcon = (ImageView) landBinding.iconMuteL;
-        } else {
-            textScore = portBinding.textScore;
-            textScore.setGravity(Gravity.CENTER);
-            textClock = portBinding.textClock;
-            priorityA = portBinding.priorityA;
-            priorityB = portBinding.priorityB;
-            passivityClock = portBinding.passivityClock;
-            batteryLevel = portBinding.batteryLevel;
-            time = portBinding.time;
-            passCard[0] = portBinding.pCardA;
-            passCard[1] = portBinding.pCardB;
-            muteIcon = (ImageView) portBinding.iconMute;
-        }
-        try {
-            Typeface face = Typeface.createFromAsset(getAssets(), "font/DSEG7Classic-Bold.ttf");
-            Log.d(TAG, "typeface for score " + face);
-            if (orientation == Orientation.Landscape) {
-                textScoreA.setTypeface(face);
-                textScoreA.setTextColor(Color.RED);
-                textScoreB.setTypeface(face);
-                textScoreB.setTextColor(Color.RED);
-            } else {
-                textScore.setTypeface(face);
-                textScore.setTextColor(Color.RED);
+        runOnUiThread(new Runnable() {
+            public void run() {
+                if (orient == Orientation.Landscape) {
+                    textScoreA = landBinding.textScoreAL;
+                    textScoreB = landBinding.textScoreBL;
+                    textScoreA.setGravity(Gravity.CENTER);
+                    textScoreB.setGravity(Gravity.CENTER);
+                    textClock = landBinding.textClockL;
+                    priorityA = landBinding.priorityAL;
+                    priorityB = landBinding.priorityBL;
+                    passivityClock = landBinding.passivityClockL;
+                    batteryLevel = landBinding.batteryLevelL;
+                    time = landBinding.timeL;
+                    passCard[0] = landBinding.pCardAL;
+                    passCard[1] = landBinding.pCardBL;
+                    muteIcon = (ImageView) landBinding.iconMuteL;
+                } else {
+                    textScore = portBinding.textScore;
+                    textScore.setGravity(Gravity.CENTER);
+                    textClock = portBinding.textClock;
+                    priorityA = portBinding.priorityA;
+                    priorityB = portBinding.priorityB;
+                    passivityClock = portBinding.passivityClock;
+                    batteryLevel = portBinding.batteryLevel;
+                    time = portBinding.time;
+                    passCard[0] = portBinding.pCardA;
+                    passCard[1] = portBinding.pCardB;
+                    muteIcon = (ImageView) portBinding.iconMute;
+                }
+                try {
+                    Typeface face = Typeface.createFromAsset(getAssets(), "font/DSEG7Classic-Bold.ttf");
+                    Log.d(TAG, "typeface for score " + face);
+                    if (orientation == Orientation.Landscape) {
+                        textScoreA.setTypeface(face);
+                        textScoreA.setTextColor(Color.RED);
+                        textScoreB.setTypeface(face);
+                        textScoreB.setTextColor(Color.RED);
+                    } else {
+                        textScore.setTypeface(face);
+                        textScore.setTextColor(Color.RED);
+                    }
+                    textClock.setTypeface(face);
+                    textClock.setTextColor(Color.GREEN);
+                    textClock.setGravity(Gravity.CENTER);
+                    passivityClock.setTypeface(face);
+                    passivityClock.setTextColor(Color.GREEN);
+                    passivityClock.setGravity(Gravity.CENTER);
+                    batteryLevel.setTextColor(Color.WHITE);
+                    batteryLevel.setGravity(Gravity.CENTER);
+                    priorityA.setTextColor(Color.BLACK);
+                    priorityA.setGravity(Gravity.CENTER);
+                    priorityB.setTextColor(Color.BLACK);
+                    priorityB.setGravity(Gravity.CENTER);
+                    time.setTextColor(Color.WHITE);
+                    time.setGravity(Gravity.CENTER);
+                    passCard[0].setTypeface(null, Typeface.BOLD);
+                    passCard[0].setTextColor(Color.BLACK);
+                    passCard[0].setGravity(Gravity.CENTER);
+                    passCard[1].setTypeface(null, Typeface.BOLD);
+                    passCard[1].setTextColor(Color.BLACK);
+                    passCard[1].setGravity(Gravity.CENTER);
+                } catch (Exception e) {
+                    Log.d(TAG, "unable to find font " + e);
+                }
             }
-            textClock.setTypeface(face);
-            textClock.setTextColor(Color.GREEN);
-            textClock.setGravity(Gravity.CENTER);
-            passivityClock.setTypeface(face);
-            passivityClock.setTextColor(Color.GREEN);
-            passivityClock.setGravity(Gravity.CENTER);
-            batteryLevel.setTextColor(Color.WHITE);
-            batteryLevel.setGravity(Gravity.CENTER);
-            priorityA.setTextColor(Color.BLACK);
-            priorityA.setGravity(Gravity.CENTER);
-            priorityB.setTextColor(Color.BLACK);
-            priorityB.setGravity(Gravity.CENTER);
-            time.setTextColor(Color.WHITE);
-            time.setGravity(Gravity.CENTER);
-            //passCard[0].setTypeface(face);
-            passCard[0].setTypeface(null, Typeface.BOLD);
-            passCard[0].setTextColor(Color.BLACK);
-            passCard[0].setGravity(Gravity.CENTER);
-            //passCard[1].setTypeface(face);
-            passCard[1].setTypeface(null, Typeface.BOLD);
-            passCard[1].setTextColor(Color.BLACK);
-            passCard[1].setGravity(Gravity.CENTER);
-        } catch (Exception e) {
-            Log.d(TAG, "unable to find font " + e);
-        }
+        });
     }
 
     private void hideUI() {
         if (controlUI) {
             if (mode != Mode.None) {
-                View decorView = getWindow().getDecorView();
-                decorView.setSystemUiVisibility(
-                        View.SYSTEM_UI_FLAG_LAYOUT_STABLE
-                                | View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
-                                | View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
-                                | View.SYSTEM_UI_FLAG_LOW_PROFILE
-                                | View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
-                                | View.SYSTEM_UI_FLAG_FULLSCREEN);
+                runOnUiThread(new Runnable() {
+                    public void run() {
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                            getWindow().setDecorFitsSystemWindows(false);
+                            if (getWindow().getInsetsController() != null) {
+                                getWindow().getInsetsController().hide(WindowInsets.Type.statusBars() | WindowInsets.Type.navigationBars());
+                                getWindow().getInsetsController().setSystemBarsBehavior(WindowInsetsController.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE);
+                            }
+                        } else {
+                            View decorView = getWindow().getDecorView();
+                            decorView.setSystemUiVisibility(
+                                    View.SYSTEM_UI_FLAG_LAYOUT_STABLE
+                                            | View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
+                                            | View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
+                                            | View.SYSTEM_UI_FLAG_LOW_PROFILE
+                                            | View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
+                                            | View.SYSTEM_UI_FLAG_FULLSCREEN);
+                        }
+                    }
+                });
                 visibleUI = false;
             }
         }
@@ -604,11 +622,22 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
     private void showUI() {
         if (controlUI) {
             if (!visibleUI) {
-                View decorView = getWindow().getDecorView();
-                decorView.setSystemUiVisibility(
-                        View.SYSTEM_UI_FLAG_LAYOUT_STABLE
-                                | View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
-                                | View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN);
+                runOnUiThread(new Runnable() {
+                    public void run() {
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                            getWindow().setDecorFitsSystemWindows(true);
+                            if (getWindow().getInsetsController() != null) {
+                                getWindow().getInsetsController().show(WindowInsets.Type.statusBars() | WindowInsets.Type.navigationBars());
+                            }
+                        } else {
+                            View decorView = getWindow().getDecorView();
+                            decorView.setSystemUiVisibility(
+                                    View.SYSTEM_UI_FLAG_LAYOUT_STABLE
+                                            | View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
+                                            | View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN);
+                        }
+                    }
+                });
                 visibleUI = true;
             }
         }
@@ -726,32 +755,40 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
     public void displayScore(String scoreA, String scoreB) {
         String score = scoreA + " " + scoreB;
 
-        if (scoreHidden) {
-            clearScore();
-        } else if (mode == Mode.Stopwatch || mode == Mode.None) {
-            clearScore();
-        } else if (orientation == Orientation.Landscape) {
-            textScoreA.setTextColor(Color.RED);
-            textScoreA.setText(scoreA);
-            textScoreB.setTextColor(Color.RED);
-            textScoreB.setText(scoreB);
-        } else {
-            textScore.setTextColor(Color.RED);
-            textScore.setText(score);
-        }
+        runOnUiThread(new Runnable() {
+            public void run() {
+                if (scoreHidden) {
+                    clearScore();
+                } else if (mode == Mode.Stopwatch || mode == Mode.None) {
+                    clearScore();
+                } else if (orientation == Orientation.Landscape) {
+                    textScoreA.setTextColor(Color.RED);
+                    textScoreA.setText(scoreA);
+                    textScoreB.setTextColor(Color.RED);
+                    textScoreB.setText(scoreB);
+                } else {
+                    textScore.setTextColor(Color.RED);
+                    textScore.setText(score);
+                }
+            }
+        });
     }
 
     public void clearScore() {
         scoreA = scoreB = "00";
-        if (orientation == Orientation.Landscape) {
-            textScoreA.setTextColor(Color.BLACK);
-            textScoreB.setTextColor(Color.BLACK);
-            textScoreA.setText("--");
-            textScoreB.setText("--");
-        } else {
-            textScore.setTextColor(Color.BLACK);
-            textScore.setText("----");
-        }
+        runOnUiThread(new Runnable() {
+            public void run() {
+                if (orientation == Orientation.Landscape) {
+                    textScoreA.setTextColor(Color.BLACK);
+                    textScoreB.setTextColor(Color.BLACK);
+                    textScoreA.setText("--");
+                    textScoreB.setText("--");
+                } else {
+                    textScore.setTextColor(Color.BLACK);
+                    textScore.setText("----");
+                }
+            }
+        });
     }
 
     public void resetClock() {
@@ -809,13 +846,21 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
         } else {
             clock = timeMins + ":" + timeSecs;
         }
-        textClock.setTextColor(Color.GREEN);
-        textClock.setText(clock);
+        runOnUiThread(new Runnable() {
+            public void run() {
+                textClock.setTextColor(Color.GREEN);
+                textClock.setText(clock);
+            }
+        });
     }
 
     public void clearClock() {
-        textClock.setTextColor(Color.BLACK);
-        textClock.setText("----");
+        runOnUiThread(new Runnable() {
+            public void run() {
+                textClock.setTextColor(Color.BLACK);
+                textClock.setText("----");
+            }
+        });
     }
 
     public void setCard() {
@@ -824,15 +869,23 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
     }
 
     public void displayCardA(boolean yellowCard, boolean redCard, boolean shortCircuit) {
-        cardLightA.showYellow(yellowCard);
-        cardLightA.showRed(redCard);
-        cardLightA.showShortCircuit(shortCircuit);
+        runOnUiThread(new Runnable() {
+            public void run() {
+                cardLightA.showYellow(yellowCard);
+                cardLightA.showRed(redCard);
+                cardLightA.showShortCircuit(shortCircuit);
+            }
+        });
     }
 
     public void displayCardB(boolean yellowCard, boolean redCard, boolean shortCircuit) {
-        cardLightB.showYellow(yellowCard);
-        cardLightB.showRed(redCard);
-        cardLightB.showShortCircuit(shortCircuit);
+        runOnUiThread(new Runnable() {
+            public void run() {
+                cardLightB.showYellow(yellowCard);
+                cardLightB.showRed(redCard);
+                cardLightB.showShortCircuit(shortCircuit);
+            }
+        });
     }
 
     public void setCard(String whichFencer, Integer card) {
@@ -883,8 +936,12 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
     }
 
     public void displayPriority(boolean priA, boolean priB) {
-        priorityA.setTextColor(priA ? Color.RED:Color.BLACK);
-        priorityB.setTextColor(priB ? Color.RED:Color.BLACK);
+        runOnUiThread(new Runnable() {
+            public void run() {
+                priorityA.setTextColor(priA ? Color.RED : Color.BLACK);
+                priorityB.setTextColor(priB ? Color.RED : Color.BLACK);
+            }
+        });
     }
 
     public void clearPriority()
@@ -1059,8 +1116,11 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
                i++;
                clearPassivity();
                setShortCircuit(whichFencer, scState);
-           } else if (data[i] == pollMarker && data[i+1] == '?') {
-               processPoll();
+           } else if (data[i] == pollMarker) {
+               i++;
+               if (data[i] == '?') {
+                   processPoll();
+               }
            }
         }
     }
@@ -1263,6 +1323,11 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
                 sound.soundOff();
                 break;
 
+            case "CR":
+                Log.d(TAG, "clock restart");
+                hideUI();
+                break;
+
             default:
                 Log.d(TAG, "unknown command " + cmd);
                 break;
@@ -1275,33 +1340,48 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
     }
 
     public void processHit(String hit) {
-        hideUI();
+        Log.d(TAG, "process hit");
 
         /* Process off-target hits first */
         if (weapon == Weapon.Foil) {
             if (hit.equals("O0")) {
+                hideUI();
                 hitA = Hit.OffTarget;
             }
             if (hit.equals("O1")) {
+                hideUI();
                 hitB = Hit.OffTarget;
             }
         }
 
         /* Process on-target hits */
         if (hit.equals("H0")) {
+            hideUI();
             hitA = hitB = Hit.None;
         }
         if (hit.equals("H1")) {
+            hideUI();
             hitA = Hit.OnTarget;
         }
         if (hit.equals("H2")) {
+            hideUI();
             hitB = Hit.OnTarget;
         }
         if (hit.equals("H3")) {
+            hideUI();
             hitA = Hit.OnTarget;
             hitB = Hit.None;
         }
         if (hit.equals("H4")) {
+            hideUI();
+            hitA = Hit.None;
+            hitB = Hit.OnTarget;
+        }
+        if (hit.equals("S0")) {
+            hitA = Hit.OnTarget;
+            hitB = Hit.None;
+        }
+        if (hit.equals("S1")) {
             hitA = Hit.None;
             hitB = Hit.OnTarget;
         }
@@ -1309,6 +1389,7 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
     }
 
     public void processCard(String whichFencer, String whichCard) {
+        Log.d(TAG, "process card");
         hideUI();
 
         if (whichFencer.equals("0")) {

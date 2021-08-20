@@ -1369,11 +1369,12 @@ bool restoreDisplay()
 // Configuration
 //================
 #ifdef SERIAL_INDICATOR
-bool waitSerial(int response[], int rxData[], long waitMs)
+bool waitSerial(int response[], int rxData[], long waitUs)
 {
-   long serialWaitTime = millis() + waitMs;
+   long currentTime = micros();
+   long serialWaitTime = micros() + waitUs;
    
-   for (int i = 0; millis() < serialWaitTime;)
+   for (int i = 0;;)
    {
       if (Serial.available())
       {
@@ -1394,6 +1395,12 @@ bool waitSerial(int response[], int rxData[], long waitMs)
          {
             break;
          }
+      }
+
+      /* Check the timeout at the end - check for wraparound */
+      if (micros() > serialWaitTime || micros() < currentTime)
+      {
+         break;
       }
    }
    return false;
@@ -1476,7 +1483,7 @@ void setup()
    int  response[] = { 'O', 'K', '\0' };
    int  rxData[] = { 0, 0 };
 
-   if (waitSerial(response, rxData, ONESEC))
+   if (waitSerial(response, rxData, ONESEC_US))
    {
       repeaterPresent = true;
       // Initial poll delayed for one second
@@ -1636,6 +1643,9 @@ void restartTimer()
     {
         timerStart = true;
         timerMs    = millis();
+#ifdef SERIAL_INDICATOR
+        Serial.println("!CR");
+#endif        
     }
 #endif
 }
@@ -2009,7 +2019,7 @@ void updateCardLeds(int Leds)
    digitalWrite(latchPin, HIGH);
 #endif
 #ifdef SERIAL_INDICATOR
-   if (repeaterPresent)
+   if (repeaterPresent && !inStopWatch())
    {
       int LedsA = 0;
       if (cardLeds & A_YELLOW)
@@ -3492,7 +3502,7 @@ void resetStopWatch(bool restart, bool lightLeds)
 #ifdef SERIAL_INDICATOR
      if (repeaterPresent)
      {
-        Serial.println("$H3");
+        Serial.println("$S0");
      }
 #endif
    }
@@ -3546,7 +3556,7 @@ void stopWatchLeds()
 #ifdef SERIAL_INDICATOR
      if (repeaterPresent)
      {
-        Serial.println(stopWatchLeds ? "$H4":"$H3");
+        Serial.println(stopWatchLeds ? "$S1":"$S0");
      }
 #endif
   }
@@ -5183,7 +5193,7 @@ bool repeaterPollForKey()
          int rxData[] = { 0, 0 };
 
          /* Wait for 1ms for a key back from the repeater, if any */
-         if (waitSerial(response, rxData, 1))
+         if (waitSerial(response, rxData, 1000))
          {
             unsigned long key = (unsigned long) rxData[1];
 
