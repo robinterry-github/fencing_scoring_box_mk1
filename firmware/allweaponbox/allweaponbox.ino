@@ -615,7 +615,7 @@ PassivityCard pCard[2]    = { P_CARD_NONE, P_CARD_NONE };
 
 #ifdef SERIAL_INDICATOR
 long repeaterPollTime     = 0;
-bool repeaterPresent      = false;
+bool repeaterPresent      = true;
 #endif
 
 bool inBout()
@@ -1472,16 +1472,19 @@ void setup()
    Serial.println("");
    Serial.println("!GO");
 
-   /* Wait one second for "OK" response from repeater */
+   /* Wait one second for initial "OK" response from repeater */
    int  response[] = { 'O', 'K', '\0' };
    int  rxData[] = { 0, 0 };
 
-   repeaterPresent = false;
    if (waitSerial(response, rxData, ONESEC))
    {
       repeaterPresent = true;
       // Initial poll delayed for one second
       repeaterPollTime = millis()+ONESEC;
+   }
+   else
+   {
+      repeaterPresent = false;
    }
    indicateWeapon();
 #endif
@@ -5179,8 +5182,8 @@ bool repeaterPollForKey()
          int response[] = { '/', '*', '\0' };
          int rxData[] = { 0, 0 };
 
-         /* Wait for 5ms for a key back from the repeater, if any */
-         if (waitSerial(response, rxData, 5))
+         /* Wait for 1ms for a key back from the repeater, if any */
+         if (waitSerial(response, rxData, 1))
          {
             unsigned long key = (unsigned long) rxData[1];
 

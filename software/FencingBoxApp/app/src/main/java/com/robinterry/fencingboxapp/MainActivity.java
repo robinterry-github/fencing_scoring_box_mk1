@@ -111,6 +111,7 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
     private final int ledSize = 200;
     private final boolean controlUI = true;
     private boolean visibleUI = false;
+    private boolean soundMute = false;
     private FencingBoxSound sound;
 
     /* View bindings */
@@ -411,8 +412,12 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
             case KeyEvent.KEYCODE_BACK:
                 keyQ.add('B');
                 return true;
+            case KeyEvent.KEYCODE_VOLUME_MUTE:
+                soundMute = (soundMute == true) ? false:true;
+                return super.onKeyUp(keyCode, event);
             case KeyEvent.KEYCODE_0:
             case KeyEvent.KEYCODE_MEDIA_RECORD:
+            case KeyEvent.KEYCODE_GUIDE:
                 keyQ.add('0');
                 return true;
             case KeyEvent.KEYCODE_1:
@@ -459,7 +464,9 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
         displayPassivity(passivityMaxTime);
         displayPassivityCard(0, PassivityCard.Red2);
         displayPassivityCard(1, PassivityCard.Yellow);
-        sound.soundOn(1000);
+        if (!soundMute) {
+            sound.soundOn(1000);
+        }
     }
 
     public void startSystemMonitor() {
@@ -471,7 +478,7 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
                 if (!visibleUI) {
                     BatteryManager batt = (BatteryManager) getApplicationContext().getSystemService(BATTERY_SERVICE);
                     int level = batt.getIntProperty(BatteryManager.BATTERY_PROPERTY_CAPACITY);
-                    if (level < batteryDangerLevel) {
+                    if (level <= batteryDangerLevel) {
                         if (!batteryDangerActive) {
                             batteryDangerActive = batteryDangerFlash = true;
                         } else {
@@ -489,7 +496,7 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
                     time.setText(tm);
 
                     // Control the "volume muted" icon
-                    muteIcon.setImageAlpha(sound.isMuted() ? 255:0);
+                    muteIcon.setImageAlpha((soundMute || sound.isMuted()) ? 255:0);
                 } else {
                     batteryLevel.setTextColor(Color.BLACK);
                 }
@@ -1246,7 +1253,9 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
 
             case "Z1":
                 Log.d(TAG, "sound on");
-                sound.soundOn();
+                if (!soundMute) {
+                    sound.soundOn();
+                }
                 break;
 
             case "Z0":
