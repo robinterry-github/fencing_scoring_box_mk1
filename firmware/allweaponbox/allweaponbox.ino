@@ -149,6 +149,11 @@
 #include "EEPROM.h"
 #endif
 
+#ifdef SERIAL_INDICATOR
+// Enable this when testing the repeater
+//#define SERIAL_INDICATOR_TEST
+#endif
+
 // Various debug levels
 #if defined(DEBUG_L1) || defined(DEBUG_L2) \
  || defined(DEBUG_L3) || defined(DEBUG_L4) \
@@ -1493,6 +1498,9 @@ void setup()
    {
       repeaterPresent = false;
    }
+#ifdef SERIAL_INDICATOR_TEST
+   repeaterPresent = true;
+#endif   
    indicateWeapon();
 #endif
 
