@@ -115,7 +115,7 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
     private final boolean controlUI = true;
     private boolean visibleUI = true;
     private boolean soundMute = false;
-    private FencingBoxSound sound;
+    private FencingBoxSound sound, click;
 
     /* View bindings */
     private ActivityMainBinding portBinding = null;
@@ -224,6 +224,14 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
                 32767,
                 getApplicationContext());
         sound.enable();
+
+        click = new FencingBoxSound(2400,
+                48000,
+                FencingBoxSound.waveformType.SQUARE,
+                32767,
+                5,
+                getApplicationContext());
+        click.enable();
 
         Log.d(TAG, "onCreate end");
     }
@@ -382,21 +390,29 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
 
     @Override
     public boolean onKeyUp(int keyCode, KeyEvent event) {
+        Log.d(TAG, "key code " + keyCode);
         switch (keyCode) {
             case KeyEvent.KEYCODE_DPAD_DOWN:
+            case KeyEvent.KEYCODE_D:
                 keyQ.add('D');
                 return true;
             case KeyEvent.KEYCODE_DPAD_LEFT:
+            case KeyEvent.KEYCODE_L:
                 keyQ.add('L');
                 return true;
             case KeyEvent.KEYCODE_DPAD_UP:
+            case KeyEvent.KEYCODE_U:
                 keyQ.add('U');
                 return true;
             case KeyEvent.KEYCODE_DPAD_RIGHT:
+            case KeyEvent.KEYCODE_R:
                 keyQ.add('R');
                 return true;
             case KeyEvent.KEYCODE_DPAD_CENTER:
             case KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE:
+            case KeyEvent.KEYCODE_ENTER:
+            case KeyEvent.KEYCODE_NUMPAD_ENTER:
+            case KeyEvent.KEYCODE_K:
                 keyQ.add('K');
                 return true;
             case KeyEvent.KEYCODE_CHANNEL_UP:
@@ -413,6 +429,7 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
                 keyQ.add('#');
                 return true;
             case KeyEvent.KEYCODE_BACK:
+            case KeyEvent.KEYCODE_B:
                 keyQ.add('B');
                 return true;
             case KeyEvent.KEYCODE_VOLUME_MUTE:
@@ -1062,7 +1079,7 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
         displayPassivityCard(fencer);
     }
 
-    public void processData(byte data[]) {
+    public synchronized void processData(byte data[]) {
         for (int i = 0; i < data.length; i++) {
            if (data[i] == cmdMarker) {
                i++;
@@ -1125,7 +1142,7 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
         }
     }
 
-    public void processCmd(String cmd) {
+    public synchronized void processCmd(String cmd) {
         switch (cmd) {
             case "GO":
                 Log.d(TAG, "fencing box started up");
@@ -1328,18 +1345,22 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
                 hideUI();
                 break;
 
+            case "KC":
+                processKeyClick();
+                break;
+
             default:
                 Log.d(TAG, "unknown command " + cmd);
                 break;
         }
     }
 
-    public void processScore(String s_A, String s_B) {
+    public synchronized void processScore(String s_A, String s_B) {
         scoreHidden = false;
         setScore(s_A, s_B);
     }
 
-    public void processHit(String hit) {
+    public synchronized void processHit(String hit) {
         Log.d(TAG, "process hit");
 
         /* Process off-target hits first */
@@ -1388,7 +1409,7 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
         setHitLights(hitA, hitB);
     }
 
-    public void processCard(String whichFencer, String whichCard) {
+    public synchronized void processCard(String whichFencer, String whichCard) {
         Log.d(TAG, "process card");
         hideUI();
 
@@ -1401,7 +1422,7 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
         }
     }
 
-    public void processClock(String min, String sec, String hund, boolean hundActive) {
+    public synchronized void processClock(String min, String sec, String hund, boolean hundActive) {
         if (setClock(min, sec, hund, hundActive)) {
             if (mode == Mode.Bout) {
                 if (passivityActive && passivityTimer > 0) {
@@ -1412,7 +1433,7 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
         }
     }
 
-    public void processPoll() {
+    public synchronized void processPoll() {
         /* If one or more keys has been pressed, send them back one by one.
            The poll command sent by the fencing scoring box is '/?' and the
            repeater responds with '/' plus a key, for example '/K' for OK.
@@ -1447,6 +1468,10 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
         Log.d(TAG, "short-circuit: fencer " + fencer + " state " + scState);
 
         // Ignore for now, as the short-circuit LED already works
+    }
+
+    public synchronized void processKeyClick() {
+        click.soundOn();
     }
 
     /*
