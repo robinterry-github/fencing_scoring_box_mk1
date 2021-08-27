@@ -473,6 +473,11 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
         }
     }
 
+    @Override
+    public void onBackPressed() {
+        keyQ.add('B');
+    }
+
     public void showDemo() {
         Log.d(TAG, "demo");
         hideUI();
