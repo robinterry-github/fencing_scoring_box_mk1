@@ -1001,17 +1001,25 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
             } else {
                 clearPassivity();
             }
+        } else {
+            clearPassivity();
         }
     }
 
     public void displayPassivity(int pClock) {
-        passivityClock.setText(String.format("%02d", pClock));
+        if (mode != Mode.Sparring) {
+            passivityClock.setText(String.format("%02d", pClock));
+        }
     }
 
     public void clearPassivity() {
         passivityActive = false;
         passivityTimer = passivityMaxTime;
-        passivityClock.setTextColor((mode == Mode.Bout) ? Color.GREEN:Color.BLACK);
+        if (mode == Mode.Bout || mode == Mode.Stopwatch) {
+            passivityClock.setTextColor(Color.GREEN);
+        } else {
+            passivityClock.setTextColor(Color.BLACK);
+        }
         passivityClock.setText("--");
         displayPassivityCard();
     }
