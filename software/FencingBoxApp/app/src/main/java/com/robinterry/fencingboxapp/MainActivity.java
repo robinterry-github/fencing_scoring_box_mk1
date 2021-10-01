@@ -416,13 +416,14 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
                 keyQ.add('K');
                 return true;
             case KeyEvent.KEYCODE_CHANNEL_UP:
-            case KeyEvent.KEYCODE_MEDIA_REWIND:
             case KeyEvent.KEYCODE_PAGE_UP:
             case KeyEvent.KEYCODE_STAR:
             case KeyEvent.KEYCODE_SEARCH:
                 keyQ.add('*');
                 return true;
             case KeyEvent.KEYCODE_CHANNEL_DOWN:
+                keyQ.add('$');
+                return true;
             case KeyEvent.KEYCODE_MEDIA_FAST_FORWARD:
             case KeyEvent.KEYCODE_PAGE_DOWN:
             case KeyEvent.KEYCODE_POUND:
@@ -437,6 +438,7 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
                 return super.onKeyUp(keyCode, event);
             case KeyEvent.KEYCODE_0:
             case KeyEvent.KEYCODE_MEDIA_RECORD:
+            case KeyEvent.KEYCODE_MEDIA_REWIND:
             case KeyEvent.KEYCODE_GUIDE:
                 keyQ.add('0');
                 return true;
@@ -504,17 +506,22 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
                 if (!visibleUI) {
                     BatteryManager batt = (BatteryManager) getApplicationContext().getSystemService(BATTERY_SERVICE);
                     int level = batt.getIntProperty(BatteryManager.BATTERY_PROPERTY_CAPACITY);
-                    if (level <= batteryDangerLevel) {
-                        if (!batteryDangerActive) {
-                            batteryDangerActive = batteryDangerFlash = true;
+                    if (level >= 0 && level <= 100) {
+                        if (level <= batteryDangerLevel) {
+                            if (!batteryDangerActive) {
+                                batteryDangerActive = batteryDangerFlash = true;
+                            } else {
+                                batteryDangerFlash = batteryDangerFlash ? false : true;
+                            }
                         } else {
-                            batteryDangerFlash = batteryDangerFlash ? false : true;
+                            batteryDangerActive = batteryDangerActive = false;
                         }
+                        batteryLevel.setTextColor(batteryDangerFlash ? Color.BLACK : Color.WHITE);
+                        batteryLevel.setText(String.valueOf(level) + "%");
                     } else {
-                        batteryDangerActive = batteryDangerActive = false;
+                        batteryLevel.setTextColor(Color.BLACK);
+                        batteryLevel.setText("----");
                     }
-                    batteryLevel.setTextColor(batteryDangerFlash ? Color.BLACK : Color.WHITE);
-                    batteryLevel.setText(String.valueOf(level) + "%");
 
                     Date curTime = Calendar.getInstance().getTime();
                     SimpleDateFormat dateFormat = new SimpleDateFormat("hh:mm");
@@ -877,9 +884,13 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
     }
 
     public void clearClock() {
+        clearClock(Color.BLACK);
+    }
+
+    public void clearClock(int color) {
         runOnUiThread(new Runnable() {
             public void run() {
-                textClock.setTextColor(Color.BLACK);
+                textClock.setTextColor(color);
                 textClock.setText("----");
             }
         });
@@ -1179,6 +1190,7 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
                 Log.d(TAG, "choosing priority");
                 hideUI();
                 clearPriority();
+                clearClock(Color.GREEN);
                 Toast.makeText(getApplicationContext(), R.string.choose_priority, Toast.LENGTH_SHORT).show();
                 setHitLights(Hit.OnTarget, Hit.OnTarget);
                 break;

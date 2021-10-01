@@ -418,7 +418,7 @@ uint8_t         dimSetting           = DIM_BRIGHTEST;
 uint8_t         dimCycle             = 0;
 long            dimTimer             = 0;
 long            lastKeyCode          = 0;
-uint8_t         priFencer            = 0; 
+uint8_t         priFencer            = FENCER_A; 
 bool            disableScore         = false;
 Hit             hitDisplayFlag[2]    = { HIT_NONE, HIT_NONE };
 uint8_t         lastHit              = 0;
@@ -1568,7 +1568,7 @@ void restartBox(BoutState state)
 
    hitDisplay               = HIT_IDLE;
    resetState               = RES_IDLE;
-   priFencer                = 0;
+   priFencer                = FENCER_A;
    lastHit                  = 0; 
    hitDisplayFlag[FENCER_A] = HIT_NONE;
    hitDisplayFlag[FENCER_B] = HIT_NONE;
@@ -1624,7 +1624,7 @@ void choosePriority()
 #endif
    delay(1000);
    priState   = PRI_CHOOSE;
-   priFencer  = 0;
+   priFencer  = FENCER_A;
 }
 
 //=============
@@ -2258,6 +2258,7 @@ void transIR(unsigned long key)
      
   case 0xFF6897: // *
   case '*':
+  case '$': // Repeater only
      if (priorityInactive())
      {
         // In SPARRING mode? Go into BOUT mode
@@ -2265,7 +2266,14 @@ void transIR(unsigned long key)
         {
            // Go into BOUT mode
            keyClick();
-           startBout();
+           if (key == '$')
+           {
+              startStopWatch();
+           }
+           else
+           {
+              startBout();
+           }
         }
 #ifdef STOPWATCH
         // In STOPWATCH mode?
@@ -2283,7 +2291,14 @@ void transIR(unsigned long key)
               {        
                  // Stopwatch already at zero, so go into SPARRING mode
                  keyClick();
-                 startSpar();
+                 if (key == '$')
+                 {
+                    startBout();
+                 }
+                 else
+                 {
+                    startSpar();
+                 }
               }
            }
         }
@@ -2297,7 +2312,14 @@ void transIR(unsigned long key)
 #ifdef STOPWATCH
                  // Bout not started - go into STOPWATCH mode
                  keyClick();
-                 startStopWatch();
+                 if (key == '$')
+                 {
+                    startSpar();
+                 }
+                 else
+                 {
+                    startStopWatch();
+                 }
 #else
                  keyClick();
                  startSpar();
@@ -4060,14 +4082,16 @@ void loop()
       doWeapon();
 
 #ifdef DISP_IR_CARDS_BOX
-      // Check for priority
+      // Alternate priority
       if (priState == PRI_CHOOSE)
       {
          // Oscillate between fencers when choosing priority
-         priFencer ^= 1;
+         priFencer = (priFencer == FENCER_A) ? FENCER_B:FENCER_A;
          displayPriority();
       }
-      else if (priState == PRI_SELECTED)
+
+      // Priority selection complete?
+      if (priState == PRI_SELECTED)
       {
          startPriority();
       }
@@ -4293,6 +4317,21 @@ void loop()
       doWeapon();
 #ifdef REPEATER_POLLING
       repeaterPollForKey();
+#endif
+#ifdef DISP_IR_CARDS_BOX
+      // Alternate priority
+      if (priState == PRI_CHOOSE)
+      {
+         // Oscillate between fencers when choosing priority
+         priFencer = (priFencer == FENCER_A) ? FENCER_B:FENCER_A;
+         displayPriority();
+      }
+
+      // Priority selection complete?
+      if (priState == PRI_SELECTED)
+      {
+         startPriority();
+      }
 #endif
 
       // Do we need to flash up the score?
