@@ -36,6 +36,7 @@ import android.view.WindowInsets;
 import android.view.WindowInsetsController;
 import android.os.Bundle;
 import android.os.Handler;
+import android.os.HandlerThread;
 import android.os.BatteryManager;
 import java.lang.String;
 import java.lang.Integer;
@@ -500,7 +501,9 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
     public void startSystemMonitor() {
         final int delayMillis = 500;
 
-        Handler handler = new Handler();
+        HandlerThread handlerThread = new HandlerThread("systemMonitor");
+        handlerThread.start();
+        final Handler handler = new Handler(handlerThread.getLooper());
         final Runnable r = new Runnable() {
             public void run() {
                 if (!visibleUI) {
