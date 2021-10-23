@@ -26,17 +26,17 @@ Arduino libraries IRRemote, IRLib2 and TM1637Display are used in the software fo
 
 - The power supply connector on the box is a 5V USB type B, which allows the box to be powered from a standard USB charger or a USB battery pack.
 
-- More details, including the full circuit diagram, are in the Word document which is found in the 'docs' directory.
+- More details, including the full circuit diagram, are in the Word document which is found in the `docs` directory.
 
 ## Brief description of Android repeater application
 
-- In the software/FencingBoxApp directory is the full source code for the Android repeater application that communicates
+- In the `software/FencingBoxApp` directory is the full source code for the Android repeater application that communicates
   with the fencing scoring box.
 
-- A signed APK for the repeater application is in the software/FencingBoxApp/app/release directory.
+- A signed APK for the repeater application is in the `software/FencingBoxApp/app/release` directory.
 
-- It connects to the fencing scoring box through USB.
+- It communicates with the fencing scoring box via USB.
 
 - It acts as a repeater for the current status of the fencing scoring box, showing hits, time, score and other things.
 
-- More details can be found in the README.md under software/FencingBoxApp.
+- More details can be found in the *README.md* file under `software/FencingBoxApp`.
