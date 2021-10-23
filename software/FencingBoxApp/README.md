@@ -6,8 +6,8 @@
 This Android application for the fencing scoring box project is based on previous software
 applications:
 
-SimpleUsbTerminal by Kai Morich (c) 2019 Kai Morich
-usb-serial-for-android by Mike Wakerly (c) 2013 Mike Wakerly
+- SimpleUsbTerminal by Kai Morich (c) 2019 Kai Morich
+- usb-serial-for-android by Mike Wakerly (c) 2013 Mike Wakerly
 
 Due credit and thanks are hereby given to both designers. The license and copyright notices for both
 applications are included with this application.
@@ -28,4 +28,4 @@ applications are included with this application.
 - The application has been tested on Android 6.0.1 and Android 9 with no known problems.
 
 - More details about the entire project, including the full circuit diagram of the fencing scoring
-  box, are in the Word document which is found in the 'docs' directory.
+  box, are in the Word document which is found in the `docs` directory.
