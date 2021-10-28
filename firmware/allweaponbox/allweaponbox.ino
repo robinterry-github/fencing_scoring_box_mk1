@@ -250,7 +250,7 @@ bool cardLedUpdate   = true;
 long buttonScan      = 0;
 bool buttonPressed   = false;
 long buttonDebounce  = 0;
-bool modeChange      = false;
+bool weaponChange    = false;
 bool scoreFlash      = false;
 long scoreFlashTimer = 0;
 bool maxSabreHits[2] = { false, false };
@@ -398,7 +398,8 @@ enum StopWatchEdit
 #define LED_BOTH          (3)
 
 // Weapon type defaults to foil
-Weapon weaponType = FOIL;
+Weapon weaponType    = FOIL;
+Weapon newWeaponType = NONE;
 
 //===============
 // State machines
@@ -4030,46 +4031,40 @@ void loop()
       // Do processing for a given weapon
       doWeapon();
 
-      // Is the box changing mode?
-      if (modeChange)
+      // Is the box changing weapon?
+      if (weaponChange)
       {
-         switch (weaponType)
-         {
-            case FOIL:
-            case NONE:
-               weaponType = EPEE;
-#ifdef EEPROM_STORAGE
-               writeWeapon(weaponType);
-#endif
-#ifdef ENABLE_REPEATER
-               indicateWeapon();
-#endif
-               restartBox();
-               break;
+         if (newWeaponType == NONE) {
+            switch (weaponType)
+            {
+               case FOIL:
+               case NONE:
+                  newWeaponType = EPEE;
+                  break;
 
-            case EPEE:
-               weaponType = SABRE;
-#ifdef EEPROM_STORAGE
-               writeWeapon(weaponType);
-#endif
-#ifdef ENABLE_REPEATER
-               indicateWeapon();
-#endif
-               restartBox();
-               break;
+               case EPEE:
+                  newWeaponType = SABRE;
+                  break;
 
-            case SABRE:
-               weaponType = FOIL;
-#ifdef EEPROM_STORAGE
-               writeWeapon(weaponType);
-#endif
-#ifdef ENABLE_REPEATER
-               indicateWeapon();
-#endif
-               restartBox();
-               break;
+               case SABRE:
+                  newWeaponType = FOIL;
+                  break;
+            }
          }
-         modeChange = false;
+         if (newWeaponType != NONE) {
+            weaponType = newWeaponType;
+
+            /* Save the new weapon type */
+#ifdef EEPROM_STORAGE
+            writeWeapon(weaponType);
+#endif
+#ifdef ENABLE_REPEATER
+            indicateWeapon();
+#endif
+            restartBox();
+            newWeaponType = NONE;
+         }
+         weaponChange = false;
       }
 
 #ifdef DISP_IR_CARDS_BOX
@@ -4373,7 +4368,7 @@ void loop()
                   if (!buttonPressed)
                   {
                      buttonPressed = true;
-                     modeChange    = true;
+                     weaponChange    = true;
 #ifdef DEBUG_L1
                      Serial.println("button pressed");
 #endif
@@ -4393,7 +4388,7 @@ void loop()
                   restoreDisplay();
                }
                buttonPressed  = false;
-               modeChange     = false;
+               weaponChange     = false;
                buttonDebounce = 0;
 #ifdef DEBUG_L1
                Serial.println("button released");
@@ -5270,8 +5265,31 @@ bool repeaterPollForKey()
             /* Valid keypress? ('-' means 'no key') */
             if (key != '-')
             {
-               /* Process the key */
-               transIR(key);
+               /* Is the repeater app changing weapon? */
+               switch (key) {
+                  case 'f':
+                     /* Change weapon to foil */
+                     newWeaponType = FOIL;
+                     weaponChange  = true;
+                     break;
+
+                  case 'e':
+                     /* Change weapon to epee */ 
+                     newWeaponType = EPEE;
+                     weaponChange  = true;
+                     break;
+
+                  case 's':
+                     /* Change weapon to sabre */
+                     newWeaponType = SABRE;
+                     weaponChange  = true;
+                     break;
+
+                  default:
+                     /* Keypress from repeater */
+                     transIR(key);
+                     break;      
+               }
             }
          }
       }

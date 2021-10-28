@@ -1,5 +1,6 @@
 package com.robinterry.fencingboxapp;
 
+import androidx.annotation.NonNull;
 import androidx.appcompat.app.ActionBar;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.constraintlayout.widget.ConstraintLayout;
@@ -23,6 +24,8 @@ import android.hardware.usb.UsbDeviceConnection;
 import android.hardware.usb.UsbManager;
 import android.os.Build;
 import android.os.IBinder;
+import android.view.Menu;
+import android.view.MenuItem;
 import android.widget.TextView;
 import android.widget.Toast;
 import android.widget.ImageView;
@@ -66,6 +69,7 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
     private Mode mode = Mode.Demo;
     private static Orientation orientation = Orientation.Portrait;
     private Weapon weapon = Weapon.Foil;
+    private Weapon changeWeapon = weapon;
 
     public static Orientation getOrientation() {
         return orientation;
@@ -479,6 +483,45 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
     @Override
     public void onBackPressed() {
         keyQ.add('B');
+    }
+
+    @Override
+    public boolean onCreateOptionsMenu(Menu menu) {
+        getMenuInflater().inflate(R.menu.menu, menu);
+        return super.onCreateOptionsMenu(menu);
+    }
+
+    @Override
+    public boolean onOptionsItemSelected(@NonNull MenuItem item) {
+        switch (item.getItemId()) {
+            case R.id.menu_weapon_foil:
+                /* Change weapon to foil */
+                if (weapon != Weapon.Foil) {
+                    changeWeapon = Weapon.Foil;
+                    Log.d(TAG, "Change weapon: foil");
+                }
+                break;
+
+            case R.id.menu_weapon_epee:
+                /* Change weapon to epee */
+                if (weapon != Weapon.Epee) {
+                    changeWeapon = Weapon.Epee;
+                    Log.d(TAG, "Change weapon: epee");
+                }
+                break;
+
+            case R.id.menu_weapon_sabre:
+                /* Change weapon to sabre */
+                if (weapon != Weapon.Sabre) {
+                    changeWeapon = Weapon.Sabre;
+                    Log.d(TAG, "Change weapon: sabre");
+                }
+                break;
+
+            default:
+                break;
+        }
+        return super.onOptionsItemSelected(item);
     }
 
     public void showDemo() {
@@ -1311,7 +1354,7 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
 
             case "TF":
                 Log.d(TAG, "weapon: foil");
-                weapon = Weapon.Foil;
+                weapon = changeWeapon = Weapon.Foil;
                 setScore();
                 setClock();
                 setCard();
@@ -1320,7 +1363,7 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
 
             case "TE":
                 Log.d(TAG, "weapon: epee");
-                weapon = Weapon.Epee;
+                weapon = changeWeapon = Weapon.Epee;
                 setScore();
                 setClock();
                 setCard();
@@ -1329,7 +1372,7 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
 
             case "TS":
                 Log.d(TAG, "weapon: sabre");
-                weapon = Weapon.Sabre;
+                weapon = changeWeapon = Weapon.Sabre;
                 setScore();
                 setClock();
                 setCard();
@@ -1476,14 +1519,39 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
            R (RIGHT)
            B (BACK)
         */
-        Iterator it = keyQ.iterator();
-        String msg;
 
-        while (it.hasNext()) {
-            Character key = (Character) it.next();
-            msg = "/" + key.toString();
-            it.remove();
+        String msg = "";
 
+        /* Has the weapon changed? */
+        if (changeWeapon != weapon) {
+            switch (changeWeapon) {
+                case Foil:
+                    msg = "/f";
+                    break;
+
+                case Epee:
+                    msg = "/e";
+                    break;
+
+                case Sabre:
+                    msg = "/s";
+                    break;
+
+                default:
+                    break;
+            }
+        } else {
+            Iterator it = keyQ.iterator();
+
+            while (it.hasNext()) {
+                Character key = (Character) it.next();
+                msg = "/" + key.toString();
+                it.remove();
+            }
+        }
+
+        /* If a response has to be sent, send it */
+        if (!msg.isEmpty()) {
             try {
                 socket.write(msg.getBytes(StandardCharsets.UTF_8));
             } catch (IOException e) {
