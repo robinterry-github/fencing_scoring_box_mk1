@@ -4,7 +4,7 @@
 //  Dev:     Wnew                                                            //
 //  Date:    Nov     2012                                                    //
 //  Updated: Sept    2015                                                    //
-//  Updated: August 25 2021 Robin Terry, Skipton, UK                         //
+//  Updated: October 28 2021 Robin Terry, Skipton, UK                        //
 //                                                                           //
 //  Notes:   1. Basis of algorithm from digitalwestie on github. Thanks Mate //
 //           2. Used uint8_t instead of int where possible to optimise       //
@@ -46,14 +46,32 @@
 //#define DEBUG_L7               // level 7 debug
 //#define DEBUG_IR               // debug the IR reception
 //#define OFFTARGET_LEDS         // define this if you have fitted the discrete off-target LEDs
-#define DISP_IR_CARDS_BOX        // define this to enable 7-segment display, IR control and card LEDs -
-                                 // for a simple hit indicator only box, you can undefine this
-#define FREQUENT_IRPOLL          // define this to increase the amount of IR polling         
-#define ENABLE_REPEATER         // Send serial data out to an indicator application
+#define ENABLE_DISPLAY           // define this to enable 7-segment display and card LEDs -
+                                 // for a simple hit indicator only box, you can undefine this                                  
+#define ENABLE_REPEATER          // Send serial data out to an indicator application
+#define ENABLE_IR                // Enable IR support
 
-#ifdef DISP_IR_CARDS_BOX
+// Set default weapon to either FOIL, EPEE or SABRE
+#define DEFAULT_WEAPON           FOIL
+
+// If no display is enabled, then disable IR support
+#ifndef ENABLE_DISPLAY
+#undef ENABLE_IR
+#endif
+
+// Enable key translation for either IR or Bluetooth
+#if defined(ENABLE_IR) || defined(ENABLE_REPEATER)
+#define ENABLE_IR_TRANS
+#endif
+
+#ifdef ENABLE_DISPLAY
 #define LOW_POWER                // support low-power for battery operation
+#endif
+
+#ifdef ENABLE_IR
+#define FREQUENT_IRPOLL          // define this to increase the amount of IR polling     
 #define IRLIB2                   // use IRLib2 instead of IRRemote (IRLib2 is better, but bigger)
+#endif
 
 #ifdef IRLIB2
 // IR receiver frame timeout
@@ -67,7 +85,6 @@
 #define STOPWATCH                // enable the stopwatch
 #define EEPROM_STORAGE           // use EEPROM for storing values over power-off
 //#define SPAR_INCR_SCORE        // automatically increment score after a hit in sparring mode
-#endif
 
 #define PASSIVITY                // Support for passivity monitoring
 
@@ -122,7 +139,7 @@
 #define A_ALL          (A_YELLOW | A_RED | A_SHORT)
 #define B_ALL          (B_YELLOW | B_RED | B_SHORT)
 
-#ifdef DISP_IR_CARDS_BOX
+#ifdef ENABLE_IR
 #ifdef IRLIB2
 #include "IRLibRecv.h"
 #include "IRLibDecodeBase.h"
@@ -134,7 +151,7 @@
 #endif
 #endif
 
-#ifdef DISP_IR_CARDS_BOX
+#ifdef ENABLE_DISPLAY
 // 7-segment display
 #include "TM1637Display.h"
 
@@ -197,7 +214,7 @@ const uint8_t  groundPinB    = A3;    // Fencer B pin C - Analog
 const uint8_t  weaponPinB    = A4;    // Fencer B pin B - Analog
 const uint8_t  lamePinB      = A5;    // Fencer B pin A - Analog
 
-#ifdef DISP_IR_CARDS_BOX
+#ifdef ENABLE_IR
 // IR object
 IRrecv irRecv(irrecvPin);
 #ifdef IRLIB2
@@ -336,7 +353,7 @@ enum Weapon
    NONE    = -1,
    FOIL    = 0,
    EPEE    = 1,
-   SABRE   = 2
+   SABRE   = 2,
 };
 
 enum Key
@@ -397,8 +414,8 @@ enum StopWatchEdit
 #define LED_RED           (2)
 #define LED_BOTH          (3)
 
-// Weapon type defaults to foil
-Weapon weaponType    = FOIL;
+// Weapon type default
+Weapon weaponType    = DEFAULT_WEAPON;
 Weapon newWeaponType = NONE;
 
 //===============
@@ -435,12 +452,12 @@ long loopNow = 0, loopCount = 0;
 #endif
 
 // 7-segment display
-#ifdef DISP_IR_CARDS_BOX
+#ifdef ENABLE_DISPLAY
 TM1637Display disp = TM1637Display(clkPin, dioPin);
 #endif
 
 // Patterns
-#ifdef DISP_IR_CARDS_BOX
+#ifdef ENABLE_DISPLAY
 const uint8_t priDisp[] = 
 {
   SEG_A | SEG_G | SEG_D,
@@ -719,12 +736,11 @@ void displayWeapon()
 
 void displayWeapon(bool lights)
 {
-#ifdef DISP_IR_CARDS_BOX
+#ifdef ENABLE_DISPLAY
    disp.clear();
    setBrightness(DIM_BRIGHTEST);
    disp.setSegments(weaponDisp[weaponType], 4, 0);
 #endif
-
    // Turn all lights on
    if (lights)
    {
@@ -734,8 +750,9 @@ void displayWeapon(bool lights)
       digitalWrite(offTargetA, HIGH);
       digitalWrite(offTargetB, HIGH);
 #endif
+#ifdef ENABLE_DISPLAY
       updateCardLeds(A_ALL | B_ALL);
-
+#endif
       // Buzz for one second
       buzzer(true);
       delay(1000);
@@ -748,7 +765,9 @@ void displayWeapon(bool lights)
       digitalWrite(offTargetB, LOW);
 #endif
       buzzer(false);
+#ifdef ENABLE_DISPLAY
       updateCardLeds(0);
+#endif
    }
 }
 
@@ -759,7 +778,7 @@ void displayState()
 
 void displayState(enum BoutState state)
 {
-#ifdef DISP_IR_CARDS_BOX
+#ifdef ENABLE_DISPLAY
    setBrightness(DIM_BRIGHTEST);
    switch (state)
    {
@@ -799,15 +818,16 @@ void displayWeaponAndState()
 #ifdef ENABLE_REPEATER
    indicateWeapon();
 #endif
+#ifdef ENABLE_DISPLAY
    displayWeapon(false);
    delay(1000);
    displayState();
    delay(1000);
+#endif
 }
 
 void displayTouch(bool touchActive)
 {
-#ifdef DISP_IR_CARDS_BOX
 #ifdef STOPWATCH
    if (!inStopWatch())
 #endif
@@ -820,8 +840,10 @@ void displayTouch(bool touchActive)
 
             if (touchActive)
             {
+#ifdef ENABLE_DISPLAY
                disp.setSegments(shortCircuit[FENCER_A] ? touchDisp[FENCER_A]:sparNoHit, 2, 0);
                disp.setSegments(shortCircuit[FENCER_B] ? touchDisp[FENCER_B]:sparNoHit, 2, 2);
+#endif
 #ifdef DEBUG_L5
                Serial.println("touch active");
 #endif
@@ -836,7 +858,6 @@ void displayTouch(bool touchActive)
          }
       }
    }
-#endif
 }
 
 //===================
@@ -844,7 +865,7 @@ void displayTouch(bool touchActive)
 //===================
 void displayShortCircuit()
 {
-#ifdef DISP_IR_CARDS_BOX
+#ifdef ENABLE_DISPLAY
    setBrightness(DIM_BRIGHTEST);
    disp.setSegments(scDisplay[FENCER_A] ? shortDisp:sparNoHit, 2, 0);
    disp.setSegments(scDisplay[FENCER_B] ? shortDisp:sparNoHit, 2, 2);
@@ -879,7 +900,7 @@ void displayScore()
      {
         case HIT_IDLE:
         case HIT_ON:
-#ifdef DISP_IR_CARDS_BOX
+#ifdef ENABLE_DISPLAY
            setBrightness(DIM_BRIGHTEST);
            disp.showNumberDecEx(score[FENCER_A], 0, false, 2, 0);
            disp.showNumberDecEx(score[FENCER_B], 0, false, 2, 2);
@@ -889,7 +910,7 @@ void displayScore()
           break;
 
         case HIT_OFF:
-#ifdef DISP_IR_CARDS_BOX
+#ifdef ENABLE_DISPLAY
            // Flash the score of the fencer who won priority
            disp.setSegments(blankDisp, 2, (priFencer == FENCER_A) ? 0:2);
 #endif
@@ -906,7 +927,7 @@ void displayScore()
      {
         case HIT_IDLE:
         case HIT_ON:
-#ifdef DISP_IR_CARDS_BOX
+#ifdef ENABLE_DISPLAY
            setBrightness(DIM_BRIGHTEST);
 #endif
            // Show scores if not off-target hit
@@ -914,7 +935,7 @@ void displayScore()
                &&
                hitDisplayFlag[FENCER_B] != HIT_OFFTARGET)
            {
-#ifdef DISP_IR_CARDS_BOX
+#ifdef ENABLE_DISPLAY
               disp.showNumberDecEx(score[FENCER_A], 0, false, 2, 0);
               disp.showNumberDecEx(score[FENCER_B], 0, false, 2, 2);
 #endif
@@ -934,7 +955,7 @@ void displayScore()
            {
               if (hitDisplayFlag[FENCER_A] == HIT_OFFTARGET)
               {
-#ifdef DISP_IR_CARDS_BOX
+#ifdef ENABLE_DISPLAY
                  disp.setSegments(sparOffHit[FENCER_A], 2, 0);
 #endif
 #ifndef OFFTARGET_LEDS
@@ -944,13 +965,13 @@ void displayScore()
               }
               else
               {
-#ifdef DISP_IR_CARDS_BOX
+#ifdef ENABLE_DISPLAY
                  disp.setSegments(blankDisp, 2, 0);
 #endif
               }
               if (hitDisplayFlag[FENCER_B] == HIT_OFFTARGET)
               {
-#ifdef DISP_IR_CARDS_BOX
+#ifdef ENABLE_DISPLAY
                  disp.setSegments(sparOffHit[FENCER_B], 2, 2);
 #endif
 #ifndef OFFTARGET_LEDS
@@ -960,7 +981,7 @@ void displayScore()
               }
               else
               {
-#ifdef DISP_IR_CARDS_BOX
+#ifdef ENABLE_DISPLAY
                  disp.setSegments(blankDisp, 2, 2);
 #endif
               }
@@ -971,7 +992,7 @@ void displayScore()
            // If we've reached maximum sabre hits, flash entire display
            if (maxSabreHits[FENCER_A] || maxSabreHits[FENCER_B])
            {
-#ifdef DISP_IR_CARDS_BOX
+#ifdef ENABLE_DISPLAY
               setBrightness(DIM_BRIGHTEST);
               disp.setSegments(blankDisp, 2, 0);
               disp.setSegments(blankDisp, 2, 2); 
@@ -996,7 +1017,7 @@ void displayScore()
 
               case HIT_ONTARGET:
                  // Blank score for fencer A
-#ifdef DISP_IR_CARDS_BOX
+#ifdef ENABLE_DISPLAY
                  setBrightness(DIM_BRIGHTEST);
                  disp.setSegments(blankDisp, 2, 0);
 #endif
@@ -1017,7 +1038,7 @@ void displayScore()
 
               case HIT_ONTARGET:
                  // Blank score for fencer B
-#ifdef DISP_IR_CARDS_BOX
+#ifdef ENABLE_DISPLAY
                  setBrightness(DIM_BRIGHTEST);
                  disp.setSegments(blankDisp, 2, 2);
 #endif
@@ -1034,14 +1055,14 @@ void displayScore()
      switch (hitDisplay)
      {
         case HIT_IDLE:
-#ifdef DISP_IR_CARDS_BOX
+#ifdef ENABLE_DISPLAY
           setBrightness(DIM_BRIGHTEST);
           disp.setSegments(sparNoHit, 4, 0);
 #endif
           break;
 
         case HIT_ON:
-#ifdef DISP_IR_CARDS_BOX
+#ifdef ENABLE_DISPLAY
           setBrightness(DIM_BRIGHTEST);
 #endif
           // Fencer A hit?
@@ -1049,19 +1070,19 @@ void displayScore()
           {
              case HIT_NONE:
              default:
-#ifdef DISP_IR_CARDS_BOX
+#ifdef ENABLE_DISPLAY
                 disp.setSegments(sparNoHit, 2, 0);
 #endif
                 break;
 
              case HIT_ONTARGET:
-#ifdef DISP_IR_CARDS_BOX
+#ifdef ENABLE_DISPLAY
                 disp.setSegments(sparHit[FENCER_A], 2, 0);
 #endif
                 break;
 
              case HIT_OFFTARGET:
-#ifdef DISP_IR_CARDS_BOX
+#ifdef ENABLE_DISPLAY
                 disp.setSegments(sparOffHit[FENCER_A], 2, 0);
 #endif
 #ifndef OFFTARGET_LEDS
@@ -1076,19 +1097,19 @@ void displayScore()
           {
              case HIT_NONE:
              default:
-#ifdef DISP_IR_CARDS_BOX
+#ifdef ENABLE_DISPLAY
                 disp.setSegments(sparNoHit, 2, 2);
 #endif
                 break;
 
              case HIT_ONTARGET:
-#ifdef DISP_IR_CARDS_BOX
+#ifdef ENABLE_DISPLAY
                 disp.setSegments(sparHit[FENCER_B], 2, 2);
 #endif
                 break;
 
              case HIT_OFFTARGET:
-#ifdef DISP_IR_CARDS_BOX
+#ifdef ENABLE_DISPLAY
                 disp.setSegments(sparOffHit[FENCER_B], 2, 2);
 #endif
 #ifndef OFFTARGET_LEDS
@@ -1100,12 +1121,12 @@ void displayScore()
           break;
 
         case HIT_OFF:
-#ifdef DISP_IR_CARDS_BOX
+#ifdef ENABLE_DISPLAY
           setBrightness(DIM_BRIGHTEST);
 #endif
           if (hitDisplayFlag[FENCER_A])
           {
-#ifdef DISP_IR_CARDS_BOX
+#ifdef ENABLE_DISPLAY
              disp.setSegments(blankDisp, 2, 0);
 #endif
 #ifndef OFFTARGET_LEDS
@@ -1118,7 +1139,7 @@ void displayScore()
           }
           if (hitDisplayFlag[FENCER_B])
           {
-#ifdef DISP_IR_CARDS_BOX
+#ifdef ENABLE_DISPLAY
              disp.setSegments(blankDisp, 2, 2);
 #endif
 #ifndef OFFTARGET_LEDS
@@ -1180,7 +1201,7 @@ void displayTime()
 #ifdef STOPWATCH
       if (swEdit != SW_NONE)
       {
-#ifdef DISP_IR_CARDS_BOX
+#ifdef ENABLE_DISPLAY
          setBrightness(DIM_BRIGHTEST);
          disp.showNumberDecEx(swMins, 0b01000000, true, 2, 0);
          disp.showNumberDecEx(swSecs, 0b01000000, true, 2, 2);
@@ -1195,7 +1216,7 @@ void displayTime()
 #ifdef DEBUG_L6
          Serial.println("display time");
 #endif
-#ifdef DISP_IR_CARDS_BOX
+#ifdef ENABLE_DISPLAY
          setBrightness(DIM_BRIGHTEST);
 
          // Show the 1/100 second timer
@@ -1265,7 +1286,6 @@ void displayTime()
 
 void displayPriority()
 {
-#ifdef DISP_IR_CARDS_BOX
    // Is a short-circuit being displayed?
    if (scDisplayActive())
    {
@@ -1273,12 +1293,15 @@ void displayPriority()
    }
    else
    {
+#ifdef ENABLE_DISPLAY
       disp.clear();
       setBrightness(DIM_BRIGHTEST);
+#endif
       if (priFencer == FENCER_A)
       {
+#ifdef ENABLE_DISPLAY
          disp.setSegments(priDisp, 2, 0);
-
+#endif
          // Show fencer A has won priority on the hit LEDs
          if (priState == PRI_SELECTED || priState == PRI_END)
          {
@@ -1294,8 +1317,9 @@ void displayPriority()
       }
       else
       {
+#ifdef ENABLE_DISPLAY
          disp.setSegments(priDisp, 2, 2);
-
+#endif
          // Show fencer B has won priority on the hit LEDs
          if (priState == PRI_SELECTED || priState == PRI_END)
          {
@@ -1310,13 +1334,12 @@ void displayPriority()
          }
       }
    }
-#endif
    currentDisp = DISP_PRI;
 }
 
 void setBrightness(uint8_t dim)
 {
-#ifdef DISP_IR_CARDS_BOX
+#ifdef ENABLE_DISPLAY
    // If we were previously in screen saver, then clear the display
    if (dim == DIM_BRIGHTEST && dimSetting == DIM_DIMMEST)
    {
@@ -1330,14 +1353,14 @@ void setBrightness(uint8_t dim)
 
 void displayDimCycle()
 {
-#ifdef DISP_IR_CARDS_BOX
+#ifdef ENABLE_DISPLAY
    disp.setSegments(dimDisp[dimCycle], 4, 0);
 #endif
 }
 
 bool restoreDisplayAfterSleep()
 {
-#ifdef DISP_IR_CARDS_BOX
+#ifdef ENABLE_DISPLAY
    if (dimSetting == DIM_DIMMEST)
    {
       // Display the current operating mode briefly
@@ -1354,7 +1377,7 @@ bool restoreDisplay()
 {
    bool ret = false;
 
-#ifdef DISP_IR_CARDS_BOX
+#ifdef ENABLE_DISPLAY
    switch (currentDisp)
    {
       case DISP_SCORE:
@@ -1459,17 +1482,17 @@ void setup()
    adcOpt();
 
    // Turn on the 7-segment LED display
-#ifdef DISP_IR_CARDS_BOX
+#ifdef ENABLE_DISPLAY
    setBrightness(DIM_BRIGHTEST);
 #endif
 
 #ifdef EEPROM_STORAGE
    Weapon w = readWeapon();
 
-   // If the weapon type is unset, default to FOIL
+   // If the weapon type is unset, default
    if (w == NONE)
    {
-      weaponType = FOIL;
+      weaponType = DEFAULT_WEAPON;
       writeWeapon(weaponType);
    }
    else
@@ -1477,6 +1500,7 @@ void setup()
       weaponType = w;
    }
 
+#if defined(ENABLE_DISPLAY) || defined(ENABLE_REPEATER)
    BoutState m = readState();
 
    // If the state is unset, default to SPAR
@@ -1490,8 +1514,12 @@ void setup()
       boutState = m;
    }
 #else
-   weaponType = FOIL;
-   boutState = STA_SPAR;
+   boutState  = STA_SPAR;
+   writeState(boutState);
+#endif
+#else
+   weaponType = DEFAULT_WEAPON;
+   boutState  = STA_SPAR;
 #endif
 #ifdef ENABLE_REPEATER
    Serial.begin(BAUDRATE);
@@ -1520,7 +1548,7 @@ void setup()
 
    // Restart the box
    restartBox();
-#ifdef DISP_IR_CARDS_BOX
+#ifdef ENABLE_IR
    irRecv.enableAutoResume(irBuffer);
 #ifdef IR_FRAMETIMEOUT
    irRecv.setFrameTimeout(IR_FRAMETIMEOUT);
@@ -1620,7 +1648,7 @@ void choosePriority()
       Serial.println("!PC");
    }
 #endif
-#ifdef DISP_IR_CARDS_BOX
+#ifdef ENABLE_DISPLAY
    displayState(STA_PRIORITY);
 #endif
    delay(1000);
@@ -1633,7 +1661,6 @@ void choosePriority()
 //=============
 void setTimer(int time)
 {
-#ifdef DISP_IR_CARDS_BOX
    timeState  = TIM_STOPPED;
    timerStart = false;
 
@@ -1652,7 +1679,6 @@ void setTimer(int time)
    Serial.print("setting timer to ");
    Serial.println(time);
 #endif
-#endif
 }
 
 //=============
@@ -1660,7 +1686,6 @@ void setTimer(int time)
 //=============
 void restartTimer()
 {
-#ifdef DISP_IR_CARDS_BOX
     if (timeState == TIM_STOPPED)
     {
         timerStart = true;
@@ -1669,7 +1694,6 @@ void restartTimer()
         Serial.println("!CR");
 #endif        
     }
-#endif
 }
 
 // Passivity processing
@@ -1837,7 +1861,6 @@ void awardPassivity()
 //===================
 int incTimer(int inc = 1)
 {
-#ifdef DISP_IR_CARDS_BOX
    if (timeState == TIM_STOPPED)
    {
       /* Reached current top limit? */
@@ -1882,7 +1905,6 @@ int incTimer(int inc = 1)
 #endif
       return 1;
    }
-#endif
    return 0;
 }
 
@@ -1891,7 +1913,6 @@ int incTimer(int inc = 1)
 //===================
 int decTimer(int dec = 1)
 {
-#ifdef DISP_IR_CARDS_BOX
    if (timeState == TIM_STOPPED)
    {
       /* Reached bottom limit? */
@@ -1945,7 +1966,6 @@ int decTimer(int dec = 1)
 #endif
       return 1;
    }
-#endif
    return 0;
 }
 
@@ -1954,7 +1974,6 @@ int decTimer(int dec = 1)
 //===================
 void addScore(int fencer)
 {
-#ifdef DISP_IR_CARDS_BOX
    if (!disableScore)
    {
       if (score[fencer] < MAXSCORE)
@@ -1976,7 +1995,6 @@ void addScore(int fencer)
 #endif
       }
    }
-#endif
 }
 
 //===================
@@ -1984,7 +2002,6 @@ void addScore(int fencer)
 //===================
 void subScore(int fencer)
 {
-#ifdef DISP_IR_CARDS_BOX
    if (!disableScore)
    {
       if (score[fencer] > 0)
@@ -2006,12 +2023,10 @@ void subScore(int fencer)
 #endif
       }
    }
-#endif
 }
 
 void resetScore()
 {
-#ifdef DISP_IR_CARDS_BOX
    score[FENCER_A] = score[FENCER_B] = 0;
    scoreThisBout[FENCER_A] = scoreThisBout[FENCER_B] = 0;
    displayScore();
@@ -2023,7 +2038,6 @@ void resetScore()
       delay(1000);
       displayTime();
    }
-#endif
 }
 
 //===================
@@ -2031,7 +2045,7 @@ void resetScore()
 //==================
 void updateCardLeds(int Leds)
 {
-#ifdef DISP_IR_CARDS_BOX
+#ifdef ENABLE_DISPLAY
 #ifdef DEBUG_L1
    Serial.print("card LEDs ");
    Serial.println(cardLeds, HEX);
@@ -2039,6 +2053,7 @@ void updateCardLeds(int Leds)
    digitalWrite(latchPin, LOW); 
    shiftOut(dataPin, clockPin, LSBFIRST, Leds); 
    digitalWrite(latchPin, HIGH);
+#endif
 #endif
 #ifdef ENABLE_REPEATER
    if (repeaterPresent && !inStopWatch())
@@ -2076,7 +2091,6 @@ void updateCardLeds(int Leds)
    }
 #endif
    cardLedUpdate = false;
-#endif
 }
 
 //===================
@@ -2138,7 +2152,6 @@ void shortBeep()
 //============
 int countDown(int timerGap)
 {
-#ifdef DISP_IR_CARDS_BOX
    if (timerLast9s)
    {
       /* Counting down in hundredths of seconds */
@@ -2199,15 +2212,12 @@ int countDown(int timerGap)
       timerInterval = ONESEC;
    }
    return (timer == 0) ? 1:0;
-#else
-   return 0;
-#endif
 }
 
-//=============
-// IR handling
-//=============
-#ifdef DISP_IR_CARDS_BOX
+//==========================
+// IR/Bluetooth key handling
+//==========================
+#ifdef ENABLE_IR_TRANS
 void transIR(unsigned long key)
 {
    static unsigned long delayIRRepeat = 0;
@@ -2412,7 +2422,7 @@ void transIR(unsigned long key)
               {
                  keyClick();
                  lastHit = 1 << FENCER_A;
-#ifdef DISP_IR_CARDS_BOX
+#ifdef ENABLE_DISPLAY
                  // Flash fencer A score once
                  disp.setSegments(blankDisp, 2, 0);
                  disp.showNumberDecEx(score[FENCER_B], 0, false, 2, 2);
@@ -2448,7 +2458,7 @@ void transIR(unsigned long key)
                     swSecs = timerSecs;
                  }
                  swEdit = SW_MINS;
-#ifdef DISP_IR_CARDS_BOX
+#ifdef ENABLE_DISPLAY
                  // Flash stopwatch minutes once
                  disp.setSegments(blankDisp, 2, 0);
                  delay(250);
@@ -2719,7 +2729,7 @@ void transIR(unsigned long key)
                  lastHit = 1 << FENCER_B;
 
                  // Flash fencer B score once
-#ifdef DISP_IR_CARDS_BOX
+#ifdef ENABLE_DISPLAY
                  disp.showNumberDecEx(score[FENCER_A], 0, false, 2, 0);
                  disp.setSegments(blankDisp, 2, 2);
                  delay(250);
@@ -2753,7 +2763,7 @@ void transIR(unsigned long key)
                     swSecs = timerSecs;
                  }
                  swEdit = SW_SECS;
-#ifdef DISP_IR_CARDS_BOX
+#ifdef ENABLE_DISPLAY
                  // Flash stopwatch seconds once
                  disp.setSegments(blankDisp, 2, 2);
                  delay(250);
@@ -3172,6 +3182,7 @@ void transIR(unsigned long key)
            if (timeState == TIM_STOPPED)
            {
               keyClick();
+#ifdef ENABLE_REPEATER
 #ifdef PASSIVITY
               if (repeaterPresent)
               {
@@ -3181,6 +3192,7 @@ void transIR(unsigned long key)
 #endif
               }
               else
+#endif
 #endif
               {
                  ledFlag[FENCER_A]  = ledFlag[FENCER_B] = LED_NONE;
@@ -3263,7 +3275,6 @@ void startBout()
       Serial.println("*0000");
    }
 #endif
-#ifdef DISP_IR_CARDS_BOX
    priState                = PRI_IDLE;
 #ifdef STOPWATCH
    swEdit                  = SW_NONE;
@@ -3282,19 +3293,17 @@ void startBout()
 #ifdef EEPROM_STORAGE
    writeState(boutState);
 #endif
+#ifdef ENABLE_DISPLAY
    setBrightness(DIM_BRIGHTEST);
    disp.setSegments(boutDisp, 4, 0);
-
-   resetCards();
 #endif
+   resetCards();
    resetLights();
-#ifdef DISP_IR_CARDS_BOX
    delay(1000);
    setTimer(BOUTTIME);
    displayTime();
 #ifdef DEBUG_L1
    Serial.println("bout start mode");
-#endif
 #endif
 }
 
@@ -3306,7 +3315,6 @@ void continueBout()
       Serial.println("!BC");
    }
 #endif
-#ifdef DISP_IR_CARDS_BOX
    priState = PRI_IDLE;
    setTimer(BOUTTIME);
    displayScore();
@@ -3314,7 +3322,6 @@ void continueBout()
    scoreThisBout[FENCER_A] = scoreThisBout[FENCER_B] = 0;
 #ifdef DEBUG_L1
    Serial.println("continue bout");
-#endif
 #endif
 }
 
@@ -3339,13 +3346,10 @@ void endOfBout()
       Serial.println("!BE");
    }
 #endif
-#ifdef DISP_IR_CARDS_BOX
    buzzerTimeout();
-
    displayScore();
 #ifdef DEBUG_L1
    Serial.println("end of bout");
-#endif
 #endif
    clearPassivity();
 }
@@ -3355,7 +3359,6 @@ void endOfBout()
 //=============
 void startPriority()
 {
-#ifdef DISP_IR_CARDS_BOX
 #ifdef DEBUG_L1
    Serial.println(
       priFencer == FENCER_B ? 
@@ -3378,20 +3381,11 @@ void startPriority()
    setTimer(PRITIME);
    displayTime();
    boutState = STA_PRIORITY;
-#else
-#ifdef ENABLE_REPEATER
-   if (repeaterPresent)
-   {
-      Serial.println(priFencer == FENCER_A ? "!P0":"!P1");
-   }
-#endif
-#endif
    clearPassivity();
 }
 
 void endPriority()
 {
-#ifdef DISP_IR_CARDS_BOX
    priState   = PRI_END;
    timeState  = TIM_STOPPED;
    boutState  = STA_ENDPRI;
@@ -3415,7 +3409,6 @@ void endPriority()
 #endif
    startHitDisplay();
    displayScore();
-#endif
 }
 
 //=============
@@ -3444,7 +3437,7 @@ void startSpar()
    disableScore    = true;
    score[FENCER_A] = score[FENCER_B] = 0;
    lastHit         = 0;
-#ifdef DISP_IR_CARDS_BOX
+#ifdef ENABLE_DISPLAY
    displayState();
 #endif
    resetValues();
@@ -3458,7 +3451,6 @@ void startSpar()
 
 void startBreak()
 {
-#ifdef DISP_IR_CARDS_BOX
 #ifdef ENABLE_REPEATER
    if (repeaterPresent)
    {
@@ -3469,11 +3461,12 @@ void startBreak()
    Serial.println("1 minute break"); 
 #endif
    boutState = STA_BREAK;
+#ifdef ENABLE_DISPLAY
    displayState();
+#endif
    delay(1000);
    setTimer(BREAKTIME);
    restartTimer();
-#endif
    clearPassivity();
 }
 
@@ -3709,7 +3702,7 @@ int runStopWatch()
    return ret;
 }
 
-#ifdef DISP_IR_CARDS_BOX
+#ifdef ENABLE_IR
 void pollIR()
 {
 #ifdef IRLIB2
@@ -3741,7 +3734,6 @@ void pollIR()
 
 bool checkSabreHits()
 {
-#ifdef DISP_IR_CARDS_BOX
    maxSabreHits[FENCER_A] = maxSabreHits[FENCER_B] = false;
 
    if (weaponType == SABRE)
@@ -3757,9 +3749,6 @@ bool checkSabreHits()
       }
    }
    return (maxSabreHits[FENCER_A] || maxSabreHits[FENCER_B]) ? true:false;
-#else
-   return false;
-#endif
 }
 
 void startHitDisplay()
@@ -3769,7 +3758,6 @@ void startHitDisplay()
 
 void startHitDisplay(long time)
 {
-#ifdef DISP_IR_CARDS_BOX
    if (hitDisplay == HIT_IDLE)
    {
       hitDisplay      = HIT_ON;
@@ -3796,7 +3784,6 @@ void startHitDisplay(long time)
          hitDisplayFlag[FENCER_B] = HIT_OFFTARGET;
       }
    }
-#endif
 }
 
 //=============
@@ -3897,7 +3884,7 @@ void loop()
       doWeapon();
 
       // Check LED display dimming and 'screen saver'
-#ifdef DISP_IR_CARDS_BOX
+#ifdef ENABLE_DISPLAY
       if (dimSetting == DIM_BRIGHTEST)
       {
          if (millis() - dimTimer > DIMDELAY)
@@ -3932,7 +3919,7 @@ void loop()
       }
 #endif
 
-#ifdef DISP_IR_CARDS_BOX
+#ifdef ENABLE_IR
       // Poll the IR to see if a key has been pressed
       pollIR();
 #endif
@@ -4022,7 +4009,7 @@ void loop()
          }
       }
 
-#ifdef DISP_IR_CARDS_BOX
+#ifdef ENABLE_IR
       // Poll the IR to see if a key has been pressed
 #ifdef FREQUENT_IRPOLL
       pollIR();
@@ -4067,7 +4054,7 @@ void loop()
          weaponChange = false;
       }
 
-#ifdef DISP_IR_CARDS_BOX
+#ifdef ENABLE_IR
       // Poll the IR to see if a key has been pressed
 #ifdef FREQUENT_IRPOLL
       pollIR();
@@ -4076,13 +4063,14 @@ void loop()
       // Do processing for a given weapon
       doWeapon();
 
-#ifdef DISP_IR_CARDS_BOX
       // Alternate priority
       if (priState == PRI_CHOOSE)
       {
          // Oscillate between fencers when choosing priority
          priFencer = (priFencer == FENCER_A) ? FENCER_B:FENCER_A;
+#ifdef ENABLE_DISPLAY
          displayPriority();
+#endif
       }
 
       // Priority selection complete?
@@ -4090,7 +4078,6 @@ void loop()
       {
          startPriority();
       }
-#endif
 
       // Time to clear the hit flags and lockout?
       switch (resetState)
@@ -4160,7 +4147,7 @@ void loop()
            break;
       }
 
-#ifdef DISP_IR_CARDS_BOX
+#ifdef ENABLE_IR
       // Poll the IR to see if a key has been pressed
 #ifdef FREQUENT_IRPOLL
       pollIR();
@@ -4302,7 +4289,7 @@ void loop()
          updateCardLeds(cardLeds);
       }
 
-#ifdef DISP_IR_CARDS_BOX
+#ifdef ENABLE_IR
       // Poll the IR to see if a key has been pressed
 #ifdef FREQUENT_IRPOLL
       pollIR();
@@ -4313,13 +4300,14 @@ void loop()
 #ifdef REPEATER_POLLING
       repeaterPollForKey();
 #endif
-#ifdef DISP_IR_CARDS_BOX
       // Alternate priority
       if (priState == PRI_CHOOSE)
       {
          // Oscillate between fencers when choosing priority
          priFencer = (priFencer == FENCER_A) ? FENCER_B:FENCER_A;
+#ifdef ENABLE_DISPLAY
          displayPriority();
+#endif
       }
 
       // Priority selection complete?
@@ -4327,7 +4315,6 @@ void loop()
       {
          startPriority();
       }
-#endif
 
       // Do we need to flash up the score?
       if (scoreFlash)
@@ -4398,7 +4385,7 @@ void loop()
          }
       }
 
-#ifdef DISP_IR_CARDS_BOX
+#ifdef ENABLE_IR
       // Poll the IR to see if a key has been pressed
 #ifdef FREQUENT_IRPOLL
       pollIR();
@@ -4450,7 +4437,7 @@ void loop()
           }
       }
 
-#ifdef DISP_IR_CARDS_BOX
+#ifdef ENABLE_IR
       // Poll the IR to see if a key has been pressed
 #ifdef FREQUENT_IRPOLL
       pollIR();
@@ -5080,11 +5067,9 @@ void resetValues()
 
 void resetCards()
 {
-#ifdef DISP_IR_CARDS_BOX
    cardLeds = 0;
 #ifdef DEBUG_L1
    Serial.println("reset cards");
-#endif
 #endif
 #ifdef ENABLE_REPEATER
    if (repeaterPresent)
