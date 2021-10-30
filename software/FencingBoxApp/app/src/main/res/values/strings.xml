@@ -3,8 +3,8 @@
     <string name="weapon_foil">FOIL</string>
     <string name="weapon_epee">EPEE</string>
     <string name="weapon_sabre">SABRE</string>
-    <string name="choose_priority">PRIORITY</string>
     <string name="rest_period">REST PERIOD</string>
+    <string name="priority">PRIORITY</string>
     <string name="mode_spar">SPAR</string>
     <string name="mode_bout">BOUT</string>
     <string name="mode_stopwatch">STOPWATCH</string>
@@ -15,4 +15,5 @@
     <string name="weapon_epee_lc">Epee</string>
     <string name="weapon_sabre_lc">Sabre</string>
     <string name="menu_about">About</string>
+    <string name="priority_choose">Choosing priority...</string>
 </resources>

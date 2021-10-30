@@ -10,6 +10,7 @@ import com.hoho.android.usbserial.driver.UsbSerialPort;
 import com.hoho.android.usbserial.driver.UsbSerialProber;
 
 import android.app.PendingIntent;
+import android.widget.ProgressBar;
 import android.content.BroadcastReceiver;
 import android.content.ComponentName;
 import android.content.Context;
@@ -129,6 +130,8 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
 
     private Queue<Character> keyQ;
 
+    private ProgressBar progress;
+
     /* Commands from the fencing scoring box */
     private final byte cmdMarker = '!';
     private final byte clockMarker1 = '@';
@@ -173,7 +176,6 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
             Log.d(TAG, "initial orientation is landscape");
             mainBinding = landBinding.getRoot();
             layout = (ConstraintLayout) mainBinding;
-
         } else {
             Log.d(TAG, "initial orientation is portrait");
             mainBinding = portBinding.getRoot();
@@ -237,6 +239,9 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
                 5,
                 getApplicationContext());
         click.enable();
+
+        progress.setIndeterminate(true);
+        progress.setVisibility(View.INVISIBLE);
 
         Log.d(TAG, "onCreate end");
     }
@@ -608,6 +613,7 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
                     passCard[0] = landBinding.pCardAL;
                     passCard[1] = landBinding.pCardBL;
                     muteIcon = (ImageView) landBinding.iconMuteL;
+                    progress = landBinding.priorityChooseL;
                 } else {
                     textScore = portBinding.textScore;
                     textScore.setGravity(Gravity.CENTER);
@@ -620,6 +626,7 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
                     passCard[0] = portBinding.pCardA;
                     passCard[1] = portBinding.pCardB;
                     muteIcon = (ImageView) portBinding.iconMute;
+                    progress = portBinding.priorityChoose;
                 }
                 try {
                     Typeface face = Typeface.createFromAsset(getAssets(), "font/DSEG7Classic-Bold.ttf");
@@ -1235,9 +1242,12 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
             case "PC":
                 Log.d(TAG, "choosing priority");
                 hideUI();
+                Toast.makeText(getApplicationContext(), R.string.priority, Toast.LENGTH_SHORT).show();
+                if (progress != null) {
+                    progress.setVisibility(View.VISIBLE);
+                }
                 clearPriority();
                 clearClock(Color.GREEN);
-                Toast.makeText(getApplicationContext(), R.string.choose_priority, Toast.LENGTH_SHORT).show();
                 setHitLights(Hit.OnTarget, Hit.OnTarget);
                 break;
 
@@ -1269,12 +1279,18 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
                 break;
 
             case "P0":
+                if (progress != null) {
+                    progress.setVisibility(View.INVISIBLE);
+                }
                 hideUI();
                 setPriorityA();
                 Log.d(TAG, "priority fencer A start");
                 break;
 
             case "P1":
+                if (progress != null) {
+                    progress.setVisibility(View.INVISIBLE);
+                }
                 hideUI();
                 setPriorityB();
                 Log.d(TAG, "priority fencer B start");
@@ -1587,6 +1603,7 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
                 clearPriority();
                 clearPassivity();
                 clearPassivityCard();
+                progress.setVisibility(View.INVISIBLE);
             }
         });
     }
@@ -1621,6 +1638,7 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
         clearPriority();
         clearPassivity();
         clearPassivityCard();
+        progress.setVisibility(View.GONE);
         reconnect();
     }
 
@@ -1643,6 +1661,7 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
         clearPriority();
         clearPassivity();
         clearPassivityCard();
+        progress.setVisibility(View.GONE);
         reconnect();
     }
 

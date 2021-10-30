@@ -114,12 +114,13 @@
         android:layout_width="50dp"
         android:layout_height="19dp"
         android:layout_marginStart="28dp"
+        android:layout_marginBottom="196dp"
         android:background="#000000"
         android:textAlignment="center"
         android:textColor="#00FF00"
         android:textSize="14sp"
-        app:layout_constraintStart_toStartOf="@+id/guideline"
-        tools:layout_editor_absoluteY="0dp" />
+        app:layout_constraintBottom_toTopOf="@+id/guideline5"
+        app:layout_constraintStart_toStartOf="@+id/guideline" />
 
     <androidx.constraintlayout.widget.Guideline
         android:id="@+id/guideline"
@@ -170,10 +171,25 @@
         android:id="@+id/icon_mute_l"
         android:layout_width="19dp"
         android:layout_height="19dp"
+        android:layout_marginBottom="196dp"
         android:background="#000000"
+        app:layout_constraintBottom_toTopOf="@+id/guideline5"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:srcCompat="@android:drawable/ic_lock_silent_mode"
-        tools:layout_editor_absoluteY="1dp" />
+        app:srcCompat="@android:drawable/ic_lock_silent_mode" />
+
+    <ProgressBar
+        android:id="@+id/priorityChoose_l"
+        style="@android:style/Widget.DeviceDefault.Light.ProgressBar.Inverse"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:indeterminate="true"
+        android:visibility="invisible"
+        app:layout_constraintBottom_toTopOf="@+id/guideline5"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="0.484"
+        app:layout_constraintStart_toStartOf="@+id/guideline"
+        app:layout_constraintTop_toTopOf="@+id/guideline3"
+        app:layout_constraintVertical_bias="0.958" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>
