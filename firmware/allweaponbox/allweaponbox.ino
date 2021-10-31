@@ -4,7 +4,7 @@
 //  Dev:     Wnew                                                            //
 //  Date:    Nov     2012                                                    //
 //  Updated: Sept    2015                                                    //
-//  Updated: October 28 2021 Robin Terry, Skipton, UK                        //
+//  Updated: October 31 2021 Robin Terry, Skipton, UK                        //
 //                                                                           //
 //  Notes:   1. Basis of algorithm from digitalwestie on github. Thanks Mate //
 //           2. Used uint8_t instead of int where possible to optimise       //
@@ -37,17 +37,17 @@
 //============
 // #defines
 //============
-//#define DEBUG_L1               // level 1 debug
-//#define DEBUG_L2               // level 2 debug
-//#define DEBUG_L3               // level 3 debug
-//#define DEBUG_L4               // level 4 debug
-//#define DEBUG_L5               // level 5 debug
-//#define DEBUG_L6               // level 6 debug
-//#define DEBUG_L7               // level 7 debug
-//#define DEBUG_IR               // debug the IR reception
-//#define OFFTARGET_LEDS         // define this if you have fitted the discrete off-target LEDs
-#define ENABLE_DISPLAY           // define this to enable 7-segment display and card LEDs -
-                                 // for a simple hit indicator only box, you can undefine this                                  
+//#define DEBUG_L1               // Level 1 debug
+//#define DEBUG_L2               // Level 2 debug
+//#define DEBUG_L3               // Level 3 debug
+//#define DEBUG_L4               // Level 4 debug
+//#define DEBUG_L5               // Level 5 debug
+//#define DEBUG_L6               // Level 6 debug
+//#define DEBUG_L7               // Level 7 debug
+//#define DEBUG_IR               // Debug the IR reception
+//#define OFFTARGET_LEDS         // Define this if you have fitted the discrete off-target LEDs
+#define ENABLE_DISPLAY           // Define this to enable 7-segment display and card LEDs -
+                                 // For a simple hit indicator only box, you can undefine this                                  
 #define ENABLE_REPEATER          // Send serial data out to an indicator application
 #define ENABLE_IR                // Enable IR support
 
@@ -65,12 +65,12 @@
 #endif
 
 #ifdef ENABLE_DISPLAY
-#define LOW_POWER                // support low-power for battery operation
+#define LOW_POWER                // Support low-power for battery operation
 #endif
 
 #ifdef ENABLE_IR
-#define FREQUENT_IRPOLL          // define this to increase the amount of IR polling     
-#define IRLIB2                   // use IRLib2 instead of IRRemote (IRLib2 is better, but bigger)
+#define FREQUENT_IRPOLL          // Define this to increase the amount of IR polling     
+#define IRLIB2                   // Use IRLib2 instead of IRRemote (IRLib2 is better, but bigger)
 #endif
 
 #ifdef IRLIB2
@@ -82,9 +82,9 @@
 #define MAX_DELAY_IR_REPEAT 300  // Initial period in milliseconds before repeats start
 #define MAX_KEYPRESS_GAP 200     // Gap between keypresses which resets the IR state machine
 
-#define STOPWATCH                // enable the stopwatch
-#define EEPROM_STORAGE           // use EEPROM for storing values over power-off
-//#define SPAR_INCR_SCORE        // automatically increment score after a hit in sparring mode
+#define ENABLE_STOPWATCH         // Enable the stopwatch
+#define EEPROM_STORAGE           // Use EEPROM for storing values over power-off
+//#define SPAR_INCR_SCORE        // Automatically increment score after a hit in sparring mode
 
 #define PASSIVITY                // Support for passivity monitoring
 
@@ -92,26 +92,30 @@
 #define PASSIVITY_SIGNAL         // Enable signalling passivity timeout on the hit LEDs
 #endif
 
-#define BUZZERTIME     (1000)    // length of time the buzzer is kept on after a hit (ms)
-#define TESTPOINTTIME  (500)     // length of time the buzzer and lights are kept on when point testing (ms)
-#define LIGHTTIME      (3000)    // length of time the lights are kept on after a hit (ms)
-#define BAUDRATE       (500000)  // baud rate of the serial debug interface
+#define PRITIMER_RANDOM          // Enable generation of random time for priority selection
+
+// Constants
+
+#define BUZZERTIME     (1000)    // Length of time the buzzer is kept on after a hit (ms)
+#define TESTPOINTTIME  (500)     // Length of time the buzzer and lights are kept on when point testing (ms)
+#define LIGHTTIME      (3000)    // Length of time the lights are kept on after a hit (ms)
+#define BAUDRATE       (500000)  // Baud rate of the serial debug interface
 #define ONESEC         (1000UL)
 #define HUNDSEC        (10)
 #define ONESEC_US      (1000000)
-#define BUTTONSCAN     (200)              // button scan period (ms)
-#define BUTTONDEBOUNCE (BUTTONSCAN*10)    // button debounce (in ms, but a whole number of scan periods)
+#define BUTTONSCAN     (200)              // Button scan period (ms)
+#define BUTTONDEBOUNCE (BUTTONSCAN*10)    // Button debounce (in ms, but a whole number of scan periods)
 #define BOUTTIME       (180)     // 3 minutes bout time
 #define PRITIME        (60)      // 1 minute priority time
 #define BREAKTIME      (60)      // 1 minute break time
-#define HITDISPTIME    (200)     // hit display flash time (ms)
-#define SCOREFLASHTIME (1000)    // score flashup display time (ms)
+#define HITDISPTIME    (200)     // Hit display flash time (ms)
+#define SCOREFLASHTIME (1000)    // Score flashup display time (ms)
 #define MAXSCORE       (99)
 #define MAXSHORTCIRC   (3000)    // Short circuit persist time (ms)
 #define MAXSABREHITS   (8)       // If a sabre fencer makes 8 hits in one bout, stop the bout
 #define DIMDELAY       (5UL*60UL*ONESEC)  // Delay before starting to dim the LED display (ms)
 #define DIMINTERVAL    (500)              // Interval between LED display dimming cycle steps (ms)
-#define MAX_STOPWATCH  ((60UL*60UL)-1)    // Maximum stopwatch time (59:59)
+#define MAX_ENABLE_STOPWATCH  ((60UL*60UL)-1)    // Maximum stopwatch time (59:59)
 #define REPEATERPOLL   (100)
 
 #ifdef PASSIVITY
@@ -122,6 +126,11 @@
 #ifdef EEPROM_STORAGE
 #define NV_WEAPON      (16)
 #define NV_STATE       (17)
+#endif
+
+#ifdef PRITIMER_RANDOM
+#define PRITIMER_RANGE (3000)
+#define PRITIMER_MIN   (3000)
 #endif
 
 #define FENCER_A       (0)
@@ -312,7 +321,7 @@ enum TimeState
    TIM_BREAK,
    TIM_BOUT,
    TIM_PRIORITY,
-   TIM_STOPWATCH
+   TIM_ENABLE_STOPWATCH
 };
 
 enum BoutState
@@ -428,7 +437,7 @@ Priority        priState             = PRI_IDLE;
 Reset           resetState           = RES_IDLE;
 Key             lastKey              = K_NONE;
 Disp            currentDisp          = DISP_NONE;
-#ifdef STOPWATCH
+#ifdef ENABLE_STOPWATCH
 StopWatchCount  swCount              = SW_UP; 
 StopWatchEdit   swEdit               = SW_NONE;
 #endif    
@@ -437,6 +446,10 @@ uint8_t         dimCycle             = 0;
 long            dimTimer             = 0;
 long            lastKeyCode          = 0;
 uint8_t         priFencer            = FENCER_A; 
+#ifdef PRITIMER_RANDOM
+unsigned long   priChooseRndMs       = 0;
+unsigned long   priChooseTime        = 0;
+#endif
 bool            disableScore         = false;
 Hit             hitDisplayFlag[2]    = { HIT_NONE, HIT_NONE };
 uint8_t         lastHit              = 0;
@@ -805,7 +818,7 @@ void displayState(enum BoutState state)
         break;
 
      case STA_STOPWATCH:
-#ifdef STOPWATCH
+#ifdef ENABLE_STOPWATCH
         disp.setSegments(stopWatchDisp, 4, 0);
 #endif
         break;
@@ -828,7 +841,7 @@ void displayWeaponAndState()
 
 void displayTouch(bool touchActive)
 {
-#ifdef STOPWATCH
+#ifdef ENABLE_STOPWATCH
    if (!inStopWatch())
 #endif
    {
@@ -1198,7 +1211,7 @@ void displayTime()
    // Not temporarily displaying score?
    else if (!scoreFlash)
    {
-#ifdef STOPWATCH
+#ifdef ENABLE_STOPWATCH
       if (swEdit != SW_NONE)
       {
 #ifdef ENABLE_DISPLAY
@@ -1246,7 +1259,7 @@ void displayTime()
 
       /* Two sprintfs are needed because of an awful bug in the Arduino
          libraries which means that sprintf() can't take more than one argument! */
-#ifdef STOPWATCH
+#ifdef ENABLE_STOPWATCH
       if (inStopWatch())
       {
          if (swEdit != SW_NONE)
@@ -1654,6 +1667,11 @@ void choosePriority()
    delay(1000);
    priState   = PRI_CHOOSE;
    priFencer  = FENCER_A;
+#ifdef PRITIMER_RANDOM
+   // Use the microsecond timer to set a random time for priority selection
+   priChooseRndMs = (((micros() ^ 0x49A0F44BUL) * 0x3CD1EE57UL) % PRITIMER_RANGE) + PRITIMER_MIN;
+   priChooseTime  = millis();
+#endif
 }
 
 //=============
@@ -2286,8 +2304,8 @@ void transIR(unsigned long key)
               startBout();
            }
         }
-#ifdef STOPWATCH
-        // In STOPWATCH mode?
+#ifdef ENABLE_STOPWATCH
+        // In ENABLE_STOPWATCH mode?
         else if (inStopWatch())
         {
            if (timeState == TIM_STOPPED)
@@ -2320,8 +2338,8 @@ void transIR(unsigned long key)
            switch (boutState)
            {                 
               case STA_STARTBOUT:
-#ifdef STOPWATCH
-                 // Bout not started - go into STOPWATCH mode
+#ifdef ENABLE_STOPWATCH
+                 // Bout not started - go into ENABLE_STOPWATCH mode
                  keyClick();
                  if (key == '$')
                  {
@@ -2355,12 +2373,14 @@ void transIR(unsigned long key)
         resetHits();
      }
 
+#ifndef PRITIMER_RANDOM
      // In priority select mode, this key will stop selection (same as #)
      else if (priState == PRI_CHOOSE)
      {
         keyClick();
         priState = PRI_SELECTED;
      }
+#endif
      break;
   case 0xFF629D: // 2
   case '2':
@@ -2442,7 +2462,7 @@ void transIR(unsigned long key)
         }
 
         // In stopwatch - allow editing of minutes
-#ifdef STOPWATCH
+#ifdef ENABLE_STOPWATCH
         else if (inStopWatch())
         {
            // If the stopwatch is stopped, then allow time editing
@@ -2468,27 +2488,31 @@ void transIR(unsigned long key)
            }
         }
 #endif
+#ifndef PRITIMER_RANDOM
         // In priority select mode, this key will stop selection (same as #)
         else if (priState == PRI_CHOOSE)
         {
            keyClick();
            priState = PRI_SELECTED;
         }
+#endif
         resetHits();
      }
-        
+
+#ifndef PRITIMER_RANDOM
      // In priority select mode, this key will stop selection (same as #)
      else if (priState == PRI_CHOOSE)
      {
         keyClick();
         priState = PRI_SELECTED;
      }
+#endif
      break;
   case 0xFF38C7: // OK
   case 'K': case 'k':
      if (priorityInactive())
      {
-#ifdef STOPWATCH
+#ifdef ENABLE_STOPWATCH
         if (inStopWatch())
         {
            keyClick();
@@ -2506,7 +2530,7 @@ void transIR(unsigned long key)
 #endif
               restartTimer();
               stopWatchLeds();
-              timeState = TIM_STOPWATCH;
+              timeState = TIM_ENABLE_STOPWATCH;
            }
 
            // Pause the stopwatch
@@ -2706,12 +2730,14 @@ void transIR(unsigned long key)
         resetHits();
      }
 
+#ifndef PRITIMER_RANDOM
      // In priority select mode, this key will stop selection (same as #)
      else if (priState == PRI_CHOOSE)
      {
         keyClick();
         priState = PRI_SELECTED;
      }
+#endif
      lastKey = K_OK;
      break;
   case 0xFF5AA5: // RIGHT
@@ -2748,7 +2774,7 @@ void transIR(unsigned long key)
         }
 
         // In stopwatch - allow editing of seconds
-#ifdef STOPWATCH
+#ifdef ENABLE_STOPWATCH
         else if (inStopWatch())
         {
            // If the stopwatch is stopped, then allow time editing
@@ -2775,13 +2801,15 @@ void transIR(unsigned long key)
 #endif
         resetHits();
      }
-     
+
+#ifndef PRITIMER_RANDOM
      // In priority select mode, this key will stop selection (same as #)
      else if (priState == PRI_CHOOSE)
      {
         keyClick();
         priState = PRI_SELECTED;
      }
+#endif
      break;
   case 0xFF4AB5: // DOWN
   case 'D': case 'd':
@@ -2821,7 +2849,7 @@ void transIR(unsigned long key)
         }
         
         // In stopwatch - allow decrement of minutes or seconds
-#ifdef STOPWATCH
+#ifdef ENABLE_STOPWATCH
         else if (inStopWatch())
         {
            // If the stopwatch is stopped, then allow time editing
@@ -2867,13 +2895,15 @@ void transIR(unsigned long key)
         }
 #endif
      }
-     
+
+#ifndef PRITIMER_RANDOM
      // In priority select mode, this key will stop selection (same as #)
      else if (priState == PRI_CHOOSE)
      {
         keyClick();
         priState = PRI_SELECTED;
      }
+#endif
      break;
   case 0xFF9867: // 0
   case '0':
@@ -2891,12 +2921,14 @@ void transIR(unsigned long key)
         resetHits();
      }
 
+#ifndef PRITIMER_RANDOM
      // In priority select mode, this key will stop selection (same as #)
      else if (priState == PRI_CHOOSE)
      {
         keyClick();
         priState = PRI_SELECTED;
      }
+#endif
      break;
   case 0xFF18E7: // UP
   case 'U': case'u':
@@ -2936,7 +2968,7 @@ void transIR(unsigned long key)
         }
 
         // In stopwatch - allow increment of minutes or seconds
-#ifdef STOPWATCH
+#ifdef ENABLE_STOPWATCH
         else if (inStopWatch())
         {
            // If the stopwatch is stopped, then allow time editing
@@ -2983,20 +3015,22 @@ void transIR(unsigned long key)
 #endif
      }
 
+#ifndef PRITIMER_RANDOM
      // In priority select mode, this key will stop selection (same as #)
      else if (priState == PRI_CHOOSE)
      {
         keyClick();
         priState = PRI_SELECTED;
      }
+#endif
      break;
   case 0xFFB04F: // #
   case '#':
-#ifdef STOPWATCH
+#ifdef ENABLE_STOPWATCH
      if (inStopWatch())
      {
         // Stopwatch running? If so, reset and restart it
-        if (timeState == TIM_STOPWATCH)
+        if (timeState == TIM_ENABLE_STOPWATCH)
         {
            keyClick();
            resetStopWatch(true);
@@ -3276,7 +3310,7 @@ void startBout()
    }
 #endif
    priState                = PRI_IDLE;
-#ifdef STOPWATCH
+#ifdef ENABLE_STOPWATCH
    swEdit                  = SW_NONE;
 #endif
    disableScore            = false;
@@ -3431,7 +3465,7 @@ void startSpar()
 #endif
    timeState       = TIM_STOPPED;
    priState        = PRI_IDLE;
-#ifdef STOPWATCH
+#ifdef ENABLE_STOPWATCH
    swEdit          = SW_NONE;
 #endif
    disableScore    = true;
@@ -3472,7 +3506,7 @@ void startBreak()
 
 void startStopWatch()
 {
-#ifdef STOPWATCH
+#ifdef ENABLE_STOPWATCH
    boutState = STA_STOPWATCH;
 #ifdef ENABLE_REPEATER
    if (repeaterPresent)
@@ -3502,7 +3536,7 @@ void startStopWatch()
 
 void setStopWatch()
 {
-#ifdef STOPWATCH
+#ifdef ENABLE_STOPWATCH
    timerMins = swMins;
    timerSecs = swSecs;
 #ifdef DEBUG_L4
@@ -3527,7 +3561,7 @@ void resetStopWatch(bool restart)
 
 void resetStopWatch(bool restart, bool lightLeds)
 {
-#ifdef STOPWATCH
+#ifdef ENABLE_STOPWATCH
 #ifdef DEBUG_L4
    Serial.println("reset stopwatch");
 #endif
@@ -3576,7 +3610,7 @@ void resetStopWatch(bool restart, bool lightLeds)
 
 void stopWatchLeds()
 {
-#ifdef STOPWATCH
+#ifdef ENABLE_STOPWATCH
   uint8_t stopWatchLeds;
 
   // Toggle the two hit LEDs
@@ -3613,7 +3647,7 @@ void stopWatchLeds()
 int runStopWatch()
 {
    int ret = 0;
-#ifdef STOPWATCH
+#ifdef ENABLE_STOPWATCH
    if (boutState == STA_STOPWATCH)
    {
       // Starting for first time
@@ -3635,7 +3669,7 @@ int runStopWatch()
       switch (swCount)
       {
          case SW_UP:
-            if (timer < MAX_STOPWATCH)
+            if (timer < MAX_ENABLE_STOPWATCH)
             {
                timer++;
                if (timerSecs >= 59)
@@ -4063,13 +4097,21 @@ void loop()
       // Do processing for a given weapon
       doWeapon();
 
-      // Alternate priority
+      // Alternate priority display
       if (priState == PRI_CHOOSE)
       {
          // Oscillate between fencers when choosing priority
          priFencer = (priFencer == FENCER_A) ? FENCER_B:FENCER_A;
 #ifdef ENABLE_DISPLAY
          displayPriority();
+#endif
+#ifdef PRITIMER_RANDOM
+         // Stop choosing when the timer expires
+         if (millis() - priChooseTime >= priChooseRndMs)
+         {
+            priState      = PRI_SELECTED;
+            priChooseTime = priChooseRndMs = 0;
+         }
 #endif
       }
 
@@ -4300,13 +4342,21 @@ void loop()
 #ifdef REPEATER_POLLING
       repeaterPollForKey();
 #endif
-      // Alternate priority
+      // Alternate priority display
       if (priState == PRI_CHOOSE)
       {
          // Oscillate between fencers when choosing priority
          priFencer = (priFencer == FENCER_A) ? FENCER_B:FENCER_A;
 #ifdef ENABLE_DISPLAY
          displayPriority();
+#endif
+#ifdef PRITIMER_RANDOM
+         // Stop choosing when the timer expires
+         if (millis() - priChooseTime >= priChooseRndMs)
+         {
+            priState      = PRI_SELECTED;
+            priChooseTime = priChooseRndMs = 0;
+         }
 #endif
       }
 
@@ -4403,7 +4453,7 @@ void loop()
           switch (boutState)
           {
              case STA_STOPWATCH:
-                timeState = TIM_STOPWATCH;
+                timeState = TIM_ENABLE_STOPWATCH;
 #ifdef DEBUG_L2
                 Serial.println("priority starting");
 #endif
@@ -4460,8 +4510,8 @@ void loop()
                Serial.println("1 second gone");
 #endif
             timerMs = millis();
-#ifdef STOPWATCH
-            if (timeState == TIM_STOPWATCH)
+#ifdef ENABLE_STOPWATCH
+            if (timeState == TIM_ENABLE_STOPWATCH)
             {
                runStopWatch();
             }
