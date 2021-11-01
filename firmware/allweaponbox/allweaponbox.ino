@@ -730,6 +730,11 @@ bool scDisplayActive()
    return (shortCircuit[FENCER_A] || shortCircuit[FENCER_B]) ? true:false;
 }
 
+bool priorityChoose()
+{
+   return (priState == PRI_CHOOSE) ? true:false;
+}
+
 bool priorityInactive()
 {
    if (priState == PRI_END)
@@ -894,8 +899,8 @@ void displayScore()
   Serial.println("display score");
 #endif
 
-  // If priority display is active, then don't do this
-  if (priState == PRI_CHOOSE)
+  // If priority choose display is active, then don't do this
+  if (priorityChoose())
   {
      return;
   }
@@ -1196,8 +1201,8 @@ void displayTime()
   Serial.println("display time");
 #endif
 
-   // If priority display is active, then don't do this
-   if (priState == PRI_CHOOSE)
+   // If priority choose display is active, then don't do this
+   if (priorityChoose())
    {
       return;
    }
@@ -2375,7 +2380,7 @@ void transIR(unsigned long key)
 
 #ifndef PRITIMER_RANDOM
      // In priority select mode, this key will stop selection (same as #)
-     else if (priState == PRI_CHOOSE)
+     else if (priorityChoose())
      {
         keyClick();
         priState = PRI_SELECTED;
@@ -2490,7 +2495,7 @@ void transIR(unsigned long key)
 #endif
 #ifndef PRITIMER_RANDOM
         // In priority select mode, this key will stop selection (same as #)
-        else if (priState == PRI_CHOOSE)
+        else if (priorityChoose())
         {
            keyClick();
            priState = PRI_SELECTED;
@@ -2501,7 +2506,7 @@ void transIR(unsigned long key)
 
 #ifndef PRITIMER_RANDOM
      // In priority select mode, this key will stop selection (same as #)
-     else if (priState == PRI_CHOOSE)
+     else if (priorityChoose())
      {
         keyClick();
         priState = PRI_SELECTED;
@@ -2732,7 +2737,7 @@ void transIR(unsigned long key)
 
 #ifndef PRITIMER_RANDOM
      // In priority select mode, this key will stop selection (same as #)
-     else if (priState == PRI_CHOOSE)
+     else if (priorityChoose())
      {
         keyClick();
         priState = PRI_SELECTED;
@@ -2804,7 +2809,7 @@ void transIR(unsigned long key)
 
 #ifndef PRITIMER_RANDOM
      // In priority select mode, this key will stop selection (same as #)
-     else if (priState == PRI_CHOOSE)
+     else if (priorityChoose())
      {
         keyClick();
         priState = PRI_SELECTED;
@@ -2898,7 +2903,7 @@ void transIR(unsigned long key)
 
 #ifndef PRITIMER_RANDOM
      // In priority select mode, this key will stop selection (same as #)
-     else if (priState == PRI_CHOOSE)
+     else if (priorityChoose())
      {
         keyClick();
         priState = PRI_SELECTED;
@@ -2923,7 +2928,7 @@ void transIR(unsigned long key)
 
 #ifndef PRITIMER_RANDOM
      // In priority select mode, this key will stop selection (same as #)
-     else if (priState == PRI_CHOOSE)
+     else if (priorityChoose())
      {
         keyClick();
         priState = PRI_SELECTED;
@@ -3017,7 +3022,7 @@ void transIR(unsigned long key)
 
 #ifndef PRITIMER_RANDOM
      // In priority select mode, this key will stop selection (same as #)
-     else if (priState == PRI_CHOOSE)
+     else if (priorityChoose())
      {
         keyClick();
         priState = PRI_SELECTED;
@@ -3414,7 +3419,7 @@ void startPriority()
    priState = PRI_IDLE;
    setTimer(PRITIME);
    displayTime();
-   boutState = STA_PRIORITY;
+   boutState = STA_TP_PRI;
    clearPassivity();
 }
 
@@ -3847,10 +3852,10 @@ void adcOpt()
 
 void doWeapon()
 {
-   // Don't read the analogue pins if not a bout nor sparring
-   if (!inStopWatch())
+   // Don't read the analogue pins if in stopwatch mode or choosing priority
+   if (!inStopWatch() && !priorityChoose())
    {
-      // read analogue pins
+      // Read analogue pins
       weapon[FENCER_A] = analogRead(weaponPinA);
       weapon[FENCER_B] = analogRead(weaponPinB);
       lame[FENCER_A]   = analogRead(lamePinA);
@@ -4098,7 +4103,7 @@ void loop()
       doWeapon();
 
       // Alternate priority display
-      if (priState == PRI_CHOOSE)
+      if (priorityChoose())
       {
          // Oscillate between fencers when choosing priority
          priFencer = (priFencer == FENCER_A) ? FENCER_B:FENCER_A;
@@ -4343,7 +4348,7 @@ void loop()
       repeaterPollForKey();
 #endif
       // Alternate priority display
-      if (priState == PRI_CHOOSE)
+      if (priorityChoose())
       {
          // Oscillate between fencers when choosing priority
          priFencer = (priFencer == FENCER_A) ? FENCER_B:FENCER_A;
