@@ -4,6 +4,7 @@ package com.robinterry.fencingboxapp;
    Modifications (c) 2021 Robin Terry (mainly the Log output) */
 
 import android.app.Service;
+import android.app.Notification;
 import android.content.Intent;
 import android.os.Binder;
 import android.os.Handler;
@@ -91,30 +92,32 @@ public class SerialService extends Service implements SerialListener {
     }
 
     public void write(byte[] data) throws IOException {
-        if (!connected)
+        if (!connected) {
             throw new IOException("not connected");
+        }
         socket.write(data);
     }
 
     public void attach(SerialListener listener) {
         Log.d(TAG, "service attach to listener " + listener);
-        if (Looper.getMainLooper().getThread() != Thread.currentThread())
+        if (Looper.getMainLooper().getThread() != Thread.currentThread()) {
             throw new IllegalArgumentException("not in main thread");
+        }
         // use synchronized() to prevent new items in queue2
         // new items will not be added to queue1 because mainLooper.post and attach() run in main thread
         synchronized (this) {
             this.listener = listener;
         }
-        for(QueueItem item : queue1) {
-            switch(item.type) {
+        for (QueueItem item : queue1) {
+            switch (item.type) {
                 case Connect:       listener.onSerialConnect      (); break;
                 case ConnectError:  listener.onSerialConnectError (item.e); break;
                 case Read:          listener.onSerialRead         (item.data); break;
                 case IoError:       listener.onSerialIoError      (item.e); break;
             }
         }
-        for(QueueItem item : queue2) {
-            switch(item.type) {
+        for (QueueItem item : queue2) {
+            switch (item.type) {
                 case Connect:       listener.onSerialConnect      (); break;
                 case ConnectError:  listener.onSerialConnectError (item.e); break;
                 case Read:          listener.onSerialRead         (item.data); break;
@@ -127,11 +130,12 @@ public class SerialService extends Service implements SerialListener {
 
     public void detach() {
         Log.d(TAG, "service detach from listener " + listener);
-        if(connected)
-        // items already in event queue (posted before detach() to mainLooper) will end up in queue1
-        // items occurring later, will be moved directly to queue2
-        // detach() and mainLooper.post run in the main thread, so all items are caught
-        listener = null;
+        if (connected) {
+            // items already in event queue (posted before detach() to mainLooper) will end up in queue1
+            // items occurring later, will be moved directly to queue2
+            // detach() and mainLooper.post run in the main thread, so all items are caught
+            listener = null;
+        }
     }
 
     /**
@@ -139,7 +143,7 @@ public class SerialService extends Service implements SerialListener {
      */
     public void onSerialConnect() {
         Log.d(TAG, "onSerialConnect connected " + connected);
-        if(connected) {
+        if (connected) {
             synchronized (this) {
                 if (listener != null) {
                     mainLooper.post(() -> {
@@ -158,7 +162,7 @@ public class SerialService extends Service implements SerialListener {
 
     public void onSerialConnectError(Exception e) {
         Log.d(TAG, "onSerialConnectError connected " + connected);
-        if(connected) {
+        if (connected) {
             synchronized (this) {
                 if (listener != null) {
                     mainLooper.post(() -> {
@@ -178,7 +182,7 @@ public class SerialService extends Service implements SerialListener {
     }
 
     public void onSerialRead(byte[] data) {
-        if(connected) {
+        if (connected) {
             synchronized (this) {
                 if (listener != null) {
                     mainLooper.post(() -> {
@@ -196,19 +200,22 @@ public class SerialService extends Service implements SerialListener {
     }
 
     public void onSerialIoError(Exception e) {
-        Log.d(TAG, "onSerialIoError connected " + connected);
-        if(connected) {
+        Log.d(TAG, "onSerialIoError connected value " + connected);
+        if (connected) {
             synchronized (this) {
                 if (listener != null) {
                     mainLooper.post(() -> {
                         if (listener != null) {
+                            Log.d(TAG, "onSerialIoError listener " + listener);
                             listener.onSerialIoError(e);
                         } else {
+                            Log.d(TAG, "onSerialIoError listener null");
                             queue1.add(new QueueItem(QueueType.IoError, null, e));
                             disconnect();
                         }
                     });
                 } else {
+                    Log.d(TAG, "onSerialIoError listener null (2)");
                     queue2.add(new QueueItem(QueueType.IoError, null, e));
                     disconnect();
                 }

@@ -13,7 +13,6 @@ import com.hoho.android.usbserial.driver.UsbSerialProber;
  * add IDs to app/src/main/res/xml/usb_device_filter.xml
  */
 class CustomProber {
-
     static UsbSerialProber getCustomProber() {
         ProbeTable customTable = new ProbeTable();
         customTable.addProduct(0x16d0, 0x087e, CdcAcmSerialDriver.class); // e.g. Digispark CDC

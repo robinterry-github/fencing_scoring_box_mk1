@@ -99,7 +99,7 @@
 #define BUZZERTIME     (1000)    // Length of time the buzzer is kept on after a hit (ms)
 #define TESTPOINTTIME  (500)     // Length of time the buzzer and lights are kept on when point testing (ms)
 #define LIGHTTIME      (3000)    // Length of time the lights are kept on after a hit (ms)
-#define BAUDRATE       (500000)  // Baud rate of the serial debug interface
+#define BAUDRATE       (115200)  // Baud rate of the serial debug interface
 #define ONESEC         (1000UL)
 #define HUNDSEC        (10)
 #define ONESEC_US      (1000000)
@@ -662,6 +662,25 @@ long repeaterPollTime     = 0;
 bool repeaterPresent      = true;
 #endif
 
+#ifdef ENABLE_REPEATER
+void sendRepeater(String msg)
+{
+   if (repeaterPresent)
+   {
+      while (!Serial)
+         ;
+      Serial.print(msg);
+      delay(1);
+
+      // Delay the polling
+      if (repeaterPollTime <= REPEATERPOLL)
+      {
+         repeaterPollTime += REPEATERPOLL;
+      }
+   }
+}
+#endif
+
 bool inBout()
 {
    return ((boutState != STA_SPAR) && (boutState != STA_BREAK) && (boutState != STA_STOPWATCH)) ? true:false;
@@ -786,6 +805,10 @@ void displayWeapon(bool lights)
 #ifdef ENABLE_DISPLAY
       updateCardLeds(0);
 #endif
+   }
+   else
+   {
+      delay(1000);
    }
 }
 
@@ -1182,11 +1205,11 @@ void displayScore()
            libraries which means that sprintf() can't take more than one argument! */
         sprintf(&ind[0], "*%02d",  score[FENCER_A]);
         sprintf(&ind[3], "%02d",   score[FENCER_B]);
-        Serial.println(ind);
+        Serial.print(ind);
      }
      else
      {
-        Serial.println("!HS");
+        Serial.print("!HS");
      }
   }
 #endif
@@ -1277,7 +1300,7 @@ void displayTime()
             sprintf(&ind[0], "@%02d",  timerMins);
             sprintf(&ind[3], "%02d",   timerSecs);
          }
-         Serial.println(ind);
+         Serial.print(ind);
       }
       else
 #endif
@@ -1287,7 +1310,7 @@ void displayTime()
          {
             sprintf(&ind[0], ":%02d",  timerSecs);
             sprintf(&ind[3], "%02d",   timerHund);
-            Serial.println(ind);
+            Serial.print(ind);
          }
       }
       else
@@ -1296,7 +1319,7 @@ void displayTime()
             libraries which means that sprintf() can't take more than one argument! */
          sprintf(&ind[0], "@%02d",  timerMins);
          sprintf(&ind[3], "%02d",   timerSecs);
-         Serial.println(ind);
+         Serial.print(ind);
       }
    }
 #endif
@@ -1326,10 +1349,7 @@ void displayPriority()
             digitalWrite(onTargetA, HIGH);
             digitalWrite(onTargetB, LOW);
 #ifdef ENABLE_REPEATER
-            if (repeaterPresent)
-            {
-               Serial.println("$H3");
-            }
+            sendRepeater("$H3");
 #endif
          }
       }
@@ -1344,10 +1364,7 @@ void displayPriority()
             digitalWrite(onTargetA, LOW);
             digitalWrite(onTargetB, HIGH);
 #ifdef ENABLE_REPEATER
-            if (repeaterPresent)
-            {
-               Serial.println("$H4");
-            }
+            sendRepeater("$H4");
 #endif
          }
       }
@@ -1466,6 +1483,8 @@ void setup()
 {
 #ifdef DEBUG_ALL
    Serial.begin(BAUDRATE);
+   while (!Serial)
+      ;
 #endif
 #ifdef DEBUG_ALL
    Serial.println("");
@@ -1542,7 +1561,7 @@ void setup()
 #ifdef ENABLE_REPEATER
    Serial.begin(BAUDRATE);
    Serial.println("");
-   Serial.println("!GO");
+   sendRepeater("!GO");
 
    /* Wait one second for initial "OK" response from repeater */
    int  response[] = { 'O', 'K', '\0' };
@@ -1578,23 +1597,20 @@ void setup()
 #ifdef ENABLE_REPEATER
 void indicateWeapon()
 {
-   if (repeaterPresent)
+   switch (weaponType)
    {
-      switch (weaponType)
-      {
-         case FOIL:
-         default:
-            Serial.println("!TF");
-            break;
+      case FOIL:
+      default:
+         sendRepeater("!TF");
+         break;
 
-         case EPEE:
-            Serial.println("!TE");
-            break;
+      case EPEE:
+         sendRepeater("!TE");
+         break;
 
-         case SABRE:
-            Serial.println("!TS");
-            break;
-      }
+      case SABRE:
+         sendRepeater("!TS");
+         break;
    }
 }
 #endif
@@ -1661,10 +1677,7 @@ void restartBox(BoutState state)
 void choosePriority()
 {
 #ifdef ENABLE_REPEATER
-   if (repeaterPresent)
-   {
-      Serial.println("!PC");
-   }
+   sendRepeater("!PC");
 #endif
 #ifdef ENABLE_DISPLAY
    displayState(STA_PRIORITY);
@@ -1714,7 +1727,7 @@ void restartTimer()
         timerStart = true;
         timerMs    = millis();
 #ifdef ENABLE_REPEATER
-        Serial.println("!CR");
+        sendRepeater("!CR");
 #endif        
     }
 }
@@ -1733,10 +1746,7 @@ void startPassivity()
 #ifdef PASSIVITY
    restartPassivity();
 #ifdef ENABLE_REPEATER
-   if (repeaterPresent)
-   {
-      Serial.println("!VS");
-   }
+   sendRepeater("!VS");
 #endif
 #endif
 }
@@ -1747,10 +1757,7 @@ void clearPassivity()
    passivityActive = passivitySignalled = false;
    passivityTimer  = passivitySignalTimer = 0;
 #ifdef ENABLE_REPEATER
-   if (repeaterPresent)
-   {
-      Serial.println("!VC");
-   }
+   sendRepeater("!VC");
 #endif
 #endif
 }
@@ -1769,10 +1776,7 @@ void signalPassivity(bool on)
          passivitySignalTimer = millis();
          passivitySignalled   = true;
 #ifdef ENABLE_REPEATER
-         if (repeaterPresent)
-         {
-            Serial.println("!VT");
-         }
+         sendRepeater("!VT");
 #endif
       }
       else
@@ -1815,40 +1819,28 @@ void awardPCard(int fencer)
       case P_CARD_NONE:
          pCard[fencer] = P_CARD_YELLOW;
 #ifdef ENABLE_REPEATER
-         if (repeaterPresent)
-         {
-            Serial.println("+" + String(fencer) + "1");
-         }
+         sendRepeater("+" + String(fencer) + "1");
 #endif
          break;
 
        case P_CARD_YELLOW:
           pCard[fencer] = P_CARD_RED_1;
 #ifdef ENABLE_REPEATER
-          if (repeaterPresent)
-          {
-             Serial.println("+" + String(fencer) + "2");
-          }
+          sendRepeater("+" + String(fencer) + "2");
 #endif
           break;
 
        case P_CARD_RED_1:
           pCard[fencer] = P_CARD_RED_2;
 #ifdef ENABLE_REPEATER
-          if (repeaterPresent)
-          {
-             Serial.println("+" + String(fencer) + "3");
-          }
+          sendRepeater("+" + String(fencer) + "3");
 #endif
           break;
 
        case P_CARD_RED_2:
           pCard[fencer] = P_CARD_NONE;
 #ifdef ENABLE_REPEATER
-          if (repeaterPresent)
-          {
-             Serial.println("+" + String(fencer) + "0");
-          }
+          sendRepeater("+" + String(fencer) + "0");
 #endif
           break;
 
@@ -2079,7 +2071,7 @@ void updateCardLeds(int Leds)
 #endif
 #endif
 #ifdef ENABLE_REPEATER
-   if (repeaterPresent && !inStopWatch())
+   if (!inStopWatch())
    {
       int LedsA = 0;
       if (cardLeds & A_YELLOW)
@@ -2095,7 +2087,7 @@ void updateCardLeds(int Leds)
          LedsA |= 4;
       }
       String cardA = "?0" + String(LedsA);
-      Serial.println(cardA);
+      sendRepeater(cardA);
       int LedsB = 0;
       if (cardLeds & B_YELLOW)
       {
@@ -2110,7 +2102,7 @@ void updateCardLeds(int Leds)
          LedsB |= 4;
       }
       String cardB = "?1" + String(LedsB);
-      Serial.println(cardB);
+      sendRepeater(cardB);
    }
 #endif
    cardLedUpdate = false;
@@ -2135,7 +2127,7 @@ void buzzer(bool buzz, bool indicate)
       }
       else
       {
-         Serial.println(buzz ? "!Z1":"!Z0");
+         sendRepeater(buzz ? "!Z1":"!Z0");
       }
    }
    else
@@ -2150,7 +2142,7 @@ void keyClick()
 #ifdef REPEATER_KEYCLICK
    if (repeaterPresent)
    {
-      Serial.println("!KC");
+      sendRepeater("!KC");
       delay(5);
    }
    else
@@ -2711,10 +2703,7 @@ void transIR(unsigned long key)
                        timeState = TIM_BOUT;
                        boutState = STA_BOUT;
 #ifdef ENABLE_REPEATER
-                       if (repeaterPresent)
-                       {
-                          Serial.println("!BR");
-                       }
+                       sendRepeater("!BR");
 #endif
                        restartPassivity();
 #ifdef DEBUG_L1
@@ -3308,11 +3297,8 @@ void transIR(unsigned long key)
 void startBout()
 {
 #ifdef ENABLE_REPEATER
-   if (repeaterPresent)
-   {
-      Serial.println("!BS");
-      Serial.println("*0000");
-   }
+   sendRepeater("!BS");
+   sendRepeater("*0000");
 #endif
    priState                = PRI_IDLE;
 #ifdef ENABLE_STOPWATCH
@@ -3349,10 +3335,7 @@ void startBout()
 void continueBout()
 {
 #ifdef ENABLE_REPEATER
-   if (repeaterPresent)
-   {
-      Serial.println("!BC");
-   }
+   sendRepeater("!BC");
 #endif
    priState = PRI_IDLE;
    setTimer(BOUTTIME);
@@ -3380,10 +3363,7 @@ void buzzerTimeout()
 void endOfBout()
 {
 #ifdef ENABLE_REPEATER
-   if (repeaterPresent)
-   {
-      Serial.println("!BE");
-   }
+   sendRepeater("!BE");
 #endif
    buzzerTimeout();
    displayScore();
@@ -3410,10 +3390,7 @@ void startPriority()
    resetLights();
    displayScore();
 #ifdef ENABLE_REPEATER
-   if (repeaterPresent)
-   {
-      Serial.println(priFencer == FENCER_A ? "!P0":"!P1");
-   }
+   sendRepeater(priFencer == FENCER_A ? "!P0":"!P1");
 #endif
    delay(1000);
    priState = PRI_IDLE;
@@ -3440,11 +3417,8 @@ void endPriority()
       priFencer = FENCER_B;
    }
 #ifdef ENABLE_REPEATER
-   if (repeaterPresent)
-   {
-      Serial.println("!PE");
-      Serial.println(priFencer == FENCER_A ? "$H3":"$H4");
-   }
+   sendRepeater("!PE");
+   sendRepeater(priFencer == FENCER_A ? "$H3":"$H4");
 #endif
    startHitDisplay();
    displayScore();
@@ -3456,10 +3430,7 @@ void endPriority()
 void startSpar()
 {
 #ifdef ENABLE_REPEATER
-   if (repeaterPresent)
-   {
-      Serial.println("!SS");
-   }
+   sendRepeater("!SS");
 #endif
 #ifdef DEBUG_L1
    Serial.println("sparring mode - no timer");
@@ -3491,10 +3462,7 @@ void startSpar()
 void startBreak()
 {
 #ifdef ENABLE_REPEATER
-   if (repeaterPresent)
-   {
-      Serial.println("!RS");
-   }
+   sendRepeater("!RS");
 #endif
 #ifdef DEBUG_L1
    Serial.println("1 minute break"); 
@@ -3514,10 +3482,7 @@ void startStopWatch()
 #ifdef ENABLE_STOPWATCH
    boutState = STA_STOPWATCH;
 #ifdef ENABLE_REPEATER
-   if (repeaterPresent)
-   {
-      Serial.println("!WS");
-   }
+   sendRepeater("!WS");
 #endif
 #ifdef EEPROM_STORAGE
    writeState(boutState);
@@ -3586,10 +3551,7 @@ void resetStopWatch(bool restart, bool lightLeds)
       digitalWrite(onTargetB, LOW);
       updateCardLeds(A_ALL);
 #ifdef ENABLE_REPEATER
-     if (repeaterPresent)
-     {
-        Serial.println("$S0");
-     }
+     sendRepeater("$S0");
 #endif
    }
    else
@@ -3598,17 +3560,11 @@ void resetStopWatch(bool restart, bool lightLeds)
       digitalWrite(onTargetB, LOW);
       updateCardLeds(0);
 #ifdef ENABLE_REPEATER
-      if (repeaterPresent)
-      {
-         Serial.println("!RL");
-      }
+      sendRepeater("!RL");
 #endif
    }
 #ifdef ENABLE_REPEATER
-   if (repeaterPresent)
-   {
-      Serial.println("!WR");
-   }
+   sendRepeater("!WR");
 #endif
 #endif
 }
@@ -3628,10 +3584,7 @@ void stopWatchLeds()
      digitalWrite(onTargetB, LOW);
      updateCardLeds(0);
 #ifdef ENABLE_REPEATER
-     if (repeaterPresent)
-     {
-        Serial.println("!RL");
-     }
+     sendRepeater("!RL");
 #endif
   }
   else
@@ -3640,10 +3593,7 @@ void stopWatchLeds()
      digitalWrite(onTargetB, stopWatchLeds ? HIGH:LOW);
      updateCardLeds(stopWatchLeds ? B_ALL:A_ALL);
 #ifdef ENABLE_REPEATER
-     if (repeaterPresent)
-     {
-        Serial.println(stopWatchLeds ? "$S1":"$S0");
-     }
+     sendRepeater(stopWatchLeds ? "$S1":"$S0");
 #endif
   }
 #endif
@@ -3693,10 +3643,7 @@ int runStopWatch()
             {
                timer = timerMins = timerSecs = 0;
 #ifdef ENABLE_REPEATER
-               if (repeaterPresent)
-               {
-                  Serial.println("!WW");
-               }
+               sendRepeater("!WW");
 #endif
             }
             displayTime();
@@ -4250,10 +4197,7 @@ void loop()
 #endif
                scDisplay[FENCER_A] = true;
 #ifdef ENABLE_REPEATER
-               if (repeaterPresent)
-               {
-                  Serial.println("<01");
-               }
+               sendRepeater("<01");
 #endif
                displayShortCircuit();
             }
@@ -4271,10 +4215,7 @@ void loop()
          Serial.println("short circuit LED off fencer A");
 #endif
 #ifdef ENABLE_REPEATER
-         if (repeaterPresent)
-         {
-            Serial.println("<00");
-         }
+         sendRepeater("<00");
 #endif
       }
 
@@ -4302,10 +4243,7 @@ void loop()
 #endif
                scDisplay[FENCER_B] = true;
 #ifdef ENABLE_REPEATER
-               if (repeaterPresent)
-               {
-                  Serial.println("<11");
-               }
+               sendRepeater("<11");
 #endif
                displayShortCircuit();
             }
@@ -4323,10 +4261,7 @@ void loop()
          Serial.println("short circuit LED off fencer B");
 #endif
 #ifdef ENABLE_REPEATER
-         if (repeaterPresent)
-         {
-            Serial.println("<10");
-         }
+         sendRepeater("<10");
 #endif
       }
 
@@ -5127,11 +5062,8 @@ void resetCards()
    Serial.println("reset cards");
 #endif
 #ifdef ENABLE_REPEATER
-   if (repeaterPresent)
-   {
-      Serial.println("?C0");
-      Serial.println("?D0");
-   }
+   sendRepeater("?C0");
+   sendRepeater("?D0");
 #endif
 }
 
@@ -5208,10 +5140,7 @@ void resetLights()
       resetHits();
    }
 #ifdef ENABLE_REPEATER
-   if (repeaterPresent)
-   {
-      Serial.println("!RL");
-   }
+   sendRepeater("!RL");
 #endif
 }
 
@@ -5292,43 +5221,49 @@ bool repeaterPollForKey()
       /* Poll the repeater after a period of time */
       if (millis() >= repeaterPollTime)
       {
-         repeaterPollTime = millis()+REPEATERPOLL;
-         Serial.println("/?");
-         int response[] = { '/', '*', '\0' };
-         int rxData[] = { 0, 0 };
-
-         /* Wait for 1ms for a key back from the repeater, if any */
-         if (waitSerial(response, rxData, 1000))
+         /* Only write if there are enough spaces in the write buffer */
+         if (Serial.availableForWrite() > 10)
          {
-            unsigned long key = (unsigned long) rxData[1];
+            repeaterPollTime = millis()+REPEATERPOLL;
+            Serial.flush();
+            Serial.print("/?");
+            int response[] = { '/', '*', '\0' };
+            int rxData[] = { 0, 0 };
 
-            /* Valid keypress? ('-' means 'no key') */
-            if (key != '-')
+            /* Wait for 1ms for a key back from the repeater, if any */
+            if (waitSerial(response, rxData, 1000))
             {
-               /* Is the repeater app changing weapon? */
-               switch (key) {
-                  case 'f':
-                     /* Change weapon to foil */
-                     newWeaponType = FOIL;
-                     weaponChange  = true;
-                     break;
+               unsigned long key = (unsigned long) rxData[1];
 
-                  case 'e':
-                     /* Change weapon to epee */ 
-                     newWeaponType = EPEE;
-                     weaponChange  = true;
-                     break;
+               /* Valid keypress? ('-' means 'no key') */
+               if (key != '-')
+               {
+                  /* Is the repeater app changing weapon? */
+                   switch (key)
+                   {
+                      case 'f':
+                         /* Change weapon to foil */
+                         newWeaponType = FOIL;
+                         weaponChange  = true;
+                         break;
 
-                  case 's':
-                     /* Change weapon to sabre */
-                     newWeaponType = SABRE;
-                     weaponChange  = true;
-                     break;
+                      case 'e':
+                         /* Change weapon to epee */ 
+                         newWeaponType = EPEE;
+                         weaponChange  = true;
+                         break;
 
-                  default:
-                     /* Keypress from repeater */
-                     transIR(key);
-                     break;      
+                      case 's':
+                         /* Change weapon to sabre */
+                         newWeaponType = SABRE;
+                         weaponChange  = true;
+                         break;
+
+                      default:
+                         /* Keypress from repeater */
+                         transIR(key);
+                         break;
+                   }
                }
             }
          }

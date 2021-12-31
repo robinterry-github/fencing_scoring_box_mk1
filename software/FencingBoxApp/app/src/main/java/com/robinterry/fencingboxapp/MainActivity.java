@@ -109,7 +109,7 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
     private Connected connected = Connected.False;
     private PassivityCard[] pCard = new PassivityCard[] {PassivityCard.None, PassivityCard.None};
     private final Integer portNum = 0;
-    private final Integer baudRate = 500000;
+    private final Integer baudRate = 115200;
     private UsbSerialPort usbSerialPort;
     private SerialService service;
     private boolean initialStart = true;
@@ -121,6 +121,7 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
     private final boolean controlUI = true;
     private boolean visibleUI = true;
     private boolean soundMute = false;
+    private boolean displayPaused = false;
     private FencingBoxSound sound, click;
 
     /* View bindings */
@@ -142,6 +143,8 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
     private final byte passivityCardMarker = '+';
     private final byte shortCircuitMarker = '<';
     private final byte pollMarker = '/';
+
+    private boolean monitorStarted = false;
 
     public MainActivity() {
         Log.d(TAG, "initialising broadcast receiver");
@@ -239,10 +242,8 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
                 5,
                 getApplicationContext());
         click.enable();
-
         progress.setIndeterminate(true);
         progress.setVisibility(View.INVISIBLE);
-
         Log.d(TAG, "onCreate end");
     }
 
@@ -250,6 +251,7 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
     protected void onStart() {
         Log.d(TAG, "onStart start");
         super.onStart();
+        displayPaused = false;
         startService(new Intent(this, SerialService.class));
         orientation = getCurrentOrientation();
         setupText(orientation);
@@ -265,7 +267,10 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
             setPassivity();
             setPassivityCard();
         }
-        startSystemMonitor();
+        if (!monitorStarted) {
+            startSystemMonitor();
+            monitorStarted = true;
+        }
         Log.d(TAG, "onStart end");
     }
 
@@ -273,26 +278,29 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
     protected void onStop() {
         Log.d(TAG, "onStop start");
         super.onStop();
+        displayPaused = true;
         sound.soundOff(true);
         Log.d(TAG, "onStop end");
     }
 
     @Override
     public void onWindowFocusChanged(boolean hasFocus) {
+        Log.d(TAG, "onWindowFocusChanged start hasFocus " + hasFocus);
         super.onWindowFocusChanged(hasFocus);
-        Log.d(TAG, "onWindowFocusChanged hasFocus " + hasFocus);
         if (hasFocus) {
             hideUI();
         }
+        Log.d(TAG, "onWindowFocusChanged end");
     }
 
     @Override
     public void onDestroy() {
         Log.d(TAG, "onDestroy start");
-        if (connected != Connected.False)
-            disconnect(true);
-        stopService(new Intent(this, SerialService.class));
         super.onDestroy();
+        if (connected != Connected.False) {
+            disconnect(true);
+        }
+        stopService(new Intent(this, SerialService.class));
         sound.soundOff(true);
         landBinding = null;
         portBinding = null;
@@ -301,16 +309,19 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
 
     @Override
     protected void onNewIntent(Intent intent) {
+        Log.d(TAG, "onNewIntent start");
         super.onNewIntent(intent);
         if ("android.hardware.usb.action.USB_DEVICE_ATTACHED".equals(intent.getAction())) {
             Log.d(TAG, "USB device attached");
         }
+        Log.d(TAG, "onNewIntent end");
     }
 
     @Override
     protected void onResume() {
         Log.d(TAG, "onResume start");
         super.onResume();
+        displayPaused = false;
         if (!isResumed) {
             isResumed = true;
             bindService(new Intent(this, SerialService.class), this, Context.BIND_AUTO_CREATE);
@@ -325,6 +336,7 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
     protected void onPause() {
         Log.d(TAG, "onPause start");
         super.onPause();
+        displayPaused = true;
         getWindow().clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
         sound.soundOff(true);
         Log.d(TAG, "onPause end");
@@ -348,6 +360,7 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
 
     @Override
     public void onConfigurationChanged(Configuration newConf) {
+        Log.d(TAG, "onConfigurationChanged start");
         super.onConfigurationChanged(newConf);
         /* Checks the orientation of the screen */
         orientation = getCurrentOrientation();
@@ -384,10 +397,12 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
             setPassivity();
             setPassivityCard();
         }
+        Log.d(TAG, "onConfigurationChanged end");
     }
 
     @Override
     public boolean onTouchEvent(MotionEvent event) {
+        Log.d(TAG, "onTouchEvent start");
         super.onTouchEvent(event);
 
         Log.d(TAG, "onTouchEvent " + event);
@@ -668,8 +683,9 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
     }
 
     private void hideUI() {
+        Log.d(TAG, "hideUI " + controlUI + " mode " + mode);
         if (controlUI) {
-            if (mode != Mode.None) {
+            if (true /*mode != Mode.None*/) {
                 runOnUiThread(new Runnable() {
                     public void run() {
                         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
@@ -837,8 +853,8 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
     public void displayScore(String scoreA, String scoreB) {
         String score = scoreA + " " + scoreB;
 
-        runOnUiThread(new Runnable() {
-            public void run() {
+        //runOnUiThread(new Runnable() {
+            //public void run() {
                 if (scoreHidden) {
                     clearScore();
                 } else if (mode == Mode.Stopwatch || mode == Mode.None) {
@@ -852,14 +868,14 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
                     textScore.setTextColor(Color.RED);
                     textScore.setText(score);
                 }
-            }
-        });
+            //}
+        //});
     }
 
     public void clearScore() {
         scoreA = scoreB = "00";
-        runOnUiThread(new Runnable() {
-            public void run() {
+        //runOnUiThread(new Runnable() {
+            //public void run() {
                 if (orientation == Orientation.Landscape) {
                     textScoreA.setTextColor(Color.BLACK);
                     textScoreB.setTextColor(Color.BLACK);
@@ -869,8 +885,8 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
                     textScore.setTextColor(Color.BLACK);
                     textScore.setText("----");
                 }
-            }
-        });
+            //}
+        //});
     }
 
     public void resetClock() {
@@ -928,12 +944,12 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
         } else {
             clock = timeMins + ":" + timeSecs;
         }
-        runOnUiThread(new Runnable() {
-            public void run() {
+        //runOnUiThread(new Runnable() {
+            //public void run() {
                 textClock.setTextColor(Color.GREEN);
                 textClock.setText(clock);
-            }
-        });
+            //}
+        //});
     }
 
     public void clearClock() {
@@ -941,12 +957,12 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
     }
 
     public void clearClock(int color) {
-        runOnUiThread(new Runnable() {
-            public void run() {
+        //runOnUiThread(new Runnable() {
+            //public void run() {
                 textClock.setTextColor(color);
                 textClock.setText("----");
-            }
-        });
+            //}
+        //});
     }
 
     public void setCard() {
@@ -955,23 +971,23 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
     }
 
     public void displayCardA(boolean yellowCard, boolean redCard, boolean shortCircuit) {
-        runOnUiThread(new Runnable() {
-            public void run() {
+        //runOnUiThread(new Runnable() {
+            //public void run() {
                 cardLightA.showYellow(yellowCard);
                 cardLightA.showRed(redCard);
                 cardLightA.showShortCircuit(shortCircuit);
-            }
-        });
+            //}
+        //});
     }
 
     public void displayCardB(boolean yellowCard, boolean redCard, boolean shortCircuit) {
-        runOnUiThread(new Runnable() {
-            public void run() {
+        //runOnUiThread(new Runnable() {
+            //public void run() {
                 cardLightB.showYellow(yellowCard);
                 cardLightB.showRed(redCard);
                 cardLightB.showShortCircuit(shortCircuit);
-            }
-        });
+            //}
+        //});
     }
 
     public void setCard(String whichFencer, Integer card) {
@@ -1022,12 +1038,12 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
     }
 
     public void displayPriority(boolean priA, boolean priB) {
-        runOnUiThread(new Runnable() {
-            public void run() {
+        //runOnUiThread(new Runnable() {
+            //public void run() {
                 priorityA.setTextColor(priA ? Color.RED : Color.BLACK);
                 priorityB.setTextColor(priB ? Color.RED : Color.BLACK);
-            }
-        });
+            //}
+        //});
     }
 
     public void clearPriority()
@@ -1157,64 +1173,85 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
     }
 
     public synchronized void processData(byte data[]) {
-        for (int i = 0; i < data.length; i++) {
+        StringBuilder str = new StringBuilder();
+        for (byte b: data) {
+            str.append(String.format("%02X", b));
+        }
+        Log.d(TAG, "data: " + str.toString());
+
+        for (int i = 0; i < data.length;) {
+           Log.d(TAG, "checking offset " + i);
            if (data[i] == cmdMarker) {
-               i++;
+               i += 1;
                String cmd = new String(data, i, 2, StandardCharsets.UTF_8);
                i += 2;
+               Log.d(TAG, "cmd: " + cmd);
                processCmd(cmd);
            } else if (data[i] == scoreMarker) {
-               i++;
+               i += 1;
                String s_A = new String(data, i, 2, StandardCharsets.UTF_8);
                i += 2;
                String s_B = new String(data, i, 2, StandardCharsets.UTF_8);
                i += 2;
+               Log.d(TAG, "scoreA: " + s_A + " scoreB: " + s_B);
                processScore(s_A, s_B);
            } else if (data[i] == hitMarker) {
-               i++;
+               i += 1;
                String hit = new String(data, i, 2, StandardCharsets.UTF_8);
                i += 2;
+               Log.d(TAG, "hit: " + hit);
                processHit(hit);
            } else if (data[i] == clockMarker1) {
-               i++;
+               i += 1;
                String min = new String(data, i, 2, StandardCharsets.UTF_8);
                i += 2;
                String sec = new String(data, i, 2, StandardCharsets.UTF_8);
+               i += 2;
+               Log.d(TAG, "min: " + min + " sec: " + sec);
                processClock(min, sec, "00",false);
            } else if (data[i] == clockMarker2) {
-               i++;
+               i += 1;
                String sec = new String(data, i, 2, StandardCharsets.UTF_8);
                i += 2;
                String hund = new String(data, i, 2, StandardCharsets.UTF_8);
+               i += 2;
+               Log.d(TAG, "sec: " + sec + " hund: " + hund);
                processClock("00", sec, hund, true);
            } else if (data[i] == cardMarker) {
-               i++;
+               i += 1;
                String whichFencer = new String(data, i, 1, StandardCharsets.UTF_8);
-               i++;
+               i += 1;
                String whichCard = new String(data, i, 1, StandardCharsets.UTF_8);
-               i++;
+               i += 1;
+               Log.d(TAG, "card fencer: " + whichFencer + " card: " + whichCard);
                processCard(whichFencer, whichCard);
            } else if (data[i] == passivityCardMarker) {
-               i++;
+               i += 1;
                String whichFencer = new String(data, i, 1, StandardCharsets.UTF_8);
-               i++;
+               i += 1;
                String whichCard = new String(data, i, 1, StandardCharsets.UTF_8);
-               i++;
+               i += 1;
+               Log.d(TAG, "card fencer: " + whichFencer + " card: " + whichCard);
                clearPassivity();
                setPassivityCard(whichFencer, whichCard);
            } else if (data[i] == shortCircuitMarker) {
-               i++;
+               i += 1;
                String whichFencer = new String(data, i, 1, StandardCharsets.UTF_8);
-               i++;
+               i += 1;
                String scState = new String(data, i, 1, StandardCharsets.UTF_8);
-               i++;
+               i += 1;
+               Log.d(TAG, "card fencer: " + whichFencer + " s/c: " + scState);
                clearPassivity();
                setShortCircuit(whichFencer, scState);
            } else if (data[i] == pollMarker) {
-               i++;
+               i += 1;
                if (data[i] == '?') {
+                   Log.d(TAG, "poll");
                    processPoll();
+                   i += 1;
                }
+           } else {
+               i += 1;
            }
         }
     }
@@ -1342,6 +1379,15 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
 
             case "WR":
                 Log.d(TAG, "stopwatch reset");
+                if (mode != Mode.Stopwatch) {
+                    hideUI();
+                    mode = Mode.Stopwatch;
+                    Toast.makeText(getApplicationContext(), R.string.mode_stopwatch, Toast.LENGTH_SHORT).show();
+                    resetScore();
+                    resetClock();
+                    resetCard();
+                    clearPriority();
+                }
                 clearPassivity();
                 clearPassivityCard();
                 stopwatchHours = 0;
@@ -1448,8 +1494,6 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
     }
 
     public synchronized void processHit(String hit) {
-        Log.d(TAG, "process hit");
-
         /* Process off-target hits first */
         if (weapon == Weapon.Foil) {
             if (hit.equals("O0")) {
@@ -1612,9 +1656,9 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
         new Thread(new Runnable() {
             @Override
             public void run() {
-                Log.d(TAG, "reconnecting USB device");
                 disconnect();
                 while (thisActivity.connected != Connected.True) {
+                    Log.d(TAG, "reconnecting USB device");
                     try {
                         Thread.sleep(1000);
                     } catch (InterruptedException e) {
@@ -1645,8 +1689,10 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
     @Override
     public void onSerialRead(byte[] data) {
         /* Process the incoming data here */
-        String s = new String(data, StandardCharsets.UTF_8);
-        processData(data);
+        if (!displayPaused) {
+            String s = new String(data, StandardCharsets.UTF_8);
+            processData(data);
+        }
     }
 
     @Override

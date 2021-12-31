@@ -29,16 +29,18 @@ public class SerialSocket implements SerialInputOutputManager.Listener {
     private SerialInputOutputManager ioManager;
 
     SerialSocket(Context context, UsbDeviceConnection connection, UsbSerialPort serialPort) {
-        if(context instanceof Activity)
+        if (context instanceof Activity) {
             throw new InvalidParameterException("expected non UI context");
+        }
         this.context = context;
         this.connection = connection;
         this.serialPort = serialPort;
         disconnectBroadcastReceiver = new BroadcastReceiver() {
             @Override
             public void onReceive(Context context, Intent intent) {
-                if (listener != null)
+                if (listener != null) {
                     listener.onSerialIoError(new IOException("background disconnect"));
+                }
                 disconnect(); // disconnect now, else would be queued until UI re-attached
             }
         };
@@ -52,7 +54,10 @@ public class SerialSocket implements SerialInputOutputManager.Listener {
         serialPort.setDTR(true); // for arduino, ...
         serialPort.setRTS(true);
         ioManager = new SerialInputOutputManager(serialPort, this);
-        ioManager.setReadBufferSize(50);
+        ioManager.setReadBufferSize(1000);
+        ioManager.setReadTimeout(1000);
+        ioManager.setWriteBufferSize(1000);
+        ioManager.setWriteTimeout(1000);
         ioManager.start();
     }
 
@@ -75,7 +80,7 @@ public class SerialSocket implements SerialInputOutputManager.Listener {
             }
             serialPort = null;
         }
-        if(connection != null) {
+        if (connection != null) {
             connection.close();
             connection = null;
         }
