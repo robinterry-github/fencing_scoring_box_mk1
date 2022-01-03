@@ -667,10 +667,7 @@ void sendRepeater(String msg)
 {
    if (repeaterPresent)
    {
-      while (!Serial)
-         ;
       Serial.print(msg);
-      delay(1);
 
       // Delay the polling
       if (repeaterPollTime <= REPEATERPOLL)

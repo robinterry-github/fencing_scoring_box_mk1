@@ -145,6 +145,8 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
     private final byte pollMarker = '/';
 
     private boolean monitorStarted = false;
+    private int batteryLvl = 0;
+    private String currentTime;
 
     public MainActivity() {
         Log.d(TAG, "initialising broadcast receiver");
@@ -568,12 +570,13 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
         handlerThread.start();
         final Handler handler = new Handler(handlerThread.getLooper());
         final Runnable r = new Runnable() {
+            @Override
             public void run() {
                 if (!visibleUI) {
                     BatteryManager batt = (BatteryManager) getApplicationContext().getSystemService(BATTERY_SERVICE);
-                    int level = batt.getIntProperty(BatteryManager.BATTERY_PROPERTY_CAPACITY);
-                    if (level >= 0 && level <= 100) {
-                        if (level <= batteryDangerLevel) {
+                    batteryLvl = batt.getIntProperty(BatteryManager.BATTERY_PROPERTY_CAPACITY);
+                    if (batteryLvl >= 0 && batteryLvl <= 100) {
+                        if (batteryLvl <= batteryDangerLevel) {
                             if (!batteryDangerActive) {
                                 batteryDangerActive = batteryDangerFlash = true;
                             } else {
@@ -582,23 +585,31 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
                         } else {
                             batteryDangerActive = batteryDangerActive = false;
                         }
-                        batteryLevel.setTextColor(batteryDangerFlash ? Color.BLACK : Color.WHITE);
-                        batteryLevel.setText(String.valueOf(level) + "%");
-                    } else {
-                        batteryLevel.setTextColor(Color.BLACK);
-                        batteryLevel.setText("----");
                     }
-
                     Date curTime = Calendar.getInstance().getTime();
                     SimpleDateFormat dateFormat = new SimpleDateFormat("hh:mm");
-                    String tm = dateFormat.format(curTime);
-                    time.setText(tm);
-
-                    // Control the "volume muted" icon
-                    muteIcon.setImageAlpha((soundMute || sound.isMuted()) ? 255:0);
-                } else {
-                    batteryLevel.setTextColor(Color.BLACK);
+                    currentTime = dateFormat.format(curTime);
                 }
+                runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        if (!visibleUI) {
+                            if (batteryLvl >= 0 && batteryLvl <= 100) {
+                                batteryLevel.setTextColor(batteryDangerFlash ? Color.BLACK : Color.WHITE);
+                                batteryLevel.setText(String.valueOf(batteryLvl) + "%");
+                            } else {
+                                batteryLevel.setTextColor(Color.BLACK);
+                                batteryLevel.setText("----");
+                            }
+                            time.setText(currentTime);
+
+                            // Control the "volume muted" icon
+                            muteIcon.setImageAlpha((soundMute || sound.isMuted()) ? 255 : 0);
+                        } else {
+                            batteryLevel.setTextColor(Color.BLACK);
+                        }
+                    }
+                });
                 handler.postDelayed(this, delayMillis);
             }
         };
@@ -613,6 +624,7 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
 
     protected void setupText(Orientation orient) {
         runOnUiThread(new Runnable() {
+            @Override
             public void run() {
                 if (orient == Orientation.Landscape) {
                     textScoreA = landBinding.textScoreAL;
@@ -687,6 +699,7 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
         if (controlUI) {
             if (true /*mode != Mode.None*/) {
                 runOnUiThread(new Runnable() {
+                    @Override
                     public void run() {
                         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
                             getWindow().setDecorFitsSystemWindows(false);
@@ -721,6 +734,7 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
         if (controlUI) {
             if (!visibleUI) {
                 runOnUiThread(new Runnable() {
+                    @Override
                     public void run() {
                         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
                             getWindow().setDecorFitsSystemWindows(true);
@@ -852,9 +866,9 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
 
     public void displayScore(String scoreA, String scoreB) {
         String score = scoreA + " " + scoreB;
-
-        //runOnUiThread(new Runnable() {
-            //public void run() {
+        runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
                 if (scoreHidden) {
                     clearScore();
                 } else if (mode == Mode.Stopwatch || mode == Mode.None) {
@@ -868,14 +882,15 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
                     textScore.setTextColor(Color.RED);
                     textScore.setText(score);
                 }
-            //}
-        //});
+            }
+        });
     }
 
     public void clearScore() {
         scoreA = scoreB = "00";
-        //runOnUiThread(new Runnable() {
-            //public void run() {
+        runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
                 if (orientation == Orientation.Landscape) {
                     textScoreA.setTextColor(Color.BLACK);
                     textScoreB.setTextColor(Color.BLACK);
@@ -885,8 +900,8 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
                     textScore.setTextColor(Color.BLACK);
                     textScore.setText("----");
                 }
-            //}
-        //});
+            }
+        });
     }
 
     public void resetClock() {
@@ -944,12 +959,13 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
         } else {
             clock = timeMins + ":" + timeSecs;
         }
-        //runOnUiThread(new Runnable() {
-            //public void run() {
+        runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
                 textClock.setTextColor(Color.GREEN);
                 textClock.setText(clock);
-            //}
-        //});
+            }
+        });
     }
 
     public void clearClock() {
@@ -957,12 +973,13 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
     }
 
     public void clearClock(int color) {
-        //runOnUiThread(new Runnable() {
-            //public void run() {
+        runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
                 textClock.setTextColor(color);
                 textClock.setText("----");
-            //}
-        //});
+            }
+        });
     }
 
     public void setCard() {
@@ -971,23 +988,25 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
     }
 
     public void displayCardA(boolean yellowCard, boolean redCard, boolean shortCircuit) {
-        //runOnUiThread(new Runnable() {
-            //public void run() {
+        runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
                 cardLightA.showYellow(yellowCard);
                 cardLightA.showRed(redCard);
                 cardLightA.showShortCircuit(shortCircuit);
-            //}
-        //});
+            }
+        });
     }
 
     public void displayCardB(boolean yellowCard, boolean redCard, boolean shortCircuit) {
-        //runOnUiThread(new Runnable() {
-            //public void run() {
+        runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
                 cardLightB.showYellow(yellowCard);
                 cardLightB.showRed(redCard);
                 cardLightB.showShortCircuit(shortCircuit);
-            //}
-        //});
+            }
+        });
     }
 
     public void setCard(String whichFencer, Integer card) {
@@ -1038,12 +1057,13 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
     }
 
     public void displayPriority(boolean priA, boolean priB) {
-        //runOnUiThread(new Runnable() {
-            //public void run() {
+        runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
                 priorityA.setTextColor(priA ? Color.RED : Color.BLACK);
                 priorityB.setTextColor(priB ? Color.RED : Color.BLACK);
-            //}
-        //});
+            }
+        });
     }
 
     public void clearPriority()
