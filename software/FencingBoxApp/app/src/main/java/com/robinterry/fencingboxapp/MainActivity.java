@@ -1430,7 +1430,6 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
                 hitA = hitB = Hit.None;
                 setHitLights(hitA, hitB);
                 clearPriority();
-                clearPassivity();
                 sound.soundOff(true);
                 break;
 

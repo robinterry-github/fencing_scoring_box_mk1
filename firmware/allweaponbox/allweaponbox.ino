@@ -4,7 +4,7 @@
 //  Dev:     Wnew                                                            //
 //  Date:    Nov     2012                                                    //
 //  Updated: Sept    2015                                                    //
-//  Updated: October 31 2021 Robin Terry, Skipton, UK                        //
+//  Updated: January 20 2022 Robin Terry, Skipton, UK                        //
 //                                                                           //
 //  Notes:   1. Basis of algorithm from digitalwestie on github. Thanks Mate //
 //           2. Used uint8_t instead of int where possible to optimise       //
@@ -267,6 +267,7 @@ long swSecs          = 0;
 
 // Total score for all bouts since restarting the bout
 int  score[2]        = { 0, 0 };
+int  prevScore[2]    = { 0, 0 };
 
 /* Score for just this bout - this can go negative
    if the referee removes points from the fencer */
@@ -531,7 +532,7 @@ const uint8_t prioDisp[] =
 
 const uint8_t restDisp[]
 {
-  SEG_E | SEG_G,
+  SEG_A | SEG_E | SEG_F,
   SEG_A | SEG_D | SEG_E | SEG_F | SEG_G,
   SEG_A | SEG_C | SEG_D | SEG_F | SEG_G,
   SEG_D | SEG_E | SEG_F | SEG_G
@@ -668,7 +669,9 @@ void sendRepeater(String msg)
    if (repeaterPresent)
    {
       Serial.print(msg);
-
+#ifdef ENABLE_REPEATER_TEST
+      Serial.println(" ");
+#endif
       // Delay the polling
       if (repeaterPollTime <= REPEATERPOLL)
       {
@@ -1298,6 +1301,9 @@ void displayTime()
             sprintf(&ind[3], "%02d",   timerSecs);
          }
          Serial.print(ind);
+#ifdef ENABLE_REPEATER_TEST
+         Serial.println(" ");
+#endif
       }
       else
 #endif
@@ -1308,6 +1314,9 @@ void displayTime()
             sprintf(&ind[0], ":%02d",  timerSecs);
             sprintf(&ind[3], "%02d",   timerHund);
             Serial.print(ind);
+#ifdef ENABLE_REPEATER_TEST
+            Serial.println(" ");
+#endif
          }
       }
       else
@@ -1317,6 +1326,9 @@ void displayTime()
          sprintf(&ind[0], "@%02d",  timerMins);
          sprintf(&ind[3], "%02d",   timerSecs);
          Serial.print(ind);
+#ifdef ENABLE_REPEATER_TEST
+         Serial.println(" ");
+#endif
       }
    }
 #endif
@@ -1630,18 +1642,13 @@ void restartBox(BoutState state)
    resetState               = RES_IDLE;
    priFencer                = FENCER_A;
    lastHit                  = 0; 
-   hitDisplayFlag[FENCER_A] = HIT_NONE;
-   hitDisplayFlag[FENCER_B] = HIT_NONE;
-   lockOutOffTarg[FENCER_A] = true;
-   lockOutOffTarg[FENCER_B] = true;
-   score[FENCER_A]          = 0;
-   score[FENCER_B]          = 0;
-   shortCircuit[FENCER_A]   = 0;
-   shortCircuit[FENCER_B]   = 0;
-   scoreThisBout[FENCER_A]  = 0;
-   scoreThisBout[FENCER_B]  = 0;
-   maxSabreHits[FENCER_A]   = false;
-   maxSabreHits[FENCER_B]   = false;
+   hitDisplayFlag[FENCER_A] = hitDisplayFlag[FENCER_B] = HIT_NONE;
+   lockOutOffTarg[FENCER_A] = lockOutOffTarg[FENCER_B] = true;
+   score[FENCER_A]          = prevScore[FENCER_A]      = 0;
+   score[FENCER_B]          = prevScore[FENCER_B]      = 0;
+   shortCircuit[FENCER_A]   = shortCircuit[FENCER_B]   = 0;
+   scoreThisBout[FENCER_A]  = scoreThisBout[FENCER_B]  = 0;
+   maxSabreHits[FENCER_A]   = maxSabreHits[FENCER_B]   = false;
 
    displayWeapon();
 
@@ -2039,8 +2046,8 @@ void subScore(int fencer)
 
 void resetScore()
 {
-   score[FENCER_A] = score[FENCER_B] = 0;
-   scoreThisBout[FENCER_A] = scoreThisBout[FENCER_B] = 0;
+   score[FENCER_A] = prevScore[FENCER_A] = scoreThisBout[FENCER_A] = 0;
+   score[FENCER_B] = prevScore[FENCER_B] = scoreThisBout[FENCER_B] = 0;
    displayScore();
 #ifdef DEBUG_L1
    Serial.println("reset scores");
@@ -2584,6 +2591,18 @@ void transIR(unsigned long key)
               resetState = RES_IDLE;
               resetTimer = 0;
 
+              /* If the new score is different from the old one, clear passivity */
+              if (
+                    (prevScore[FENCER_A] != score[FENCER_A])
+                    ||
+                    (prevScore[FENCER_B] != score[FENCER_B])
+                 )
+              {
+                 clearPassivity();
+                 prevScore[FENCER_A] = score[FENCER_A];
+                 prevScore[FENCER_B] = score[FENCER_B];
+              }
+
               // Force hits to be reset
               resetHits(true);
 
@@ -2902,7 +2921,7 @@ void transIR(unsigned long key)
      {
         if (inBoutOrBreak())
         {
-           if (timeState == TIM_STOPPED)
+           if (timeState == TIM_STOPPED && resetState == RES_IDLE)
            {
               keyClick();
               startBreak();
@@ -3046,7 +3065,7 @@ void transIR(unsigned long key)
 #endif
      if (inBout())
      {
-        if (timeState == TIM_STOPPED)
+        if (timeState == TIM_STOPPED && resetState == RES_IDLE)
         {
            keyClick();
            if (priorityInactive())
@@ -3302,7 +3321,8 @@ void startBout()
    swEdit                  = SW_NONE;
 #endif
    disableScore            = false;
-   score[FENCER_A]         = score[FENCER_B] = 0;
+   score[FENCER_A]         = prevScore[FENCER_A] = 0; 
+   score[FENCER_B]         = prevScore[FENCER_B] = 0;
    lastHit                 = 0;
    maxSabreHits[FENCER_A]  = false;
    maxSabreHits[FENCER_B]  = false;
@@ -3933,7 +3953,6 @@ void loop()
          else if (timeState != TIM_STOPPED)
          {
             signalHits();
-            clearPassivity();
            
             // Start the reset state machine to turn off buzzer and lights
             if (!resetState)
@@ -5224,6 +5243,9 @@ bool repeaterPollForKey()
             repeaterPollTime = millis()+REPEATERPOLL;
             Serial.flush();
             Serial.print("/?");
+#ifdef ENABLE_REPEATER_TEST
+            Serial.println(" ");
+#endif
             int response[] = { '/', '*', '\0' };
             int rxData[] = { 0, 0 };
 
