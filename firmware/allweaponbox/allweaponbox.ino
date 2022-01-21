@@ -516,7 +516,7 @@ const uint8_t sparDisp[] =
 
 const uint8_t boutDisp[] =
 {
-   SEG_C | SEG_D | SEG_E | SEG_F | SEG_G,
+   SEG_A | SEG_B | SEG_C | SEG_D | SEG_E | SEG_F | SEG_G,
    SEG_C | SEG_D | SEG_E | SEG_G,
    SEG_C | SEG_D | SEG_E,
    SEG_D | SEG_E | SEG_F | SEG_G
