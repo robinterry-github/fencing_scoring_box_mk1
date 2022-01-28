@@ -329,7 +329,7 @@ enum BoutState
 {
    STA_NONE,
    STA_SPAR,
-   STA_CONTINUE,
+   STA_TP_CONTINUE,
    STA_BREAK,
    STA_TP_BREAK,
    STA_STARTBOUT,
@@ -718,7 +718,7 @@ bool inStopWatch()
 
 bool inTestPoint()
 {
-   return (boutState == STA_TP_BOUT || boutState == STA_TP_PRI || boutState == STA_TP_BREAK) ? true:false;
+   return (boutState == STA_TP_BOUT || boutState == STA_TP_PRI || boutState == STA_TP_BREAK || boutState == STA_TP_CONTINUE) ? true:false;
 }
 
 bool pointCanBeTested()
@@ -830,7 +830,7 @@ void displayState(enum BoutState state)
       case STA_BOUT:
       case STA_TP_BOUT:
       case STA_STARTBOUT:
-      case STA_CONTINUE:
+      case STA_TP_CONTINUE:
         disp.setSegments(boutDisp, 4, 0);
         break;
 
@@ -2641,11 +2641,11 @@ void transIR(unsigned long key)
               switch (boutState)
               {
                  case STA_ENDPRI:
-                    boutState = STA_CONTINUE;
+                    boutState = STA_TP_CONTINUE;
                     resetLights();
                     break;
                     
-                 case STA_CONTINUE:
+                 case STA_TP_CONTINUE:
                     setTimer(BOUTTIME);
                     boutState = STA_STARTBOUT;
                     displayTime();
@@ -3357,7 +3357,7 @@ void continueBout()
    priState = PRI_IDLE;
    setTimer(BOUTTIME);
    displayScore();
-   boutState = STA_CONTINUE; 
+   boutState = STA_TP_CONTINUE; 
    scoreThisBout[FENCER_A] = scoreThisBout[FENCER_B] = 0;
 #ifdef DEBUG_L1
    Serial.println("continue bout");
