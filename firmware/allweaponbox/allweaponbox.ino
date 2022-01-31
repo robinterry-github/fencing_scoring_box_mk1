@@ -4,7 +4,7 @@
 //  Dev:     Wnew                                                            //
 //  Date:    Nov     2012                                                    //
 //  Updated: Sept    2015                                                    //
-//  Updated: January 20 2022 Robin Terry, Skipton, UK                        //
+//  Updated: January 31 2022 Robin Terry, Skipton, UK                        //
 //                                                                           //
 //  Notes:   1. Basis of algorithm from digitalwestie on github. Thanks Mate //
 //           2. Used uint8_t instead of int where possible to optimise       //
@@ -374,6 +374,7 @@ enum Key
   K_START_BOUT,
   K_PRIORITY,
   K_CLEAR_SCORES,
+  K_SWAP_SCORES,
   K_WIND_BACK,
   K_WIND_FORWARD,
   K_LEFT,
@@ -2059,6 +2060,37 @@ void resetScore()
    }
 }
 
+void swapScores()
+{
+   if (inBoutOrSpar())
+   {
+      int tScore              = score[FENCER_A];
+      int tPrevScore          = prevScore[FENCER_A];
+      int tScoreThisBout      = scoreThisBout[FENCER_A];
+   
+      score[FENCER_A]         = score[FENCER_B];
+      prevScore[FENCER_A]     = prevScore[FENCER_B];
+      scoreThisBout[FENCER_A] = scoreThisBout[FENCER_B];
+
+      // Redisplay the updated score
+      score[FENCER_B]         = tScore;
+      prevScore[FENCER_B]     = tPrevScore;
+      scoreThisBout[FENCER_B] = tScoreThisBout;
+
+      if (currentDisp == DISP_TIME)
+      {
+         // If time was showing, then only display score briefly
+         displayScore();
+         delay(1000);
+         displayTime();
+      }
+      else
+      {
+         displayScore();
+      }
+   }
+}
+
 //===================
 // Update the card LEDs (yellow/red)
 //==================
@@ -3164,6 +3196,25 @@ void transIR(unsigned long key)
      break;
   case 0xFF22DD: // 4
   case '4':
+     if (priorityInactive())
+     {
+        if (inBoutOrSpar())
+        {
+           if (!disableScore)
+           {
+              if (timeState == TIM_STOPPED)
+              {
+                 if (resetState == RES_IDLE)
+                 {
+                    keyClick();
+                    swapScores();
+                    resetHits();
+                    lastKey = K_SWAP_SCORES;
+                 }
+              }
+           }
+        }
+     }
      break;
   case 0xFF02FD: // 5
   case '5':
@@ -3174,14 +3225,18 @@ void transIR(unsigned long key)
            if (!disableScore)
            {
               if (timeState == TIM_STOPPED)
-              { 
-                 keyClick();
-                 resetScore();
+              {
+                 if (resetState == RES_IDLE)
+                 {
+                    keyClick();
+                    resetScore();
+                    resetHits();
+                    lastKey = K_CLEAR_SCORES;
+                 }
               }
            }
         }
         lastKey = K_CLEAR_SCORES;
-        resetHits();
      }
      break;
   case 0xFFC23D: // 6
@@ -3458,6 +3513,7 @@ void startSpar()
 #endif
    timeState       = TIM_STOPPED;
    priState        = PRI_IDLE;
+   resetState      = RES_IDLE;
 #ifdef ENABLE_STOPWATCH
    swEdit          = SW_NONE;
 #endif
