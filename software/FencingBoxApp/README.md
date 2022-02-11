@@ -25,7 +25,7 @@ applications are included with this application.
   
 - The application was built using Android Studio version 4.2.1.
 
-- The application has been tested on Android 6.0.1 and Android 9 with no known problems.
+- The application has been tested on Android 9 with no known problems.
 
 - More details about the entire project, including the full circuit diagram of the fencing scoring
   box, are in the Word document which is found in the `docs` directory.
