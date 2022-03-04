@@ -4,7 +4,7 @@
 //  Dev:     Wnew                                                            //
 //  Date:    Nov     2012                                                    //
 //  Updated: Sept    2015                                                    //
-//  Updated: January 31 2022 Robin Terry, Skipton, UK                        //
+//  Updated: March 4 2022 Robin Terry, Skipton, UK                           //
 //                                                                           //
 //  Notes:   1. Basis of algorithm from digitalwestie on github. Thanks Mate //
 //           2. Used uint8_t instead of int where possible to optimise       //
@@ -85,6 +85,7 @@
 #define ENABLE_STOPWATCH         // Enable the stopwatch
 #define EEPROM_STORAGE           // Use EEPROM for storing values over power-off
 //#define SPAR_INCR_SCORE        // Automatically increment score after a hit in sparring mode
+#define BOUT_INCR_SCORE          // Automatically increment score after a hit in bout mode
 
 #define PASSIVITY                // Support for passivity monitoring
 
@@ -125,7 +126,7 @@
 
 #ifdef EEPROM_STORAGE
 #define NV_WEAPON      (16)
-#define NV_STATE       (17)
+#define NV_MODE        (17)
 #endif
 
 #ifdef PRITIMER_RANDOM
@@ -4025,16 +4026,26 @@ void loop()
             // Start the hit display state machine
             startHitDisplay();
 
-            // Increment the score
-            if (hitOnTarg[FENCER_A])
+#ifdef BOUT_INCR_SCORE
+            /* Increment the score -
+               only do this for epee, as for foil and
+               sabre there are other considerations,
+               like right of way, to decide upon before
+               a point is awarded - so the referee has to
+               award the point or not
+            */
+            if (weaponType == EPEE)
             {
-               addScore(FENCER_A);
+               if (hitOnTarg[FENCER_A])
+               {
+                  addScore(FENCER_A);
+               }
+               if (hitOnTarg[FENCER_B])
+               {
+                  addScore(FENCER_B);
+               }
             }
-            if (hitOnTarg[FENCER_B])
-            {
-               addScore(FENCER_B);
-            }
-
+#endif
             // Display the current score
             displayScore();
          }
@@ -5247,16 +5258,16 @@ void writeState(BoutState state)
    switch (state)
    {
       case STA_SPAR:
-         EEPROM.update(NV_STATE, 0);
+         EEPROM.update(NV_MODE, 0);
          break;
 
       case STA_BOUT:
       case STA_STARTBOUT:
-         EEPROM.update(NV_STATE, 1);
+         EEPROM.update(NV_MODE, 1);
          break;
 
       case STA_STOPWATCH:
-         EEPROM.update(NV_STATE, 2);
+         EEPROM.update(NV_MODE, 2);
          break;
 
       default:
@@ -5266,7 +5277,7 @@ void writeState(BoutState state)
 
 BoutState readState()
 {
-   int m = EEPROM.read(NV_STATE);
+   int m = EEPROM.read(NV_MODE);
 
    switch (m)
    {
