@@ -10,6 +10,7 @@ import com.hoho.android.usbserial.driver.UsbSerialPort;
 import com.hoho.android.usbserial.driver.UsbSerialProber;
 
 import android.app.PendingIntent;
+import android.net.wifi.WifiManager;
 import android.widget.ProgressBar;
 import android.content.BroadcastReceiver;
 import android.content.ComponentName;
@@ -59,23 +60,22 @@ import com.robinterry.fencingboxapp.databinding.ActivityMainLandBinding;
 
 @SuppressWarnings("ALL")
 public class MainActivity extends AppCompatActivity implements ServiceConnection, SerialListener {
-
+    private static final String TAG = "FencingBoxApp";
     private enum Connected {False, Pending, True}
     private enum Weapon {Foil, Epee, Sabre}
     private enum Mode {None, Sparring, Bout, Stopwatch, Demo}
     private enum PassivityCard {None, Yellow, Red1, Red2}
     public static enum Orientation {Portrait, Landscape}
     public static enum Hit {None, OnTarget, OffTarget}
-
-    private Mode mode = Mode.Demo;
+    private Mode mode = Mode.None;
     private static Orientation orientation = Orientation.Portrait;
     private Weapon weapon = Weapon.Foil;
     private Weapon changeWeapon = weapon;
-
+    private Integer piste = 1;
+    public static final boolean useBroadcast = true;
     public static Orientation getOrientation() {
         return orientation;
     }
-
     public TextView textScore, textScoreA, textScoreB, textClock;
     public TextView priorityA, priorityB;
     public TextView passivityClock, batteryLevel, time;
@@ -87,13 +87,11 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
     public String timeMins = "00", timeSecs = "00", timeHund = "00";
     public int passivityTimer = 0;
     public boolean passivityActive = false;
-    private static Integer cardA = 0;
-    private static Integer cardB = 0;
+    private Integer cardA = 0, cardB = 0;
     public int stopwatchHours = 0;
     public Hit hitA = Hit.None, hitB = Hit.None;
-    public boolean priA = false, priB = false;
+    private boolean priA = false, priB = false;
     private boolean scoreHidden = false;
-    private static final String TAG = "FencingBoxApp";
     private final int passivityMaxTime = 60;
     private final int batteryDangerLevel = 15;
     public static final Integer hitAColor = 0xFFFF0000;
@@ -148,6 +146,12 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
     private int batteryLvl = 0;
     private String currentTime;
 
+    private NetworkBroadcast bc;
+    private boolean txFullStarted = false;
+    public static WifiManager.MulticastLock wifiLock;
+
+    public static FencingBoxList boxList;
+
     public MainActivity() {
         Log.d(TAG, "initialising broadcast receiver");
         thisActivity = this;
@@ -163,13 +167,34 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
             }
         };
 
+        /* Keypress queue */
         keyQ = new LinkedList<Character>();
+
+        /* List of other fencing boxes on the network */
+        boxList = new FencingBoxList();
+
+        /* Tell the box list class which piste number we are */
+        boxList.setMyPiste(piste);
     }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         Log.d(TAG, "onCreate start");
         super.onCreate(savedInstanceState);
+
+        try {
+            bc = new NetworkBroadcast();
+
+            /* Get the Wifi multicast lock to allow UDP broadcasts/multicasts to be received */
+            WifiManager wifi = (WifiManager) getSystemService(Context.WIFI_SERVICE);
+            if (wifi != null) {
+                wifiLock = wifi.createMulticastLock(TAG);
+                wifiLock.acquire();
+            }
+        } catch (IOException e) {
+            Log.d(TAG, "Unable to create broadcast socket, error " + e);
+            bc = null;
+        }
 
         // Get the view bindings for each orientation layout
         landBinding = ActivityMainLandBinding.inflate(getLayoutInflater());
@@ -215,19 +240,24 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
         }
         layout.setBackgroundColor(Color.BLACK);
 
-        try {
-            // Set status bar to entirely black
-            Window window = thisActivity.getWindow();
-            window.clearFlags(WindowManager.LayoutParams.FLAG_TRANSLUCENT_STATUS);
-            window.addFlags(WindowManager.LayoutParams.FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS);
-            window.setStatusBarColor(Color.BLACK);
+        runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    // Set status bar to entirely black
+                    Window window = thisActivity.getWindow();
+                    window.clearFlags(WindowManager.LayoutParams.FLAG_TRANSLUCENT_STATUS);
+                    window.addFlags(WindowManager.LayoutParams.FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS);
+                    window.setStatusBarColor(Color.BLACK);
 
-            // Set action bar (title bar/app bar) to entirely black
-            ActionBar bar = getSupportActionBar();
-            bar.setBackgroundDrawable(new ColorDrawable(Color.BLACK));
-        } catch (Exception e) {
-            Log.e(TAG, "Unable to change status or action bar color");
-        }
+                    // Set action bar (title bar/app bar) to entirely black
+                    ActionBar bar = getSupportActionBar();
+                    bar.setBackgroundDrawable(new ColorDrawable(Color.BLACK));
+                } catch (Exception e) {
+                    Log.e(TAG, "Unable to change status or action bar color");
+                }
+            }
+        });
         showUI();
 
         sound = new FencingBoxSound(2400,
@@ -253,6 +283,10 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
     protected void onStart() {
         Log.d(TAG, "onStart start");
         super.onStart();
+
+        /* Start RX and TX broadcast threads */
+        bc.start();
+
         displayPaused = false;
         startService(new Intent(this, SerialService.class));
         orientation = getCurrentOrientation();
@@ -272,6 +306,10 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
         if (!monitorStarted) {
             startSystemMonitor();
             monitorStarted = true;
+        }
+        if (!txFullStarted) {
+            startTxFull();
+            txFullStarted = true;
         }
         Log.d(TAG, "onStart end");
     }
@@ -306,6 +344,9 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
         sound.soundOff(true);
         landBinding = null;
         portBinding = null;
+        try {
+            wifiLock.release();
+        } catch (Exception e) { }
         Log.d(TAG, "onDestroy end");
     }
 
@@ -812,13 +853,14 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
         }
     }
 
-    private void disconnect() {
+    public void disconnect() {
         disconnect(false);
     }
 
     private void disconnect(boolean quitActivity) {
         Log.d(TAG, "disconnected from USB device");
         connected = Connected.False;
+        bc.connected(false);
         if (quitActivity) {
             service.disconnect();
             usbSerialPort = null;
@@ -1200,7 +1242,6 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
         Log.d(TAG, "data: " + str.toString());
 
         for (int i = 0; i < data.length;) {
-           Log.d(TAG, "checking offset " + i);
            if (data[i] == cmdMarker) {
                i += 1;
                String cmd = new String(data, i, 2, StandardCharsets.UTF_8);
@@ -1266,7 +1307,6 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
            } else if (data[i] == pollMarker) {
                i += 1;
                if (data[i] == '?') {
-                   Log.d(TAG, "poll");
                    processPoll();
                    i += 1;
                }
@@ -1351,6 +1391,7 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
                 hideUI();
                 setPriorityB();
                 Log.d(TAG, "priority fencer B start");
+                break;
 
             case "PE":
                 hideUI();
@@ -1649,6 +1690,125 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
         click.soundOn();
     }
 
+    public String msgScore() {
+        char hitA, hitB;
+
+        switch (this.hitA) {
+            case None:
+            default:
+                hitA = '-';
+                break;
+            case OnTarget:
+                hitA = 'h';
+                break;
+            case OffTarget:
+                hitA = 'o';
+                break;
+        }
+        switch (this.hitB) {
+            case None:
+            default:
+                hitB = '-';
+                break;
+            case OnTarget:
+                hitB = 'h';
+                break;
+            case OffTarget:
+                hitB = 'o';
+                break;
+        }
+        String s = String.format("%02dS%c%c:%s:%s",
+                piste,
+                hitA,
+                hitB,
+                scoreA,
+                scoreB);
+        return s;
+    }
+
+    public String msgClock() {
+        String s = String.format("T%s:%s:%s",
+                timeMins,
+                timeSecs,
+                timeHund);
+        return s;
+    }
+
+    public String cardStr(Integer card) {
+        String cs = "";
+        cs += ((card & yellowCardBit)   != 0) ? "y" : "-";
+        cs += ((card & redCardBit)      != 0) ? "r" : "-";
+        cs += ((card & shortCircuitBit) != 0) ? "s" : "-";
+        return cs;
+    }
+
+    public String msgCard() {
+        String s = String.format("C%s:%s",
+                cardStr(cardA),
+                cardStr(cardB));
+        return s;
+    }
+
+    public String msgPriority() {
+        String s = String.format("P%c:%c",
+                priA ? 'y':'-',
+                priB ? 'y':'-');
+        return s;
+    }
+
+    public String msgResetLights() {
+        String s = String.format("%02dR", piste);
+        return s;
+    }
+
+    public String msgFull() {
+        return msgScore() + msgClock() + msgPriority() + msgCard();
+    }
+
+    public void txResetLights() {
+        Log.d(TAG, "txResetLights");
+        String msg = msgResetLights();
+        if (connected == Connected.True) {
+            if (useBroadcast) {
+                synchronized (bc) {
+                    bc.send(msg);
+                }
+            } else {
+                synchronized (bc) {
+                    bc.send(msg);
+                }
+            }
+        }
+    }
+
+    public void startTxFull() {
+        Log.d(TAG, "Tx full status");
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                for (;;) {
+                    try {
+                        if (connected == Connected.True) {
+                            String msg = msgFull();
+                            if (useBroadcast) {
+                                synchronized (bc) {
+                                    bc.send(msg);
+                                }
+                            } else {
+                                synchronized (bc) {
+                                    bc.send(msg);
+                                }
+                            }
+                        }
+                        Thread.sleep(250);
+                    } catch (Exception e) {
+                        Log.e(TAG, "Unable to send full broadcast message");
+                    }
+                }
+            }
+        }).start();
+    }
+
     /*
      * SerialListener
      */
@@ -1656,6 +1816,7 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
     public void onSerialConnect() {
         Log.d(TAG, "connected to " + socket.getName());
         connected = Connected.True;
+        bc.connected(true);
         runOnUiThread(new Runnable() {
             @Override
             public void run() {
@@ -1686,6 +1847,7 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
                     thisActivity.connect();
                 }
                 Log.d(TAG, "reconnected USB device");
+                bc.connected(true);
             }
         }).start();
     }
@@ -1693,6 +1855,7 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
     @Override
     public void onSerialConnectError(Exception e) {
         Log.d(TAG, "connection failed: " + e.getMessage());
+        bc.connected(false);
         showUI();
         clearHitLights();
         clearScore();
@@ -1717,6 +1880,7 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
     @Override
     public void onSerialIoError(Exception e) {
         Log.d(TAG, "connection lost: " + e.getMessage());
+        bc.connected(false);
         mode = Mode.None;
         showUI();
         clearHitLights();

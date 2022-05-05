@@ -71,16 +71,16 @@
 #ifdef ENABLE_IR
 #define FREQUENT_IRPOLL          // Define this to increase the amount of IR polling     
 #define IRLIB2                   // Use IRLib2 instead of IRRemote (IRLib2 is better, but bigger)
-#endif
 
 #ifdef IRLIB2
-// IR receiver frame timeout
+// IR receiver frame timeout for the IRLib2 library
 // You might need to modify this for different IR handsets
-#define IR_FRAMETIMEOUT 5000
+#define IR_FRAMETIMEOUT     6000
 #endif
 
 #define MAX_DELAY_IR_REPEAT 300  // Initial period in milliseconds before repeats start
-#define MAX_KEYPRESS_GAP 200     // Gap between keypresses which resets the IR state machine
+#define MAX_KEYPRESS_GAP    200  // Gap between keypresses which resets the IR state machine
+#endif
 
 #define ENABLE_STOPWATCH         // Enable the stopwatch
 #define EEPROM_STORAGE           // Use EEPROM for storing values over power-off
