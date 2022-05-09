@@ -3,15 +3,11 @@
     xmlns:android="http://schemas.android.com/apk/res/android">
 
     <item
-        android:id="@+id/menu_weapon_foil"
-        android:title="@string/weapon_foil_lc"
+        android:id="@+id/menu_weapon_select"
+        android:title="@string/weapon_select_label"
         app:showAsAction="never" />
     <item
-        android:id="@+id/menu_weapon_epee"
-        android:title="@string/weapon_epee_lc"
-        app:showAsAction="never" />
-    <item
-        android:id="@+id/menu_weapon_sabre"
-        android:title="@string/weapon_sabre_lc"
+        android:id="@+id/menu_piste_select"
+        android:title="@string/piste_select_label"
         app:showAsAction="never" />
 </menu>

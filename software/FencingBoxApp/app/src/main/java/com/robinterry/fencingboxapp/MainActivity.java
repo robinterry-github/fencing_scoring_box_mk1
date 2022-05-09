@@ -2,6 +2,7 @@ package com.robinterry.fencingboxapp;
 
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.ActionBar;
+import android.app.Activity;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.constraintlayout.widget.ConstraintLayout;
 
@@ -62,7 +63,7 @@ import com.robinterry.fencingboxapp.databinding.ActivityMainLandBinding;
 public class MainActivity extends AppCompatActivity implements ServiceConnection, SerialListener {
     private static final String TAG = "FencingBoxApp";
     private enum Connected {False, Pending, True}
-    private enum Weapon {Foil, Epee, Sabre}
+    public static enum Weapon {Foil, Epee, Sabre}
     private enum Mode {None, Sparring, Bout, Stopwatch, Demo}
     private enum PassivityCard {None, Yellow, Red1, Red2}
     public static enum Orientation {Portrait, Landscape}
@@ -71,7 +72,7 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
     private static Orientation orientation = Orientation.Portrait;
     private Weapon weapon = Weapon.Foil;
     private Weapon changeWeapon = weapon;
-    private Integer piste = 1;
+    private /*static*/ Integer piste = 1;
     public static final boolean useBroadcast = true;
     public static Orientation getOrientation() {
         return orientation;
@@ -147,7 +148,7 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
     private String currentTime;
 
     private NetworkBroadcast bc;
-    private boolean txFullStarted = false;
+    private static boolean txFullStarted = false;
     public static WifiManager.MulticastLock wifiLock;
 
     public static FencingBoxList boxList;
@@ -174,7 +175,9 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
         boxList = new FencingBoxList();
 
         /* Tell the box list class which piste number we are */
-        boxList.setMyPiste(piste);
+        synchronized (boxList) {
+            boxList.setMyPiste(piste);
+        }
     }
 
     @Override
@@ -551,40 +554,70 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
         getMenuInflater().inflate(R.menu.menu, menu);
+        /* Only enable the piste menu item if the box is not connected */
+        MenuItem item = menu.getItem(1);
+        if (mode == Mode.None) {
+            item.setEnabled(true);
+        } else {
+            item.setEnabled(false);
+        }
         return super.onCreateOptionsMenu(menu);
     }
 
     @Override
     public boolean onOptionsItemSelected(@NonNull MenuItem item) {
         switch (item.getItemId()) {
-            case R.id.menu_weapon_foil:
-                /* Change weapon to foil */
-                if (weapon != Weapon.Foil) {
-                    changeWeapon = Weapon.Foil;
-                    Log.d(TAG, "Change weapon: foil");
-                }
+            case R.id.menu_weapon_select:
+                /* Open the Weapon Select activity */
+                Intent weaponSelectIntent = new Intent("com.robinterry.fencingboxapp.WEAPON_SELECT");
+                weaponSelectIntent.addCategory("android.intent.category.DEFAULT");
+                startActivityForResult(weaponSelectIntent, WeaponSelect.ACTIVITY_CODE);
                 break;
 
-            case R.id.menu_weapon_epee:
-                /* Change weapon to epee */
-                if (weapon != Weapon.Epee) {
-                    changeWeapon = Weapon.Epee;
-                    Log.d(TAG, "Change weapon: epee");
-                }
-                break;
-
-            case R.id.menu_weapon_sabre:
-                /* Change weapon to sabre */
-                if (weapon != Weapon.Sabre) {
-                    changeWeapon = Weapon.Sabre;
-                    Log.d(TAG, "Change weapon: sabre");
-                }
+            case R.id.menu_piste_select:
+                /* Open the Piste Select activity */
+                Intent pisteSelectIntent = new Intent("com.robinterry.fencingboxapp.PISTE_SELECT");
+                pisteSelectIntent.addCategory("android.intent.category.DEFAULT");
+                startActivityForResult(pisteSelectIntent, PisteSelect.ACTIVITY_CODE);
                 break;
 
             default:
                 break;
         }
         return super.onOptionsItemSelected(item);
+    }
+
+    @Override
+    public void onActivityResult(int requestCode, int resultCode, Intent i) {
+        super.onActivityResult(requestCode, resultCode, i);
+        if (requestCode == PisteSelect.ACTIVITY_CODE) {
+            if (resultCode == Activity.RESULT_OK) {
+                synchronized (bc) {
+                    piste = Integer.valueOf(i.getIntExtra("piste", 1));
+                }
+                synchronized (boxList) {
+                    boxList.setMyPiste(piste);
+                }
+            }
+        }
+        if (requestCode == WeaponSelect.ACTIVITY_CODE) {
+            if (resultCode == Activity.RESULT_OK) {
+                String wp = i.getStringExtra("weapon");
+                synchronized (bc) {
+                    switch (wp) {
+                        case "FOIL":
+                            changeWeapon = Weapon.Foil;
+                            break;
+                        case "EPEE":
+                            changeWeapon = Weapon.Epee;
+                            break;
+                        case "SABRE":
+                            changeWeapon = Weapon.Sabre;
+                            break;
+                    }
+                }
+            }
+        }
     }
 
     public void showDemo() {
@@ -1321,6 +1354,7 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
             case "GO":
                 Log.d(TAG, "fencing box started up");
                 mode = Mode.None;
+                invalidateOptionsMenu();
                 hideUI();
                 clearHitLights();
                 clearScore();
@@ -1352,6 +1386,7 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
                 Log.d(TAG, "bout start");
                 hideUI();
                 mode = Mode.Bout;
+                invalidateOptionsMenu();
                 Toast.makeText(getApplicationContext(), R.string.mode_bout, Toast.LENGTH_SHORT).show();
                 resetScore();
                 resetClock();
@@ -1402,6 +1437,7 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
                 Log.d(TAG, "sparring start");
                 hideUI();
                 mode = Mode.Sparring;
+                invalidateOptionsMenu();
                 Toast.makeText(getApplicationContext(), R.string.mode_spar, Toast.LENGTH_SHORT).show();
                 resetScore();
                 resetClock();
@@ -1427,6 +1463,7 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
                 Log.d(TAG, "stopwatch start");
                 hideUI();
                 mode = Mode.Stopwatch;
+                invalidateOptionsMenu();
                 Toast.makeText(getApplicationContext(), R.string.mode_stopwatch, Toast.LENGTH_SHORT).show();
                 resetScore();
                 resetClock();
@@ -1477,6 +1514,7 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
             case "TF":
                 Log.d(TAG, "weapon: foil");
                 weapon = changeWeapon = Weapon.Foil;
+                WeaponSelect.setWeapon(weapon);
                 setScore();
                 setClock();
                 setCard();
@@ -1486,6 +1524,7 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
             case "TE":
                 Log.d(TAG, "weapon: epee");
                 weapon = changeWeapon = Weapon.Epee;
+                WeaponSelect.setWeapon(weapon);
                 setScore();
                 setClock();
                 setCard();
@@ -1495,6 +1534,7 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
             case "TS":
                 Log.d(TAG, "weapon: sabre");
                 weapon = changeWeapon = Weapon.Sabre;
+                WeaponSelect.setWeapon(weapon);
                 setScore();
                 setClock();
                 setCard();
@@ -1786,7 +1826,7 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
         new Thread(new Runnable() {
             @Override
             public void run() {
-                for (;;) {
+                for (; ; ) {
                     try {
                         if (connected == Connected.True) {
                             String msg = msgFull();
@@ -1882,6 +1922,7 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
         Log.d(TAG, "connection lost: " + e.getMessage());
         bc.connected(false);
         mode = Mode.None;
+        invalidateOptionsMenu();
         showUI();
         clearHitLights();
         clearScore();

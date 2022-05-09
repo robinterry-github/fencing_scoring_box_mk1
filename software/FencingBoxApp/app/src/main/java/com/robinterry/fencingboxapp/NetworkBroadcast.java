@@ -10,6 +10,7 @@ import java.net.SocketTimeoutException;
 import java.net.NetworkInterface;
 import java.net.InterfaceAddress;
 import java.util.Enumeration;
+import java.util.NoSuchElementException;
 import java.util.concurrent.ArrayBlockingQueue;
 import android.util.Log;
 
@@ -24,7 +25,6 @@ public class NetworkBroadcast {
     private int port;
     private ArrayBlockingQueue<String> txMsgs;
     private Thread txThread, rxThread;
-    private int piste = 0;
     private boolean isTx = false;
     private boolean isThreadRunning = false;
     private boolean connected = false;
@@ -131,70 +131,79 @@ public class NetworkBroadcast {
     public void connected(boolean c) { connected = c; }
 
     public void start() {
-        txThread = new Thread(new Runnable() {
-            @Override
-            public void run() {
-                while (true) {
-                    /* If there's a message, fetch it */
-                    while (txMsgs.peek() != null) {
-                        String str = txMsgs.remove();
-                        /* Only send the message if we are connected, otherwise junk it */
-                        if (connected) {
-                            DatagramPacket p = new DatagramPacket(str.getBytes(), str.length(), bcAddr, port);
-                            /* Keep sending this message if this is the only one */
-                            do {
-                                try {
-                                    if (connected) {
-                                        txSocket.send(p);
-                                        if (txMsgs.peek() != null) {
-                                            break;
-                                        } else {
-                                            /* If there are no more messages, wait a bit before resending */
-                                            Thread.sleep(250);
-                                        }
-                                    } else {
-                                        break;
-                                    }
-                                } catch (Exception e) {
-                                    Log.e(TAG, "Unable to send broadcast message, error " + e);
-                                    return;
-                                }
-                            } while (txMsgs.peek() == null);
-                        }
-                    }
-                }
-            }
-        });
-
-        rxThread = new Thread(new Runnable() {
-            @Override
-            public void run() {
-                byte[] buf = new byte[100];
-                while (true) {
-                    DatagramPacket p = new DatagramPacket(buf, 100);
+        if (!isThreadRunning) {
+            txThread = new Thread(new Runnable() {
+                @Override
+                public void run() {
                     while (true) {
-                        try {
-                            rxSocket.setBroadcast(true);
-                            rxSocket.receive(p);
-                            String msg = new String(p.getData(), p.getOffset(), p.getLength());
-                            if (!msg.contains(ip4Addr.getHostName())) {
-                                try {
-                                    /* Add this box to the list, if it is not already there */
-                                    MainActivity.boxList.updateBox(msg);
-                                } catch (IllegalStateException e) { /* Ignore (queue full) */ }
+                        /* If there's a message, fetch it */
+                        while (txMsgs.peek() != null) {
+                            String str;
+                            try {
+                                str = txMsgs.remove();
+                            } catch (NoSuchElementException e) {
+                                break;
                             }
-                        } catch (SocketTimeoutException e) {
-                            return;
-                        } catch (IOException e) {
-                            Log.d(TAG, "Unable to receive, error " + e);
+
+                            /* Only send the message if we are connected, otherwise junk it */
+                            if (connected) {
+                                DatagramPacket p = new DatagramPacket(str.getBytes(), str.length(), bcAddr, port);
+                                /* Keep sending this message if this is the only one */
+                                do {
+                                    try {
+                                        if (connected) {
+                                            txSocket.send(p);
+                                            if (txMsgs.peek() != null) {
+                                                break;
+                                            } else {
+                                                /* If there are no more messages, wait a bit before resending */
+                                                Thread.sleep(250);
+                                            }
+                                        } else {
+                                            break;
+                                        }
+                                    } catch (Exception e) {
+                                        Log.e(TAG, "Unable to send broadcast message, error " + e);
+                                        return;
+                                    }
+                                } while (txMsgs.peek() == null);
+                            }
                         }
                     }
                 }
-            }
-        });
+            });
 
-        /* Start the TX and RX threads */
-        rxThread.start();
-        txThread.start();
+            rxThread = new Thread(new Runnable() {
+                @Override
+                public void run() {
+                    byte[] buf = new byte[100];
+                    while (true) {
+                        DatagramPacket p = new DatagramPacket(buf, 100);
+                        while (true) {
+                            try {
+                                rxSocket.setBroadcast(true);
+                                rxSocket.receive(p);
+                                String msg = new String(p.getData(), p.getOffset(), p.getLength());
+                                if (!msg.contains(ip4Addr.getHostName())) {
+                                    try {
+                                        /* Add this box to the list, if it is not already there */
+                                        MainActivity.boxList.updateBox(msg);
+                                    } catch (IllegalStateException e) { /* Ignore (queue full) */ }
+                                }
+                            } catch (SocketTimeoutException e) {
+                                return;
+                            } catch (IOException e) {
+                                Log.d(TAG, "Unable to receive, error " + e);
+                            }
+                        }
+                    }
+                }
+            });
+
+            /* Start the TX and RX threads */
+            rxThread.start();
+            txThread.start();
+            isThreadRunning = true;
+        }
     }
 }

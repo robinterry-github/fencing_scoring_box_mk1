@@ -1,1 +1,5 @@
 .DS_Store
+*.pdf
+keys/
+software/FencingBoxApp/app/debug/
+software/FencingBoxApp/app/src/main/res/drawable-anydpi/

@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#000000"
+    tools:context=".PisteSelect">
+
+    <Button
+        android:id="@+id/weapon_select_button"
+        android:layout_width="124dp"
+        android:layout_height="59dp"
+        android:layout_marginBottom="120dp"
+        android:backgroundTint="@color/ColorPrimary"
+        android:gravity="center_horizontal|center_vertical"
+        android:text="@string/select_button"
+        android:textAllCaps="false"
+        android:textColor="#000000"
+        android:textSize="20sp"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="0.515"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/weapon_select_group"
+        app:layout_constraintVertical_bias="1.0" />
+
+    <TextView
+        android:id="@+id/weapon_select_title"
+        android:layout_width="233dp"
+        android:layout_height="69dp"
+        android:layout_marginTop="120dp"
+        android:background="#000000"
+        android:foregroundGravity="center_vertical|center_horizontal"
+        android:gravity="center_horizontal|center_vertical"
+        android:text="@string/weapon_select_label"
+        android:textColor="@color/white"
+        android:textSize="24sp"
+        app:layout_constraintBottom_toTopOf="@+id/weapon_select_group"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintVertical_bias="0.128" />
+
+    <RadioGroup
+        android:id="@+id/weapon_select_group"
+        android:layout_width="114dp"
+        android:layout_height="186dp"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent">
+
+        <RadioButton
+            android:id="@+id/weapon_select_foil"
+            android:layout_width="match_parent"
+            android:layout_height="61dp"
+            android:buttonTint="@color/ColorPrimary"
+            android:text="@string/weapon_foil"
+            android:textColor="@color/white" />
+
+        <RadioButton
+            android:id="@+id/weapon_select_epee"
+            android:layout_width="match_parent"
+            android:layout_height="63dp"
+            android:buttonTint="@color/ColorPrimary"
+            android:text="@string/weapon_epee"
+            android:textColor="@color/white" />
+
+        <RadioButton
+            android:id="@+id/weapon_select_sabre"
+            android:layout_width="match_parent"
+            android:layout_height="63dp"
+            android:buttonTint="@color/ColorPrimary"
+            android:text="@string/weapon_sabre"
+            android:textColor="@color/white" />
+    </RadioGroup>
+
+</androidx.constraintlayout.widget.ConstraintLayout>

@@ -16,4 +16,7 @@
     <string name="weapon_sabre_lc">Sabre</string>
     <string name="menu_about">About</string>
     <string name="priority_choose">Choosing priority...</string>
+    <string name="piste_select_label">Piste select</string>
+    <string name="weapon_select_label">Weapon select</string>
+    <string name="select_button">Select</string>
 </resources>
