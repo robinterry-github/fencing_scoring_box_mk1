@@ -554,13 +554,6 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
         getMenuInflater().inflate(R.menu.menu, menu);
-        /* Only enable the piste menu item if the box is not connected */
-        MenuItem item = menu.getItem(1);
-        if (mode == Mode.None) {
-            item.setEnabled(true);
-        } else {
-            item.setEnabled(false);
-        }
         return super.onCreateOptionsMenu(menu);
     }
 
