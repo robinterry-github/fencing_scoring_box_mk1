@@ -520,8 +520,16 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
     @Override
     public boolean onPrepareOptionsMenu(Menu menu) {
         /* Change the options menu to show "Show demo" or "Clear demo" */
-        menu.findItem(R.id.menu_demo).setTitle(
-                mode == Mode.Demo ? R.string.demo_off_label:R.string.demo_on_label);
+        MenuItem item = menu.findItem(R.id.menu_demo);
+        if (mode == Mode.Demo || mode == Mode.None) {
+            item.setVisible(true);
+            item.setEnabled(true);
+            item.setTitle(
+                    mode == Mode.Demo ? R.string.demo_off_label : R.string.demo_on_label);
+        } else {
+            item.setVisible(false);
+            item.setEnabled(false);
+        }
         return super.onPrepareOptionsMenu(menu);
     }
 
