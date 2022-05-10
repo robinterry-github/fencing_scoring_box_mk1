@@ -18,5 +18,7 @@
     <string name="priority_choose">Choosing priority...</string>
     <string name="piste_select_label">Piste select</string>
     <string name="weapon_select_label">Weapon select</string>
+    <string name="demo_on_label">Show demo</string>
+    <string name="demo_off_label">Clear demo</string>
     <string name="select_button">Select</string>
 </resources>

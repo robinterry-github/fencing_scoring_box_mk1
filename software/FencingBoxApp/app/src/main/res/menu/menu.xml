@@ -1,7 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <menu xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:android="http://schemas.android.com/apk/res/android">
-
     <item
         android:id="@+id/menu_weapon_select"
         android:title="@string/weapon_select_label"
@@ -9,5 +8,9 @@
     <item
         android:id="@+id/menu_piste_select"
         android:title="@string/piste_select_label"
+        app:showAsAction="never" />
+    <item
+        android:id="@+id/menu_demo"
+        android:title="@string/demo_on_label"
         app:showAsAction="never" />
 </menu>

@@ -1,7 +1,6 @@
 package com.robinterry.fencingboxapp;
 
 import androidx.constraintlayout.widget.ConstraintLayout;
-import android.content.Context;
 import android.view.View;
 import android.graphics.Canvas;
 import android.graphics.Color;
@@ -10,9 +9,11 @@ import java.lang.String;
 
 import android.util.Log;
 
+@SuppressWarnings("ALL")
 public class HitLightView extends View {
 
     private static final String TAG = "HitLightView";
+    private MainActivity mainActivity;
     private ConstraintLayout layout;
     private Paint paint;
     private MainActivity.Hit hit = MainActivity.Hit.None;
@@ -33,14 +34,18 @@ public class HitLightView extends View {
 
     public static FixedCoords coords = new FixedCoords();
 
-    public HitLightView(Context context) {
-        super(context);
+    public HitLightView(MainActivity mainActivity) {
+        super(mainActivity.getBaseContext());
+        this.mainActivity = mainActivity;
+
     }
 
-    public HitLightView(Context context, ConstraintLayout layout, HitLight hitLight, int color) {
-        super(context);
+    public HitLightView(MainActivity mainActivity, ConstraintLayout layout, HitLight hitLight, int color) {
+        super(mainActivity.getBaseContext());
+        this.mainActivity = mainActivity;
+
         Log.d(TAG, "constructor start");
-        if (MainActivity.getOrientation() == MainActivity.Orientation.Portrait) {
+        if (mainActivity.getOrientation() == MainActivity.Orientation.Portrait) {
             Log.d(TAG, "Orientation: portrait");
         } else {
             Log.d(TAG, "Orientation: landscape");
@@ -102,7 +107,7 @@ public class HitLightView extends View {
         setMeasuredDimension(width, height);
 
         coords.topPos = screenHeight/TOP_MARGIN_DIV;
-        if (MainActivity.getOrientation() == MainActivity.Orientation.Portrait) {
+        if (mainActivity.getOrientation() == MainActivity.Orientation.Portrait) {
             coords.ledSizeX = screenWidth/LED_SIZE_X_DIV_PORT;
             coords.ledSizeY = screenHeight/LED_SIZE_Y_DIV_PORT;
         } else {

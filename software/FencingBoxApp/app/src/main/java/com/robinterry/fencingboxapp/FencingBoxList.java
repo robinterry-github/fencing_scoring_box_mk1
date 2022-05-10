@@ -6,6 +6,7 @@ import android.util.Log;
 import androidx.annotation.NonNull;
 import com.robinterry.fencingboxapp.MainActivity.*;
 
+@SuppressWarnings("ALL")
 public class FencingBoxList {
     private static final String TAG = "FencingBoxList";
 
