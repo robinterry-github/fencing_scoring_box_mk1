@@ -85,8 +85,6 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
     private boolean initialStart = true;
     private boolean isResumed = false;
     private SerialSocket socket;
-    //private HitLightView hitLightA, hitLightB;
-    //private CardLightView cardLightA, cardLightB;
     private final int ledSize = 200;
 
     private boolean soundMute = false;
