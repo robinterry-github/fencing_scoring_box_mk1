@@ -3,40 +3,20 @@ package com.robinterry.fencingboxapp;
 import java.util.List;
 import java.util.ArrayList;
 import android.util.Log;
-import androidx.annotation.NonNull;
 import com.robinterry.fencingboxapp.MainActivity.*;
 
 @SuppressWarnings("ALL")
 public class FencingBoxList {
     private static final String TAG = "FencingBoxList";
 
-    private class Box {
-        public Integer piste = 0;
-        public Hit hitA = Hit.None, hitB = Hit.None;
-        public String scoreA = "00", scoreB = "00";
-        public String timeMins = "00", timeSecs = "00", timeHund = "00";
-        public String cardA = "---", cardB = "---";
-        public boolean priA = false, priB = false;
-
-        @NonNull
-        public String toString() {
-            return "piste=" + piste
-                    + ",hitA=" + hitA
-                    + ",hitB=" + hitB
-                    + ",timeMins=" + timeMins
-                    + ",timeSecs=" + timeSecs
-                    + ",timeHund=" + timeHund
-                    + ",scoreA=" + scoreA
-                    + ",scoreB=" + scoreB
-                    + ",cardA=" + cardA
-                    + ",cardB=" + cardB
-                    + ",priA=" + priA
-                    + ",priB=" + priB;
-        }
-    }
-
     private final List<Box> boxList = new ArrayList<>();
     private Integer myPiste = 1;
+    private FencingBoxDisplay disp;
+
+    public FencingBoxList(FencingBoxDisplay disp, Integer piste) {
+        this.disp = disp;
+        this.myPiste = piste;
+    }
 
     public void setMyPiste(Integer piste) {
         myPiste = piste;
@@ -81,24 +61,24 @@ public class FencingBoxList {
             String hB = msg.substring(4, 5);
             switch (hA) {
                 case "H":
-                    newBox.hitA = Hit.OnTarget;
+                    newBox.hitA = Box.Hit.OnTarget;
                     break;
                 case "O":
-                    newBox.hitA = Hit.OffTarget;
+                    newBox.hitA = Box.Hit.OffTarget;
                     break;
                 default:
-                    newBox.hitA = Hit.None;
+                    newBox.hitA = Box.Hit.None;
                     break;
             }
             switch (hB) {
                 case "H":
-                    newBox.hitB = Hit.OnTarget;
+                    newBox.hitB = Box.Hit.OnTarget;
                     break;
                 case "O":
-                    newBox.hitB = Hit.OffTarget;
+                    newBox.hitB = Box.Hit.OffTarget;
                     break;
                 default:
-                    newBox.hitB = Hit.None;
+                    newBox.hitB = Box.Hit.None;
                     break;
             }
 
@@ -120,8 +100,8 @@ public class FencingBoxList {
         if (msg.charAt(19) != 'C') {
             return;
         } else {
-            newBox.cardA = msg.substring(20, 23);
-            newBox.cardB = msg.substring(24, 27);
+            newBox.sCardA = msg.substring(20, 23);
+            newBox.sCardB = msg.substring(24, 27);
         }
 
         /* Read priority */

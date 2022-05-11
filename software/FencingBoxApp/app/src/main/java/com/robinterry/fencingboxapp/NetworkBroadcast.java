@@ -20,7 +20,7 @@ public class NetworkBroadcast {
     private DatagramSocket txSocket = null;
     private DatagramSocket rxSocket = null;
     private static final int PORT = 28888;
-    private InetAddress bcAddr;
+    private InetAddress bcAddr = null;
     private Inet4Address ip4Addr = null;
     private int port;
     private ArrayBlockingQueue<String> txMsgs;
@@ -54,7 +54,7 @@ public class NetworkBroadcast {
         }).start();
     }
 
-    private void openBroadcastSocket() throws IOException {
+    private void openBroadcastSocket() throws IOException, SocketException {
         bcAddr = getBroadcastAddress();
         if (txSocket == null) {
             /* The IP address/port are set when the datagram is constructed */
@@ -191,6 +191,8 @@ public class NetworkBroadcast {
                                     } catch (IllegalStateException e) { /* Ignore (queue full) */ }
                                 }
                             } catch (SocketTimeoutException e) {
+                                return;
+                            } catch (NullPointerException e) {
                                 return;
                             } catch (IOException e) {
                                 Log.d(TAG, "Unable to receive, error " + e);

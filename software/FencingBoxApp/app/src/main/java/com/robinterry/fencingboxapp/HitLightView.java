@@ -16,7 +16,7 @@ public class HitLightView extends View {
     private MainActivity mainActivity;
     private ConstraintLayout layout;
     private Paint paint;
-    private MainActivity.Hit hit = MainActivity.Hit.None;
+    private Box.Hit hit = Box.Hit.None;
     private int leftPos;
     public enum HitLight { HitA, HitB }
     private HitLight hitLight = HitLight.HitA;
@@ -137,7 +137,7 @@ public class HitLightView extends View {
         showLights(this.hit);
     }
 
-    public void showLights(MainActivity.Hit hit) {
+    public void showLights(Box.Hit hit) {
         this.hit = hit;
         invalidate();
     }

@@ -18,8 +18,8 @@ import com.robinterry.fencingboxapp.databinding.ActivityMainLandBinding;
 
 @SuppressWarnings("ALL")
 public class FencingBoxDisplay {
+    private Box box;
     public static final String TAG = "FencingBoxDisplay";
-
     public TextView textScore, textScoreA, textScoreB, textClock;
     public TextView priorityA, priorityB;
     public TextView passivityClock, batteryLevel, time;
@@ -40,12 +40,14 @@ public class FencingBoxDisplay {
     private CardLightView cardLightA, cardLightB;
 
     public FencingBoxDisplay(MainActivity mainActivity,
+                             Box box,
                              ConstraintLayout layout,
                              MainActivity.Orientation orientation,
                              ActivityMainBinding portBinding,
                              ActivityMainLandBinding landBinding) {
 
         this.mainActivity = mainActivity;
+        this.box = box;
         this.layout = layout;
         this.orientation = orientation;
         this.portBinding = portBinding;
@@ -144,7 +146,6 @@ public class FencingBoxDisplay {
     }
 
     public void hideUI() {
-        Log.d(TAG, "hideUI " + controlUI + " mode " + mainActivity.getBoxMode());
         if (controlUI) {
             if (true /*mode != Mode.None*/) {
                 mainActivity.runOnUiThread(new Runnable() {
@@ -204,7 +205,7 @@ public class FencingBoxDisplay {
         }
     }
 
-    public void displayHitLights(MainActivity.Hit h_A, MainActivity.Hit h_B) {
+    public void displayHitLights(Box.Hit h_A, Box.Hit h_B) {
         hitLightA.showLights(h_A);
         hitLightB.showLights(h_B);
     }
@@ -220,9 +221,9 @@ public class FencingBoxDisplay {
             public void run() {
                 if (scoreHidden) {
                     clearScore(orientation);
-                } else if (mainActivity.getBoxMode() == MainActivity.Mode.Stopwatch
+                } else if (box.getBoxMode() == Box.Mode.Stopwatch
                             ||
-                            mainActivity.getBoxMode() == MainActivity.Mode.None) {
+                            box.getBoxMode() == Box.Mode.None) {
                     clearScore(orientation);
                 } else if (orientation == MainActivity.Orientation.Landscape) {
                     textScoreA.setTextColor(Color.RED);
@@ -313,7 +314,7 @@ public class FencingBoxDisplay {
     }
 
     public void displayPassivity(int pClock) {
-        if (mainActivity.getBoxMode() != MainActivity.Mode.Sparring) {
+        if (!box.isModeSparring()) {
             passivityClock.setText(String.format("%02d", pClock));
         }
     }

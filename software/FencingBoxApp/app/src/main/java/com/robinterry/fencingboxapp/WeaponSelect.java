@@ -16,7 +16,7 @@ public class WeaponSelect extends Activity {
     private Button weaponSelectButton;
     private RadioGroup weaponGroup;
     private RadioButton weaponSelectFoil, weaponSelectEpee, weaponSelectSabre;
-    private static MainActivity.Weapon weapon = MainActivity.Weapon.Foil;
+    private static Box.Weapon weapon = Box.Weapon.Foil;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -53,13 +53,13 @@ public class WeaponSelect extends Activity {
             public void onCheckedChanged (RadioGroup group, int checkedId) {
                 if (checkedId == R.id.weapon_select_foil) {
                     /* This is foil */
-                    weapon = MainActivity.Weapon.Foil;
+                    weapon = Box.Weapon.Foil;
                 } else if (checkedId == R.id.weapon_select_epee) {
                     /* This is epee */
-                    weapon = MainActivity.Weapon.Epee;
+                    weapon = Box.Weapon.Epee;
                 } else if (checkedId == R.id.weapon_select_sabre) {
                     /* This is sabre */
-                    weapon = MainActivity.Weapon.Sabre;
+                    weapon = Box.Weapon.Sabre;
                 }
             }
         });
@@ -71,21 +71,21 @@ public class WeaponSelect extends Activity {
                 switch (weapon) {
                     case Foil:
                         Log.d(TAG, "FOIL selected");
-                        weapon = MainActivity.Weapon.Foil;
+                        weapon = Box.Weapon.Foil;
                         weaponResult.putExtra("weapon", "FOIL");
                         setResult(Activity.RESULT_OK, weaponResult);
                         break;
 
                     case Epee:
                         Log.d(TAG, "EPEE selected");
-                        weapon = MainActivity.Weapon.Epee;
+                        weapon = Box.Weapon.Epee;
                         weaponResult.putExtra("weapon", "EPEE");
                         setResult(Activity.RESULT_OK, weaponResult);
                         break;
 
                     case Sabre:
                         Log.d(TAG, "SABRE selected");
-                        weapon = MainActivity.Weapon.Sabre;
+                        weapon = Box.Weapon.Sabre;
                         weaponResult.putExtra("weapon", "SABRE");
                         setResult(Activity.RESULT_OK, weaponResult);
                         break;
@@ -120,7 +120,7 @@ public class WeaponSelect extends Activity {
         super.onPause();
     }
 
-    static void setWeapon(MainActivity.Weapon w) {
+    static void setWeapon(Box.Weapon w) {
         weapon = w;
     }
 }

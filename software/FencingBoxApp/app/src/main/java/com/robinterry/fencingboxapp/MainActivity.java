@@ -54,28 +54,15 @@ import com.robinterry.fencingboxapp.databinding.ActivityMainLandBinding;
 @SuppressWarnings("ALL")
 public class MainActivity extends AppCompatActivity implements ServiceConnection, SerialListener {
     private static final String TAG = "FencingBoxApp";
+    private Box box;
     private enum Connected {False, Pending, True}
-    public static enum Weapon {Foil, Epee, Sabre}
-    public enum Mode {None, Sparring, Bout, Stopwatch, Demo}
     public enum PassivityCard {None, Yellow, Red1, Red2}
     public static enum Orientation {Portrait, Landscape}
-    public static enum Hit {None, OnTarget, OffTarget}
-    public Mode mode = Mode.None;
     public Orientation orientation = Orientation.Portrait;
-    private Weapon weapon = Weapon.Foil;
-    private Weapon changeWeapon = weapon;
-    private /*static*/ Integer piste = 1;
     public static final boolean useBroadcast = true;
     private boolean batteryDangerActive = false;
     private boolean batteryDangerFlash = false;
-    public String scoreA = "00", scoreB = "00";
-    public String timeMins = "00", timeSecs = "00", timeHund = "00";
-    public int passivityTimer = 0;
-    public boolean passivityActive = false;
-    private Integer cardA = 0, cardB = 0;
     public int stopwatchHours = 0;
-    public Hit hitA = Hit.None, hitB = Hit.None;
-    private boolean priA = false, priB = false;
     private boolean scoreHidden = false;
     private final int passivityMaxTime = 60;
     private final int batteryDangerLevel = 15;
@@ -154,17 +141,8 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
         /* Keypress queue */
         keyQ = new LinkedList<Character>();
 
-        /* List of other fencing boxes on the network */
-        boxList = new FencingBoxList();
-
-        /* Tell the box list class which piste number we are */
-        synchronized (boxList) {
-            boxList.setMyPiste(piste);
-        }
-    }
-
-    public Mode getBoxMode() {
-        return mode;
+        /* Various fencing box related variables */
+        box = new Box(1);
     }
 
     @Override
@@ -201,7 +179,12 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
             mainBinding = portBinding.getRoot();
             layout = (ConstraintLayout) mainBinding;
         }
-        disp = new FencingBoxDisplay(this, layout, orientation, portBinding, landBinding);
+
+        /* Display handler */
+        disp = new FencingBoxDisplay(this, box, layout, orientation, portBinding, landBinding);
+
+        /* List of other fencing boxes on the network */
+        boxList = new FencingBoxList(disp, box.piste);
 
         // Set the content view from the view binding for the new orientation
         setContentView(mainBinding);
@@ -260,7 +243,7 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
         orientation = getCurrentOrientation();
         disp.setupText(orientation);
         disp.hideUI();
-        if (mode == Mode.Demo) {
+        if (box.isModeDemo()) {
             showDemo();
         } else {
             setHitLights();
@@ -392,7 +375,7 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
         // Display the screen in the new orientation
         disp.hideUI();
         disp.setupText(layout, orientation);
-        if (mode == Mode.Demo) {
+        if (box.isModeDemo()) {
             showDemo();
         } else {
             setHitLights();
@@ -521,11 +504,11 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
     public boolean onPrepareOptionsMenu(Menu menu) {
         /* Change the options menu to show "Show demo" or "Clear demo" */
         MenuItem item = menu.findItem(R.id.menu_demo);
-        if (mode == Mode.Demo || mode == Mode.None) {
+        if (box.isModeDemo() || box.isModeNone()) {
             item.setVisible(true);
             item.setEnabled(true);
             item.setTitle(
-                    mode == Mode.Demo ? R.string.demo_off_label : R.string.demo_on_label);
+                    box.isModeDemo() ? R.string.demo_off_label : R.string.demo_on_label);
         } else {
             item.setVisible(false);
             item.setEnabled(false);
@@ -552,13 +535,13 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
 
             case R.id.menu_demo:
                 /* Go into demo mode or out */
-                switch (mode) {
+                switch (box.getBoxMode()) {
                     case None:
-                        mode = Mode.Demo;
+                        box.setModeDemo();
                         showDemo();
                         break;
                     case Demo:
-                        mode = Mode.None;
+                        box.setModeNone();
                         setHitLights();
                         setScore();
                         setClock();
@@ -584,10 +567,10 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
         if (requestCode == PisteSelect.ACTIVITY_CODE) {
             if (resultCode == Activity.RESULT_OK) {
                 synchronized (bc) {
-                    piste = Integer.valueOf(i.getIntExtra("piste", 1));
+                    box.piste = Integer.valueOf(i.getIntExtra("piste", 1));
                 }
                 synchronized (boxList) {
-                    boxList.setMyPiste(piste);
+                    boxList.setMyPiste(box.piste);
                 }
             }
         }
@@ -597,13 +580,13 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
                 synchronized (bc) {
                     switch (wp) {
                         case "FOIL":
-                            changeWeapon = Weapon.Foil;
+                            box.changeWeapon = Box.Weapon.Foil;
                             break;
                         case "EPEE":
-                            changeWeapon = Weapon.Epee;
+                            box.changeWeapon = Box.Weapon.Epee;
                             break;
                         case "SABRE":
-                            changeWeapon = Weapon.Sabre;
+                            box.changeWeapon = Box.Weapon.Sabre;
                             break;
                     }
                 }
@@ -614,7 +597,7 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
     public void showDemo() {
         Log.d(TAG, "demo");
         disp.hideUI();
-        disp.displayHitLights(Hit.OnTarget, Hit.OnTarget);
+        disp.displayHitLights(Box.Hit.OnTarget, Box.Hit.OnTarget);
         disp.displayScore("00", "00");
         disp.displayClock("00", "00", "00", false);
         disp.displayCardA(true, true, true);
@@ -759,88 +742,88 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
     }
 
     public void setHitLights() {
-        setHitLights(hitA, hitB);
+        setHitLights(box.hitA, box.hitB);
     }
 
-    public void setHitLights(Hit h_A, Hit h_B) {
-        hitA = h_A;
-        hitB = h_B;
-        disp.displayHitLights(hitA, hitB);
+    public void setHitLights(Box.Hit h_A, Box.Hit h_B) {
+        box.hitA = h_A;
+        box.hitB = h_B;
+        disp.displayHitLights(box.hitA, box.hitB);
     }
 
     public void clearHitLights() {
-        setHitLights(Hit.None, Hit.None);
+        setHitLights(Box.Hit.None, Box.Hit.None);
     }
 
     public void setScoreA(String s_A) {
-        scoreA = s_A;
-        setScore(scoreA, scoreB);
+        box.scoreA = s_A;
+        setScore(box.scoreA, box.scoreB);
     }
 
     public void setScoreB(String s_B) {
-        scoreB = s_B;
-        setScore(scoreA, scoreB);
+        box.scoreB = s_B;
+        setScore(box.scoreA, box.scoreB);
     }
 
     public void setScore() {
-        setScore(scoreA, scoreB);
+        setScore(box.scoreA, box.scoreB);
     }
 
     public void setScore(String s_A, String s_B) {
-        scoreA = s_A;
-        scoreB = s_B;
-        disp.displayScore(scoreA, scoreB);
+        box.scoreA = s_A;
+        box.scoreB = s_B;
+        disp.displayScore(box.scoreA, box.scoreB);
     }
 
 
     public void clearScore() {
-        scoreA = scoreB = "00";
+        box.scoreA = box.scoreB = "00";
         disp.clearScore(orientation);
     }
 
     public void resetClock() {
-        if (mode == Mode.Bout) {
-            timeMins = "03";
+        if (box.isModeBout()) {
+            box.timeMins = "03";
         } else {
-            timeMins = "00";
+            box.timeMins = "00";
         }
-        timeSecs = "00";
-        timeHund = "00";
-        if (mode == Mode.Sparring || mode == Mode.None) {
+        box.timeSecs = "00";
+        box.timeHund = "00";
+        if (box.isModeSparring() || box.isModeNone()) {
             clearClock();
         } else {
-            setClock(timeMins, timeSecs, timeHund, false);
+            setClock(box.timeMins, box.timeSecs, box.timeHund, false);
         }
     }
 
     public void resetScore() {
-        scoreA = scoreB = "00";
-        if (mode == Mode.Bout) {
-            setScore(scoreA, scoreB);
+        box.scoreA = box.scoreB = "00";
+        if (box.isModeBout()) {
+            setScore(box.scoreA, box.scoreB);
         } else {
             clearScore();
         }
     }
 
     public boolean setClock() {
-        return setClock(timeMins, timeSecs, timeHund, false);
+        return setClock(box.timeMins, box.timeSecs, box.timeHund, false);
     }
 
     public boolean setClock(String mins, String secs, String hund, boolean hundActive) {
         boolean clockChanged = true;
 
-        if (mode == Mode.Sparring || mode == Mode.None) {
+        if (box.isModeSparring() || box.isModeNone()) {
             clearClock();
             clockChanged = false;
         } else {
             /* Has the clock minutes and seconds changed? */
-            if (mins.equals(timeMins) && secs.equals(timeSecs)) {
+            if (mins.equals(box.timeMins) && secs.equals(box.timeSecs)) {
                 clockChanged = false;
             }
-            timeMins = mins;
-            timeSecs = secs;
-            timeHund = hund;
-            disp.displayClock(timeMins, timeSecs, timeHund, hundActive);
+            box.timeMins = mins;
+            box.timeSecs = secs;
+            box.timeHund = hund;
+            disp.displayClock(box.timeMins, box.timeSecs, box.timeHund, hundActive);
         }
         return clockChanged;
     }
@@ -850,8 +833,8 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
     }
 
     public void setCard() {
-        setCard("0", cardA);
-        setCard("1", cardB);
+        setCard("0", box.cardA);
+        setCard("1", box.cardB);
     }
 
 
@@ -872,7 +855,7 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
     }
 
     public void resetCard() {
-        cardA = cardB = 0;
+        box.cardA = box.cardB = 0;
         clearCard();
     }
 
@@ -893,12 +876,12 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
 
     public void setPriority()
     {
-        setPriority(this.priA, this.priB);
+        setPriority(this.box.priA, this.box.priB);
     }
 
     public void setPriority(boolean priA, boolean priB) {
-        this.priA = priA;
-        this.priB = priB;
+        this.box.priA = priA;
+        this.box.priB = priB;
         disp.displayPriority(priA, priB);
     }
 
@@ -907,31 +890,31 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
     }
 
     public void restartPassivity(int pClock) {
-        passivityActive = true;
+        box.passivityActive = true;
         setPassivity(pClock);
     }
 
     public void restartPassivity() {
-        passivityActive = true;
+        box.passivityActive = true;
         setPassivity();
     }
 
     public void setPassivity() {
-        setPassivity(passivityTimer);
+        setPassivity(box.passivityTimer);
     }
 
     public void setPassivity(int pClock)
     {
-        if (passivityActive) {
+        if (box.passivityActive) {
             disp.setPassivityClockColor(Color.GREEN);
-            if (mode == Mode.Bout) {
+            if (box.isModeBout()) {
                 if (pClock > passivityMaxTime) {
                     disp.displayPassivity(passivityMaxTime);
                 } else {
                     disp.displayPassivity(pClock);
                 }
-            } else if (mode == Mode.Stopwatch) {
-                passivityTimer = pClock;
+            } else if (box.isModeStopwatch()) {
+                box.passivityTimer = pClock;
                 disp.displayPassivity(pClock);
             } else {
                 clearPassivity();
@@ -942,9 +925,9 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
     }
 
     public void clearPassivity() {
-        passivityActive = false;
-        passivityTimer = passivityMaxTime;
-        if (mode == Mode.Bout || mode == Mode.Stopwatch) {
+        box.passivityActive = false;
+        box.passivityTimer = passivityMaxTime;
+        if (box.isModeBout() || box.isModeStopwatch()) {
             disp.setPassivityClockColor(Color.GREEN);
         } else {
             disp.setPassivityClockColor(Color.BLACK);
@@ -1081,7 +1064,7 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
         switch (cmd) {
             case "GO":
                 Log.d(TAG, "fencing box started up");
-                mode = Mode.None;
+                box.setModeNone();
                 invalidateOptionsMenu();
                 disp.hideUI();
                 clearHitLights();
@@ -1105,13 +1088,13 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
                 disp.setProgressBarVisibility(View.VISIBLE);
                 clearPriority();
                 disp.clearClock(Color.GREEN);
-                setHitLights(Hit.OnTarget, Hit.OnTarget);
+                setHitLights(Box.Hit.OnTarget, Box.Hit.OnTarget);
                 break;
 
             case "BS":
                 Log.d(TAG, "bout start");
                 disp.hideUI();
-                mode = Mode.Bout;
+                box.setModeBout();
                 invalidateOptionsMenu();
                 Toast.makeText(getApplicationContext(), R.string.mode_bout, Toast.LENGTH_SHORT).show();
                 resetScore();
@@ -1139,7 +1122,7 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
             case "P0":
                 disp.setProgressBarVisibility(View.INVISIBLE);
                 disp.hideUI();
-                setHitLights(Hit.None, Hit.None);
+                setHitLights(Box.Hit.None, Box.Hit.None);
                 setPriorityA();
                 Log.d(TAG, "priority fencer A start");
                 break;
@@ -1147,7 +1130,7 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
             case "P1":
                 disp.setProgressBarVisibility(View.INVISIBLE);
                 disp.hideUI();
-                setHitLights(Hit.None, Hit.None);
+                setHitLights(Box.Hit.None, Box.Hit.None);
                 setPriorityB();
                 Log.d(TAG, "priority fencer B start");
                 break;
@@ -1160,7 +1143,7 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
             case "SS":
                 Log.d(TAG, "sparring start");
                 disp.hideUI();
-                mode = Mode.Sparring;
+                box.setModeSparring();
                 invalidateOptionsMenu();
                 Toast.makeText(getApplicationContext(), R.string.mode_spar, Toast.LENGTH_SHORT).show();
                 resetScore();
@@ -1186,7 +1169,7 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
             case "WS":
                 Log.d(TAG, "stopwatch start");
                 disp.hideUI();
-                mode = Mode.Stopwatch;
+                box.setModeStopwatch();
                 invalidateOptionsMenu();
                 Toast.makeText(getApplicationContext(), R.string.mode_stopwatch, Toast.LENGTH_SHORT).show();
                 resetScore();
@@ -1201,9 +1184,9 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
 
             case "WR":
                 Log.d(TAG, "stopwatch reset");
-                if (mode != Mode.Stopwatch) {
+                if (!box.isModeStopwatch()) {
                     disp.hideUI();
-                    mode = Mode.Stopwatch;
+                    box.setModeStopwatch();
                     Toast.makeText(getApplicationContext(), R.string.mode_stopwatch, Toast.LENGTH_SHORT).show();
                     resetScore();
                     resetClock();
@@ -1229,16 +1212,16 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
             case "RL":
                 Log.d(TAG, "reset lights");
                 disp.hideUI();
-                hitA = hitB = Hit.None;
-                setHitLights(hitA, hitB);
+                box.hitA = box.hitB = Box.Hit.None;
+                setHitLights(box.hitA, box.hitB);
                 clearPriority();
                 sound.soundOff(true);
                 break;
 
             case "TF":
                 Log.d(TAG, "weapon: foil");
-                weapon = changeWeapon = Weapon.Foil;
-                WeaponSelect.setWeapon(weapon);
+                box.weapon = box.changeWeapon = Box.Weapon.Foil;
+                WeaponSelect.setWeapon(box.weapon);
                 setScore();
                 setClock();
                 setCard();
@@ -1247,8 +1230,8 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
 
             case "TE":
                 Log.d(TAG, "weapon: epee");
-                weapon = changeWeapon = Weapon.Epee;
-                WeaponSelect.setWeapon(weapon);
+                box.weapon = box.changeWeapon = Box.Weapon.Epee;
+                WeaponSelect.setWeapon(box.weapon);
                 setScore();
                 setClock();
                 setCard();
@@ -1257,8 +1240,8 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
 
             case "TS":
                 Log.d(TAG, "weapon: sabre");
-                weapon = changeWeapon = Weapon.Sabre;
-                WeaponSelect.setWeapon(weapon);
+                box.weapon = box.changeWeapon = Box.Weapon.Sabre;
+                WeaponSelect.setWeapon(box.weapon);
                 setScore();
                 setClock();
                 setCard();
@@ -1267,9 +1250,9 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
 
             case "VS":
                 Log.d(TAG, "passivity start");
-                passivityActive = true;
-                passivityTimer = passivityMaxTime;
-                setPassivity(passivityTimer);
+                box.passivityActive = true;
+                box.passivityTimer = passivityMaxTime;
+                setPassivity(box.passivityTimer);
                 displayPassivityCard();
                 break;
 
@@ -1282,7 +1265,7 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
             case "VT":
                 Log.d(TAG, "passivity signal");
                 setPassivity(0);
-                passivityActive = false;
+                box.passivityActive = false;
                 break;
 
             case "Z1":
@@ -1319,49 +1302,49 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
 
     public synchronized void processHit(String hit) {
         /* Process off-target hits first */
-        if (weapon == Weapon.Foil) {
+        if (box.weapon == Box.Weapon.Foil) {
             if (hit.equals("O0")) {
                 disp.hideUI();
-                hitA = Hit.OffTarget;
+                box.hitA = Box.Hit.OffTarget;
             }
             if (hit.equals("O1")) {
                 disp.hideUI();
-                hitB = Hit.OffTarget;
+                box.hitB = Box.Hit.OffTarget;
             }
         }
 
         /* Process on-target hits */
         if (hit.equals("H0")) {
             disp.hideUI();
-            hitA = hitB = Hit.None;
+            box.hitA = box.hitB = Box.Hit.None;
         }
         if (hit.equals("H1")) {
             disp.hideUI();
-            hitA = Hit.OnTarget;
+            box.hitA = Box.Hit.OnTarget;
         }
         if (hit.equals("H2")) {
             disp.hideUI();
-            hitB = Hit.OnTarget;
+            box.hitB = Box.Hit.OnTarget;
         }
         if (hit.equals("H3")) {
             disp.hideUI();
-            hitA = Hit.OnTarget;
-            hitB = Hit.None;
+            box.hitA = Box.Hit.OnTarget;
+            box.hitB = Box.Hit.None;
         }
         if (hit.equals("H4")) {
             disp.hideUI();
-            hitA = Hit.None;
-            hitB = Hit.OnTarget;
+            box.hitA = Box.Hit.None;
+            box.hitB = Box.Hit.OnTarget;
         }
         if (hit.equals("S0")) {
-            hitA = Hit.OnTarget;
-            hitB = Hit.None;
+            box.hitA = Box.Hit.OnTarget;
+            box.hitB = Box.Hit.None;
         }
         if (hit.equals("S1")) {
-            hitA = Hit.None;
-            hitB = Hit.OnTarget;
+            box.hitA = Box.Hit.None;
+            box.hitB = Box.Hit.OnTarget;
         }
-        setHitLights(hitA, hitB);
+        setHitLights(box.hitA, box.hitB);
     }
 
     public synchronized void processCard(String whichFencer, String whichCard) {
@@ -1369,20 +1352,20 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
         disp.hideUI();
 
         if (whichFencer.equals("0")) {
-            cardA = Integer.parseInt(whichCard);
-            setCard(whichFencer, cardA);
+            box.cardA = Integer.parseInt(whichCard);
+            setCard(whichFencer, box.cardA);
         } else if (whichFencer.equals("1")) {
-            cardB = Integer.parseInt(whichCard);
-            setCard(whichFencer, cardB);
+            box.cardB = Integer.parseInt(whichCard);
+            setCard(whichFencer, box.cardB);
         }
     }
 
     public synchronized void processClock(String min, String sec, String hund, boolean hundActive) {
         if (setClock(min, sec, hund, hundActive)) {
-            if (mode == Mode.Bout) {
-                if (passivityActive && passivityTimer > 0) {
-                    passivityTimer--;
-                    setPassivity(passivityTimer);
+            if (box.isModeBout()) {
+                if (box.passivityActive && box.passivityTimer > 0) {
+                    box.passivityTimer--;
+                    setPassivity(box.passivityTimer);
                 }
             }
         }
@@ -1407,8 +1390,8 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
         String msg = "";
 
         /* Has the weapon changed? */
-        if (changeWeapon != weapon) {
-            switch (changeWeapon) {
+        if (box.changeWeapon != box.weapon) {
+            switch (box.changeWeapon) {
                 case Foil:
                     msg = "/f";
                     break;
@@ -1455,46 +1438,46 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
     }
 
     public String msgScore() {
-        char hitA, hitB;
+        char cHitA, cHitB;
 
-        switch (this.hitA) {
+        switch (box.hitA) {
             case None:
             default:
-                hitA = '-';
+                cHitA = '-';
                 break;
             case OnTarget:
-                hitA = 'h';
+                cHitA = 'h';
                 break;
             case OffTarget:
-                hitA = 'o';
+                cHitA = 'o';
                 break;
         }
-        switch (this.hitB) {
+        switch (box.hitB) {
             case None:
             default:
-                hitB = '-';
+                cHitB = '-';
                 break;
             case OnTarget:
-                hitB = 'h';
+                cHitB = 'h';
                 break;
             case OffTarget:
-                hitB = 'o';
+                cHitB = 'o';
                 break;
         }
         String s = String.format("%02dS%c%c:%s:%s",
-                piste,
-                hitA,
-                hitB,
-                scoreA,
-                scoreB);
+                box.piste,
+                cHitA,
+                cHitB,
+                box.scoreA,
+                box.scoreB);
         return s;
     }
 
     public String msgClock() {
         String s = String.format("T%s:%s:%s",
-                timeMins,
-                timeSecs,
-                timeHund);
+                box.timeMins,
+                box.timeSecs,
+                box.timeHund);
         return s;
     }
 
@@ -1508,20 +1491,20 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
 
     public String msgCard() {
         String s = String.format("C%s:%s",
-                cardStr(cardA),
-                cardStr(cardB));
+                cardStr(box.cardA),
+                cardStr(box.cardB));
         return s;
     }
 
     public String msgPriority() {
         String s = String.format("P%c:%c",
-                priA ? 'y':'-',
-                priB ? 'y':'-');
+                box.priA ? 'y':'-',
+                box.priB ? 'y':'-');
         return s;
     }
 
     public String msgResetLights() {
-        String s = String.format("%02dR", piste);
+        String s = String.format("%02dR", box.piste);
         return s;
     }
 
@@ -1650,7 +1633,7 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
     public void onSerialIoError(Exception e) {
         Log.d(TAG, "connection lost: " + e.getMessage());
         bc.connected(false);
-        mode = Mode.None;
+        box.setModeNone();
         invalidateOptionsMenu();
         runOnUiThread(new Runnable() {
             @Override
