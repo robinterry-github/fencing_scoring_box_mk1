@@ -21,4 +21,6 @@
     <string name="demo_on_label">Show demo</string>
     <string name="demo_off_label">Clear demo</string>
     <string name="select_button">Select</string>
+    <string name="icon_online_desc">Icon to show online status</string>
+    <string name="icon_mute_desc">Icon to show sound mute status</string>
 </resources>

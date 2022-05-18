@@ -8,6 +8,18 @@
     android:textAlignment="center"
     tools:context=".MainActivity">
 
+    <ImageView
+        android:id="@+id/icon_online"
+        android:layout_width="20dp"
+        android:layout_height="20dp"
+        android:background="#000000"
+        android:contentDescription="@string/icon_online_desc"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="0.695"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        app:srcCompat="@android:drawable/ic_menu_share" />
+
     <TextView
         android:id="@+id/textScore"
         android:layout_width="280dp"
@@ -173,10 +185,12 @@
         android:layout_width="20dp"
         android:layout_height="20dp"
         android:background="#000000"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:srcCompat="@android:drawable/ic_lock_silent_mode"
-        tools:layout_editor_absoluteY="2dp" />
+        android:contentDescription="@string/icon_mute_desc"
+        app:layout_constraintEnd_toStartOf="@+id/icon_online"
+        app:layout_constraintHorizontal_bias="0.517"
+        app:layout_constraintStart_toStartOf="@+id/guideline"
+        app:layout_constraintTop_toTopOf="parent"
+        app:srcCompat="@android:drawable/ic_lock_silent_mode" />
 
     <ProgressBar
         android:id="@+id/priorityChoose"

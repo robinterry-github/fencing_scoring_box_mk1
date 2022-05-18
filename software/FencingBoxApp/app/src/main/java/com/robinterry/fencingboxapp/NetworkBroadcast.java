@@ -9,9 +9,15 @@ import java.net.SocketException;
 import java.net.SocketTimeoutException;
 import java.net.NetworkInterface;
 import java.net.InterfaceAddress;
+import java.net.MulticastSocket;
+import java.net.UnknownHostException;
 import java.util.Enumeration;
 import java.util.NoSuchElementException;
 import java.util.concurrent.ArrayBlockingQueue;
+
+import android.content.Context;
+import android.net.ConnectivityManager;
+import android.net.NetworkInfo;
 import android.util.Log;
 
 @SuppressWarnings("ALL")
@@ -19,6 +25,7 @@ public class NetworkBroadcast {
     public static final String TAG = "NetworkBroadcast";
     private DatagramSocket txSocket = null;
     private DatagramSocket rxSocket = null;
+    private static final String MCADDR = "224.0.0.1";
     private static final int PORT = 28888;
     private InetAddress bcAddr = null;
     private Inet4Address ip4Addr = null;
@@ -28,6 +35,7 @@ public class NetworkBroadcast {
     private boolean isTx = false;
     private boolean isThreadRunning = false;
     private boolean connected = false;
+    private boolean networkOnline = false;
 
     public NetworkBroadcast() throws IOException {
         this(PORT);
@@ -35,23 +43,47 @@ public class NetworkBroadcast {
 
     public NetworkBroadcast(int port) throws IOException {
         this.port = port;
-        try {
-            openBroadcastSocket();
-        } catch (SocketException e) {
-            Log.d(TAG, "Unable to read broadcast address, error ", e);
-        }
         txMsgs = new ArrayBlockingQueue<String>(5);
+        tryConnect();
+    }
 
-        new Thread(new Runnable() {
-            @Override
-            public void run() {
+    public void tryConnect() throws IOException {
+        if (!networkOnline) {
+            Log.d(TAG, "Trying to reconnect");
+            /* Try opening a multicast socket first */
+            try {
+                openMulticastSocket();
+                Log.d(TAG, "Opened multicast socket on " + MCADDR + ", port " + PORT);
+            } catch (SocketException e1) {
+                Log.d(TAG, "Unable to read multicast address, error ", e1);
                 try {
-                    ip4Addr = getIPAddress();
+                    openBroadcastSocket();
+                    Log.d(TAG, "Opened broadcast socket on " + bcAddr + ", port " + PORT);
                 } catch (SocketException e) {
-                    Log.e(TAG, "Unable to get IP address, error " + e);
+                    Log.d(TAG, "Unable to read broadcast address, error ", e);
+                }
+            } catch (UnknownHostException e2) {
+                Log.d(TAG, "Unable to find host " + MCADDR + ", error " + e2);
+                try {
+                    openBroadcastSocket();
+                    Log.d(TAG, "Opened broadcast socket on " + bcAddr + ", port " + PORT);
+                } catch (SocketException e) {
+                    Log.d(TAG, "Unable to read broadcast address, error ", e);
                 }
             }
-        }).start();
+            new Thread(new Runnable() {
+                @Override
+                public void run() {
+                    try {
+                        ip4Addr = getIPAddress();
+                        networkOnline = true;
+                        Log.d(TAG, "IP address " + ip4Addr.getHostName());
+                    } catch (SocketException e) {
+                        Log.e(TAG, "Unable to get IP address, error " + e);
+                    }
+                }
+            }).start();
+        }
     }
 
     private void openBroadcastSocket() throws IOException, SocketException {
@@ -68,7 +100,15 @@ public class NetworkBroadcast {
         }
     }
 
-    private void closeBroadcastSocket() {
+    private void openMulticastSocket() throws SocketException, UnknownHostException, IOException {
+        bcAddr = InetAddress.getByName(MCADDR);
+        txSocket = new MulticastSocket(PORT);
+        ((MulticastSocket) txSocket).joinGroup(bcAddr);
+        rxSocket = new MulticastSocket(PORT);
+        ((MulticastSocket) rxSocket).joinGroup(bcAddr);
+    }
+
+    private void closeSocket() {
         if (txSocket != null) {
             txSocket.close();
             txSocket = null;
@@ -77,9 +117,10 @@ public class NetworkBroadcast {
             rxSocket.close();
             rxSocket = null;
         }
+        networkOnline = false;
     }
 
-    private static InetAddress getBroadcastAddress() throws SocketException {
+    private InetAddress getBroadcastAddress() throws SocketException {
         Enumeration<NetworkInterface> ifs = NetworkInterface.getNetworkInterfaces();
         while (ifs.hasMoreElements()) {
             NetworkInterface netIf = ifs.nextElement();
@@ -94,6 +135,7 @@ public class NetworkBroadcast {
                 }
             }
         }
+        networkOnline = false;
         throw new SocketException("No broadcast address found");
     }
 
@@ -110,13 +152,13 @@ public class NetworkBroadcast {
                     if (!ifAddr.isLoopbackAddress()) {
                         if (ifAddr instanceof Inet4Address) {
                             Inet4Address if4Addr = (Inet4Address) ifAddr;
-                            Log.d(TAG, "IP address " + if4Addr.getHostName());
                             return if4Addr;
                         }
                     }
                 }
             }
         }
+        networkOnline = false;
         throw new SocketException("No IP address found");
     }
 
@@ -129,6 +171,10 @@ public class NetworkBroadcast {
     }
 
     public void connected(boolean c) { connected = c; }
+
+    public boolean isNetworkOnline() {
+        return networkOnline;
+    }
 
     public void start() {
         if (!isThreadRunning) {
@@ -164,7 +210,8 @@ public class NetworkBroadcast {
                                         }
                                     } catch (Exception e) {
                                         Log.e(TAG, "Unable to send broadcast message, error " + e);
-                                        return;
+                                        networkOnline = false;
+                                        break;
                                     }
                                 } while (txMsgs.peek() == null);
                             }
@@ -184,18 +231,17 @@ public class NetworkBroadcast {
                                 rxSocket.setBroadcast(true);
                                 rxSocket.receive(p);
                                 String msg = new String(p.getData(), p.getOffset(), p.getLength());
-                                if (!msg.contains(ip4Addr.getHostName())) {
-                                    try {
-                                        /* Add this box to the list, if it is not already there */
-                                        MainActivity.boxList.updateBox(msg);
-                                    } catch (IllegalStateException e) { /* Ignore (queue full) */ }
-                                }
+                                try {
+                                    /* Add this box to the list, if it is not already there */
+                                    MainActivity.boxList.updateBox(msg);
+                                } catch (IllegalStateException e) { /* Ignore (queue full) */ }
                             } catch (SocketTimeoutException e) {
-                                return;
+                                /* Ignore - wait for network to be reconnected */
                             } catch (NullPointerException e) {
                                 return;
                             } catch (IOException e) {
                                 Log.d(TAG, "Unable to receive, error " + e);
+                                networkOnline = false;
                             }
                         }
                     }
@@ -207,5 +253,23 @@ public class NetworkBroadcast {
             txThread.start();
             isThreadRunning = true;
         }
+    }
+
+    public boolean checkNetworkConnection(Context context) {
+        final ConnectivityManager connMgr = (ConnectivityManager) context.getSystemService(Context.CONNECTIVITY_SERVICE);
+        if (connMgr != null) {
+            NetworkInfo activeNetwork = connMgr.getActiveNetworkInfo();
+
+            if (activeNetwork != null) {
+                if (activeNetwork.getType() == ConnectivityManager.TYPE_WIFI) {
+                    return true;
+                } else if (activeNetwork.getType() == ConnectivityManager.TYPE_MOBILE) {
+                    /* Drop through, as this is not a valid connection */
+                }
+            }
+        }
+        /* Not connected to Wifi (mobile is not counted) */
+        networkOnline = false;
+        return false;
     }
 }

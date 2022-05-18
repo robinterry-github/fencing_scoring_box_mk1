@@ -52,6 +52,7 @@ public class FencingBoxList {
         if (newBox.piste == myPiste) {
             return;
         }
+        Log.d("NetworkBroadcast", "RX message [" + msg + "]");
 
         /* Read hits */
         if (msg.charAt(2) != 'S') {
