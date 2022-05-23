@@ -3,18 +3,33 @@ package com.robinterry.fencingboxapp;
 import java.util.List;
 import java.util.ArrayList;
 import android.util.Log;
-import com.robinterry.fencingboxapp.MainActivity.*;
 
 @SuppressWarnings("ALL")
 public class FencingBoxList {
-    private static final String TAG = "FencingBoxList";
+    private static final String TAG = FencingBoxList.class.getSimpleName();
 
-    private final List<Box> boxList = new ArrayList<>();
+    private final List<Box> boxList = new ArrayList<Box>() {
+        /* Override the add method to add boxes in piste order */
+        public boolean add(Box b) {
+            for (Box c: boxList) {
+                int idx = boxList.indexOf(c);
+                if (c.piste > b.piste) {
+                    super.add(idx, b);
+                    return true;
+                }
+            }
+
+            /* Add at end */
+            super.add(b);
+            return true;
+        }
+    };
     private Integer myPiste = 1;
-    private FencingBoxDisplay disp;
+    private Box thisBox;
+    private int idx = 0;
 
-    public FencingBoxList(FencingBoxDisplay disp, Integer piste) {
-        this.disp = disp;
+    public FencingBoxList(Box thisBox, Integer piste) {
+        this.thisBox = thisBox;
         this.myPiste = piste;
     }
 
@@ -22,7 +37,7 @@ public class FencingBoxList {
         myPiste = piste;
     }
 
-    public void updateBox(String msg) {
+    public void updateBox(String msg, String host) {
         /* Updates box data to the box list:
 
            the message format is as follows:
@@ -39,7 +54,8 @@ public class FencingBoxList {
            <priA>, <priB> are '-' or 'y'
 
            an example is:
-           01Sh-02:01T02:25:00Cy--:-r-P-:-
+           01Sh-02:01T02:25:00P-:-Cy--:-r-
+
          */
         Box newBox = new Box();
         try {
@@ -50,78 +66,111 @@ public class FencingBoxList {
 
         /* Don't process this message if this is us */
         if (newBox.piste == myPiste) {
+            Log.d(TAG, "Piste " + newBox.piste + " is us");
             return;
         }
-        Log.d("NetworkBroadcast", "RX message [" + msg + "]");
+        newBox.host = host;
+        Log.d(TAG, "RX message (" + newBox.host + ") [" + msg + "]");
 
-        /* Read hits */
-        if (msg.charAt(2) != 'S') {
-            return;
-        } else {
-            String hA = msg.substring(3, 4);
-            String hB = msg.substring(4, 5);
-            switch (hA) {
-                case "H":
-                    newBox.hitA = Box.Hit.OnTarget;
-                    break;
-                case "O":
-                    newBox.hitA = Box.Hit.OffTarget;
-                    break;
-                default:
-                    newBox.hitA = Box.Hit.None;
-                    break;
+        try {
+            /* Read hits */
+            if (msg.charAt(2) != 'S') {
+                Log.d(TAG, "Missing 'S'");
+                return;
+            } else {
+                String hA = msg.substring(3, 4);
+                String hB = msg.substring(4, 5);
+                switch (hA) {
+                    case "h":
+                        newBox.hitA = Box.Hit.OnTarget;
+                        break;
+                    case "o":
+                        newBox.hitA = Box.Hit.OffTarget;
+                        break;
+                    default:
+                        newBox.hitA = Box.Hit.None;
+                        break;
+                }
+                switch (hB) {
+                    case "h":
+                        newBox.hitB = Box.Hit.OnTarget;
+                        break;
+                    case "o":
+                        newBox.hitB = Box.Hit.OffTarget;
+                        break;
+                    default:
+                        newBox.hitB = Box.Hit.None;
+                        break;
+                }
+
+                /* Read score */
+                newBox.scoreA = msg.substring(6, 8);
+                newBox.scoreB = msg.substring(9, 11);
             }
-            switch (hB) {
-                case "H":
-                    newBox.hitB = Box.Hit.OnTarget;
-                    break;
-                case "O":
-                    newBox.hitB = Box.Hit.OffTarget;
-                    break;
-                default:
-                    newBox.hitB = Box.Hit.None;
-                    break;
+
+            /* Read clock */
+            if (msg.charAt(11) != 'T') {
+                Log.d(TAG, "Missing 'T'");
+                return;
+            } else {
+                newBox.timeMins = msg.substring(12, 14);
+                newBox.timeSecs = msg.substring(15, 17);
+                newBox.timeHund = msg.substring(18, 20);
             }
 
-            /* Read score */
-            newBox.scoreA = msg.substring(5, 7);
-            newBox.scoreB = msg.substring(8, 10);
-        }
+            /* Read priority */
+            if (msg.charAt(20) != 'P') {
+                Log.d(TAG, "Missing 'P'");
+                return;
+            } else {
+                String pA = msg.substring(21, 22);
+                String pB = msg.substring(23, 24);
+                newBox.priA = pA.contains("y");
+                newBox.priB = pB.contains("y");
+            }
 
-        /* Read clock */
-        if (msg.charAt(10) != 'T') {
+            /* Read cards */
+            if (msg.charAt(24) != 'C') {
+                Log.d(TAG, "Missing 'C'");
+                return;
+            } else {
+                newBox.sCardA = msg.substring(25, 28);
+                newBox.sCardB = msg.substring(29, 32);
+                if (newBox.sCardA.contains("y")) {
+                    newBox.cardA |= Box.yellowCardBit;
+                }
+                if (newBox.sCardA.contains("r")) {
+                    newBox.cardA |= Box.redCardBit;
+                }
+                if (newBox.sCardA.contains("s")) {
+                    newBox.cardA |= Box.shortCircuitBit;
+                }
+                if (newBox.sCardB.contains("y")) {
+                    newBox.cardB |= Box.yellowCardBit;
+                }
+                if (newBox.sCardB.contains("r")) {
+                    newBox.cardB |= Box.redCardBit;
+                }
+                if (newBox.sCardB.contains("s")) {
+                    newBox.cardB |= Box.shortCircuitBit;
+                }
+            }
+        } catch (StringIndexOutOfBoundsException e) {
             return;
-        } else {
-            newBox.timeMins = msg.substring(11, 13);
-            newBox.timeSecs = msg.substring(14, 16);
-            newBox.timeHund = msg.substring(17, 19);
         }
-
-        /* Read cards */
-        if (msg.charAt(19) != 'C') {
-            return;
-        } else {
-            newBox.sCardA = msg.substring(20, 23);
-            newBox.sCardB = msg.substring(24, 27);
-        }
-
-        /* Read priority */
-        if (msg.charAt(27) != 'P') {
-            return;
-        } else {
-            String pA = msg.substring(28, 29);
-            String pB = msg.substring(30, 31);
-            newBox.priA = pA.contains("y");
-            newBox.priB = pB.contains("y");
-        }
+        newBox.passivityActive = false;
+        newBox.passivityTimer = 0;
 
         /* Check that the box already exists in the list */
         for (Box b : boxList) {
             if (b.piste.equals(newBox.piste)) {
                 int idx = boxList.indexOf(b);
                 if (idx >= 0) {
-                    Log.d(TAG, "Updating " + newBox);
-                    boxList.set(idx, newBox);
+                    if (!b.equals(newBox)) {
+                        Log.d(TAG, "Updating " + newBox);
+                        newBox.changed = true;
+                        boxList.set(idx, newBox);
+                    }
                     return;
                 }
             }
@@ -130,5 +179,34 @@ public class FencingBoxList {
         /* This is a new box, so add to the list */
         Log.d(TAG, "Adding " + newBox);
         boxList.add(newBox);
+    }
+
+    public boolean empty() {
+        return boxList.size() == 0;
+    }
+
+    public Box nextBox() throws IndexOutOfBoundsException {
+        if (idx+1 < boxList.size()) {
+            ++idx;
+        } else {
+            idx = 0;
+        }
+        Log.d(TAG, "TESTRT next idx " + idx + " piste " + boxList.get(idx).piste);
+        return boxList.get(idx);
+    }
+
+    public Box prevBox() throws IndexOutOfBoundsException {
+        if (idx > 0) {
+            --idx;
+        } else {
+            idx = boxList.size()-1;
+        }
+        Log.d(TAG, "TESTRT prev idx " + idx + " piste " + boxList.get(idx).piste);
+        return boxList.get(idx);
+    }
+
+    public Box currentBox() throws IndexOutOfBoundsException {
+        Log.d(TAG, "TESTRT current idx " + idx + " piste " + boxList.get(idx).piste);
+        return boxList.get(idx);
     }
 }

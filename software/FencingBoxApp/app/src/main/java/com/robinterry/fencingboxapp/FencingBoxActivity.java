@@ -5,6 +5,7 @@ import androidx.appcompat.app.ActionBar;
 import android.app.Activity;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.constraintlayout.widget.ConstraintLayout;
+import androidx.core.view.GestureDetectorCompat;
 
 import com.hoho.android.usbserial.driver.UsbSerialDriver;
 import com.hoho.android.usbserial.driver.UsbSerialPort;
@@ -24,6 +25,7 @@ import android.hardware.usb.UsbDevice;
 import android.hardware.usb.UsbDeviceConnection;
 import android.hardware.usb.UsbManager;
 import android.os.IBinder;
+import android.view.GestureDetector;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.widget.Toast;
@@ -52,14 +54,23 @@ import com.robinterry.fencingboxapp.databinding.ActivityMainBinding;
 import com.robinterry.fencingboxapp.databinding.ActivityMainLandBinding;
 
 @SuppressWarnings("ALL")
-public class MainActivity extends AppCompatActivity implements ServiceConnection, SerialListener {
-    private static final String TAG = "FencingBoxApp";
+public class FencingBoxActivity extends AppCompatActivity
+        implements ServiceConnection, SerialListener,
+        GestureDetector.OnGestureListener, GestureDetector.OnDoubleTapListener {
+    private static final String TAG = FencingBoxActivity.class.getSimpleName();
     private Box box;
     private Box demoBox;
-    private enum Connected {False, Pending, True}
-    public enum PassivityCard {None, Yellow, Red1, Red2}
-    public static enum Orientation {Portrait, Landscape}
+
+    private enum Connected {False, Pending, True};
+
+    public enum PassivityCard {None, Yellow, Red1, Red2};
+
+    public static enum Orientation {Portrait, Landscape};
+
+    public enum Motion {None, Up, Down, Left, Right};
+
     public Orientation orientation = Orientation.Portrait;
+    public Motion motion = Motion.None;
     public static final boolean useBroadcast = true;
     private boolean batteryDangerActive = false;
     private boolean batteryDangerFlash = false;
@@ -72,7 +83,7 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
     public static final Integer inactiveColor = 0xFFE0E0E0;
     public static final Integer yellowCardColor = 0xFFFFFF00;
     public static final Integer redCardColor = 0xFFFF0000;
-    public MainActivity thisActivity;
+    public FencingBoxActivity thisActivity;
     public ConstraintLayout layout;
     private Connected serialConnected = Connected.False;
     private final Integer portNum = 0;
@@ -118,7 +129,9 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
 
     public static FencingBoxList boxList;
 
-    public MainActivity() {
+    private GestureDetectorCompat gesture;
+
+    public FencingBoxActivity() {
         Log.d(TAG, "initialising broadcast receiver");
         thisActivity = this;
         final BroadcastReceiver broadcastReceiver = new BroadcastReceiver() {
@@ -165,7 +178,7 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
         super.onCreate(savedInstanceState);
 
         try {
-            bc = new NetworkBroadcast();
+            bc = new NetworkBroadcast(this);
 
             /* Get the Wifi multicast lock to allow UDP broadcasts/multicasts to be received */
             WifiManager wifi = (WifiManager) getSystemService(Context.WIFI_SERVICE);
@@ -198,7 +211,7 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
         box.disp = new FencingBoxDisplay(this, box, layout, orientation, portBinding, landBinding);
 
         /* List of other fencing boxes on the network */
-        boxList = new FencingBoxList(box.disp, box.piste);
+        boxList = new FencingBoxList(box, box.piste);
 
         // Set the content view from the view binding for the new orientation
         setContentView(mainBinding);
@@ -241,6 +254,10 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
                 5,
                 getApplicationContext());
         click.enable();
+
+        gesture = new GestureDetectorCompat(this, this);
+        gesture.setOnDoubleTapListener(this);
+
         Log.d(TAG, "onCreate end");
     }
 
@@ -272,6 +289,7 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
         }
         if (!monitorStarted) {
             startSystemMonitor();
+            startBoxMonitor();
             monitorStarted = true;
         }
         if (!txFullStarted) {
@@ -296,6 +314,8 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
         super.onWindowFocusChanged(hasFocus);
         if (hasFocus) {
             box.disp.hideUI();
+        } else {
+            box.disp.showUI();
         }
         Log.d(TAG, "onWindowFocusChanged end");
     }
@@ -313,7 +333,8 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
         portBinding = null;
         try {
             wifiLock.release();
-        } catch (Exception e) { }
+        } catch (Exception e) {
+        }
         Log.d(TAG, "onDestroy end");
     }
 
@@ -393,6 +414,13 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
         box.disp.setupText(box, layout, orientation);
         if (box.isModeDemo()) {
             showDemo();
+        } else if (box.isModeDisplay()) {
+            try {
+                Box b = boxList.currentBox();
+                box.disp.displayBox(b);
+            } catch (Exception e) {
+                Log.d(TAG, "Unable to display current box");
+            }
         } else {
             setHitLights();
             setScore();
@@ -408,14 +436,8 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
     @Override
     public boolean onTouchEvent(MotionEvent event) {
         Log.d(TAG, "onTouchEvent start");
-        super.onTouchEvent(event);
-
-        Log.d(TAG, "onTouchEvent " + event);
-        if (event.getAction() == MotionEvent.ACTION_DOWN) {
-            box.disp.hideUI();
-            return true;
-        }
-        return false;
+        gesture.onTouchEvent(event);
+        return super.onTouchEvent(event);
     }
 
     @Override
@@ -464,7 +486,7 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
                 keyQ.add('B');
                 return true;
             case KeyEvent.KEYCODE_VOLUME_MUTE:
-                soundMute = (soundMute == true) ? false:true;
+                soundMute = (soundMute == true) ? false : true;
                 return super.onKeyUp(keyCode, event);
             case KeyEvent.KEYCODE_0:
             case KeyEvent.KEYCODE_MEDIA_RECORD:
@@ -520,7 +542,7 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
     public boolean onPrepareOptionsMenu(Menu menu) {
         /* Change the options menu to show "Show demo" or "Clear demo" */
         MenuItem item = menu.findItem(R.id.menu_demo);
-        if (box.isModeDemo() || box.isModeDisplay()) {
+        if (box.isModeDemo() || box.isModeNone()) {
             item.setVisible(true);
             item.setEnabled(true);
             item.setTitle(
@@ -552,12 +574,13 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
             case R.id.menu_demo:
                 /* Go into demo mode or out */
                 switch (box.getBoxMode()) {
-                    case Display:
+                    case None:
+                        box.saveMode();
                         box.setModeDemo();
                         showDemo();
                         break;
                     case Demo:
-                        box.setModeDisplay();
+                        box.restoreMode();
                         setHitLights();
                         setScore();
                         setClock();
@@ -684,6 +707,28 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
         handler.postDelayed(r, delayMillis);
     }
 
+    public void startBoxMonitor() {
+        final int delayMillis = 100;
+
+        HandlerThread handlerThread = new HandlerThread("boxMonitor");
+        handlerThread.start();
+        final Handler handler = new Handler(handlerThread.getLooper());
+        final Runnable r = new Runnable() {
+            @Override
+            public void run() {
+                if (box.isModeDisplay()) {
+                    Box b = boxList.currentBox();
+                    if (b.changed) {
+                        box.disp.displayBox(b);
+                        b.changed = false;
+                    }
+                }
+                handler.postDelayed(this, delayMillis);
+            }
+        };
+        handler.postDelayed(r, delayMillis);
+    }
+
     public Orientation getOrientation() {
         return orientation;
     }
@@ -778,11 +823,20 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
     public void setHitLights(Box.Hit h_A, Box.Hit h_B) {
         box.hitA = h_A;
         box.hitB = h_B;
-        box.disp.displayHitLights(box.hitA, box.hitB);
+        if (box.isModeConnected()) {
+            displayHitLights();
+        } else {
+            clearHitLights();
+        }
     }
 
     public void clearHitLights() {
-        setHitLights(Box.Hit.None, Box.Hit.None);
+        box.hitA = box.hitB = Box.Hit.None;
+        displayHitLights();
+    }
+
+    public void displayHitLights() {
+        box.disp.displayHitLights(box.hitA, box.hitB);
     }
 
     public void setScoreA(String s_A) {
@@ -802,9 +856,12 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
     public void setScore(String s_A, String s_B) {
         box.scoreA = s_A;
         box.scoreB = s_B;
-        box.disp.displayScore(box.scoreA, box.scoreB);
+        if (box.isModeConnected()) {
+            box.disp.displayScore(box.scoreA, box.scoreB);
+        } else {
+            clearScore();
+        }
     }
-
 
     public void clearScore() {
         box.scoreA = box.scoreB = "00";
@@ -821,8 +878,10 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
         box.timeHund = "00";
         if (box.isModeSparring() || box.isModeDisplay()) {
             clearClock();
-        } else {
+        } else if (box.isModeConnected()) {
             setClock(box, box.timeMins, box.timeSecs, box.timeHund, false);
+        } else {
+            clearClock();
         }
     }
 
@@ -845,7 +904,7 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
         if (box.isModeSparring() || box.isModeDisplay()) {
             clearClock();
             clockChanged = false;
-        } else {
+        } else if (box.isModeConnected()) {
             /* Has the clock minutes and seconds changed? */
             if (mins.equals(box.timeMins) && secs.equals(box.timeSecs)) {
                 clockChanged = false;
@@ -854,6 +913,8 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
             box.timeSecs = secs;
             box.timeHund = hund;
             box.disp.displayClock(box.timeMins, box.timeSecs, box.timeHund, hundActive);
+        } else {
+            clearClock();
         }
         return clockChanged;
     }
@@ -866,7 +927,6 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
         setCard("0", box.cardA);
         setCard("1", box.cardB);
     }
-
 
     public void setCard(String whichFencer, Integer card) {
         box.disp.displayCard(whichFencer, card);
@@ -882,29 +942,35 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
         setCard("1", 0);
     }
 
-    public void setPriorityA()
-    {
+    public void setPriorityA() {
         setPriority(true, false);
     }
 
-    public void setPriorityB()
-    {
+    public void setPriorityB() {
         setPriority(false, true);
     }
 
-    public void setPriority()
-    {
+    public void setPriority() {
         setPriority(this.box.priA, this.box.priB);
     }
 
     public void setPriority(boolean priA, boolean priB) {
         this.box.priA = priA;
         this.box.priB = priB;
-        box.disp.displayPriority(priA, priB);
+        if (box.isModeConnected()) {
+            displayPriority();
+        } else {
+            clearPriority();
+        }
     }
 
     public void clearPriority() {
-        setPriority(false, false);
+        box.priA = box.priB = false;
+        displayPriority();
+    }
+
+    public void displayPriority() {
+        box.disp.displayPriority(box.priA, box.priB);
     }
 
     public void restartPassivity(int pClock) {
@@ -921,22 +987,25 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
         setPassivity(box.passivityTimer);
     }
 
-    public void setPassivity(int pClock)
-    {
-        if (isSerialConnected()) {
-            if (box.passivityActive) {
-                box.disp.setPassivityClockColor(Color.GREEN);
-                if (box.isModeBout()) {
-                    if (pClock > passivityMaxTime) {
-                        box.passivityTimer = passivityMaxTime;
-                        displayPassivity(box, passivityMaxTime);
-                    } else {
+    public void setPassivity(int pClock) {
+        if (box.isModeConnected()) {
+            if (isSerialConnected()) {
+                if (box.passivityActive) {
+                    box.disp.setPassivityClockColor(Color.GREEN);
+                    if (box.isModeBout()) {
+                        if (pClock > passivityMaxTime) {
+                            box.passivityTimer = passivityMaxTime;
+                            displayPassivity(box, passivityMaxTime);
+                        } else {
+                            box.passivityTimer = pClock;
+                            displayPassivity(box, pClock);
+                        }
+                    } else if (box.isModeStopwatch()) {
                         box.passivityTimer = pClock;
                         displayPassivity(box, pClock);
+                    } else {
+                        clearPassivity();
                     }
-                } else if (box.isModeStopwatch()) {
-                    box.passivityTimer = pClock;
-                    displayPassivity(box, pClock);
                 } else {
                     clearPassivity();
                 }
@@ -961,14 +1030,18 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
     }
 
     public void displayPassivity(Box box, int pClock) {
-        if (isSerialConnected()) {
-            if (box.isModeBout() || box.isModeStopwatch()) {
-                box.disp.displayPassivityAsClock(pClock);
+        if (box.isModeConnected()) {
+            if (isSerialConnected()) {
+                if (box.isModeBout() || box.isModeStopwatch()) {
+                    box.disp.displayPassivityAsClock(pClock);
+                } else {
+                    box.disp.setPassivityClockColor(Color.BLACK);
+                }
             } else {
-                box.disp.setPassivityClockColor(Color.BLACK);
+                box.disp.displayPassivityAsPiste(box.piste);
             }
         } else {
-            box.disp.displayPassivityAsPiste(box.piste);
+            clearPassivity();
         }
     }
 
@@ -1016,83 +1089,83 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
 
     public synchronized void processData(byte data[]) {
         StringBuilder str = new StringBuilder();
-        for (byte b: data) {
+        for (byte b : data) {
             str.append(String.format("%02X", b));
         }
         Log.d(TAG, "data: " + str.toString());
 
-        for (int i = 0; i < data.length;) {
-           if (data[i] == cmdMarker) {
-               i += 1;
-               String cmd = new String(data, i, 2, StandardCharsets.UTF_8);
-               i += 2;
-               Log.d(TAG, "cmd: " + cmd);
-               processCmd(cmd);
-           } else if (data[i] == scoreMarker) {
-               i += 1;
-               String s_A = new String(data, i, 2, StandardCharsets.UTF_8);
-               i += 2;
-               String s_B = new String(data, i, 2, StandardCharsets.UTF_8);
-               i += 2;
-               Log.d(TAG, "scoreA: " + s_A + " scoreB: " + s_B);
-               processScore(s_A, s_B);
-           } else if (data[i] == hitMarker) {
-               i += 1;
-               String hit = new String(data, i, 2, StandardCharsets.UTF_8);
-               i += 2;
-               Log.d(TAG, "hit: " + hit);
-               processHit(hit);
-           } else if (data[i] == clockMarker1) {
-               i += 1;
-               String min = new String(data, i, 2, StandardCharsets.UTF_8);
-               i += 2;
-               String sec = new String(data, i, 2, StandardCharsets.UTF_8);
-               i += 2;
-               Log.d(TAG, "min: " + min + " sec: " + sec);
-               processClock(min, sec, "00",false);
-           } else if (data[i] == clockMarker2) {
-               i += 1;
-               String sec = new String(data, i, 2, StandardCharsets.UTF_8);
-               i += 2;
-               String hund = new String(data, i, 2, StandardCharsets.UTF_8);
-               i += 2;
-               Log.d(TAG, "sec: " + sec + " hund: " + hund);
-               processClock("00", sec, hund, true);
-           } else if (data[i] == cardMarker) {
-               i += 1;
-               String whichFencer = new String(data, i, 1, StandardCharsets.UTF_8);
-               i += 1;
-               String whichCard = new String(data, i, 1, StandardCharsets.UTF_8);
-               i += 1;
-               Log.d(TAG, "card fencer: " + whichFencer + " card: " + whichCard);
-               processCard(whichFencer, whichCard);
-           } else if (data[i] == passivityCardMarker) {
-               i += 1;
-               String whichFencer = new String(data, i, 1, StandardCharsets.UTF_8);
-               i += 1;
-               String whichCard = new String(data, i, 1, StandardCharsets.UTF_8);
-               i += 1;
-               Log.d(TAG, "card fencer: " + whichFencer + " card: " + whichCard);
-               clearPassivity();
-               setPassivityCard(whichFencer, whichCard);
-           } else if (data[i] == shortCircuitMarker) {
-               i += 1;
-               String whichFencer = new String(data, i, 1, StandardCharsets.UTF_8);
-               i += 1;
-               String scState = new String(data, i, 1, StandardCharsets.UTF_8);
-               i += 1;
-               Log.d(TAG, "card fencer: " + whichFencer + " s/c: " + scState);
-               clearPassivity();
-               setShortCircuit(whichFencer, scState);
-           } else if (data[i] == pollMarker) {
-               i += 1;
-               if (data[i] == '?') {
-                   processPoll();
-                   i += 1;
-               }
-           } else {
-               i += 1;
-           }
+        for (int i = 0; i < data.length; ) {
+            if (data[i] == cmdMarker) {
+                i += 1;
+                String cmd = new String(data, i, 2, StandardCharsets.UTF_8);
+                i += 2;
+                Log.d(TAG, "cmd: " + cmd);
+                processCmd(cmd);
+            } else if (data[i] == scoreMarker) {
+                i += 1;
+                String s_A = new String(data, i, 2, StandardCharsets.UTF_8);
+                i += 2;
+                String s_B = new String(data, i, 2, StandardCharsets.UTF_8);
+                i += 2;
+                Log.d(TAG, "scoreA: " + s_A + " scoreB: " + s_B);
+                processScore(s_A, s_B);
+            } else if (data[i] == hitMarker) {
+                i += 1;
+                String hit = new String(data, i, 2, StandardCharsets.UTF_8);
+                i += 2;
+                Log.d(TAG, "hit: " + hit);
+                processHit(hit);
+            } else if (data[i] == clockMarker1) {
+                i += 1;
+                String min = new String(data, i, 2, StandardCharsets.UTF_8);
+                i += 2;
+                String sec = new String(data, i, 2, StandardCharsets.UTF_8);
+                i += 2;
+                Log.d(TAG, "min: " + min + " sec: " + sec);
+                processClock(min, sec, "00", false);
+            } else if (data[i] == clockMarker2) {
+                i += 1;
+                String sec = new String(data, i, 2, StandardCharsets.UTF_8);
+                i += 2;
+                String hund = new String(data, i, 2, StandardCharsets.UTF_8);
+                i += 2;
+                Log.d(TAG, "sec: " + sec + " hund: " + hund);
+                processClock("00", sec, hund, true);
+            } else if (data[i] == cardMarker) {
+                i += 1;
+                String whichFencer = new String(data, i, 1, StandardCharsets.UTF_8);
+                i += 1;
+                String whichCard = new String(data, i, 1, StandardCharsets.UTF_8);
+                i += 1;
+                Log.d(TAG, "card fencer: " + whichFencer + " card: " + whichCard);
+                processCard(whichFencer, whichCard);
+            } else if (data[i] == passivityCardMarker) {
+                i += 1;
+                String whichFencer = new String(data, i, 1, StandardCharsets.UTF_8);
+                i += 1;
+                String whichCard = new String(data, i, 1, StandardCharsets.UTF_8);
+                i += 1;
+                Log.d(TAG, "card fencer: " + whichFencer + " card: " + whichCard);
+                clearPassivity();
+                setPassivityCard(whichFencer, whichCard);
+            } else if (data[i] == shortCircuitMarker) {
+                i += 1;
+                String whichFencer = new String(data, i, 1, StandardCharsets.UTF_8);
+                i += 1;
+                String scState = new String(data, i, 1, StandardCharsets.UTF_8);
+                i += 1;
+                Log.d(TAG, "card fencer: " + whichFencer + " s/c: " + scState);
+                clearPassivity();
+                setShortCircuit(whichFencer, scState);
+            } else if (data[i] == pollMarker) {
+                i += 1;
+                if (data[i] == '?') {
+                    processPoll();
+                    i += 1;
+                }
+            } else {
+                i += 1;
+            }
         }
     }
 
@@ -1100,7 +1173,11 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
         switch (cmd) {
             case "GO":
                 Log.d(TAG, "fencing box started up");
-                box.setModeDisplay();
+                if (boxList.empty()) {
+                    box.setModeNone();
+                } else {
+                    box.setModeDisplay();
+                }
                 invalidateOptionsMenu();
                 box.disp.hideUI();
                 clearHitLights();
@@ -1293,7 +1370,7 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
                 break;
 
             case "VC":
-                Log.d(TAG, "passivity clear"); 
+                Log.d(TAG, "passivity clear");
                 clearPassivity();
                 displayPassivityCard();
                 break;
@@ -1519,8 +1596,8 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
 
     public String cardStr(Integer card) {
         String cs = "";
-        cs += ((card & Box.yellowCardBit)   != 0) ? "y" : "-";
-        cs += ((card & Box.redCardBit)      != 0) ? "r" : "-";
+        cs += ((card & Box.yellowCardBit) != 0) ? "y" : "-";
+        cs += ((card & Box.redCardBit) != 0) ? "r" : "-";
         cs += ((card & Box.shortCircuitBit) != 0) ? "s" : "-";
         return cs;
     }
@@ -1534,8 +1611,8 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
 
     public String msgPriority() {
         String s = String.format("P%c:%c",
-                box.priA ? 'y':'-',
-                box.priB ? 'y':'-');
+                box.priA ? 'y' : '-',
+                box.priB ? 'y' : '-');
         return s;
     }
 
@@ -1681,7 +1758,11 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
         if (bc != null) {
             bc.connected(false);
         }
-        box.setModeDisplay();
+        if (boxList.empty()) {
+            box.setModeNone();
+        } else {
+            box.setModeDisplay();
+        }
         invalidateOptionsMenu();
         runOnUiThread(new Runnable() {
             @Override
@@ -1715,5 +1796,147 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
     public void onServiceDisconnected(ComponentName name) {
         service = null;
         Log.d(TAG, "service not connected");
+    }
+
+    @Override
+    public boolean onDown(MotionEvent e1) {
+        //box.disp.hideUI();
+        Log.d(TAG, "onFling " + e1);
+        return false;
+    }
+
+    @Override
+    public void onLongPress(MotionEvent e1) {
+        box.disp.hideUI();
+    }
+
+    @Override
+    public boolean onFling(MotionEvent e1, MotionEvent e2, float velX, float velY) {
+        //box.disp.hideUI();
+        final int MAX_FLING = 200;
+        if (e1.getAction() == MotionEvent.ACTION_DOWN && e2.getAction() == MotionEvent.ACTION_UP) {
+            if (e1.getX() - e2.getX() > MAX_FLING) {
+                motion = Motion.Left;
+                processGesture(motion);
+                return true;
+            } else if (e2.getX() - e1.getX() > MAX_FLING) {
+                motion = Motion.Right;
+                processGesture(motion);
+                return true;
+            } else if (e2.getY() - e1.getY() > MAX_FLING) {
+                motion = Motion.Down;
+                processGesture(motion);
+                return true;
+            } else if (e1.getY() - e2.getY() > MAX_FLING) {
+                motion = Motion.Up;
+                processGesture(motion);
+                return true;
+            } else {
+                motion = Motion.None;
+            }
+        }
+        return false;
+    }
+
+    @Override
+    public boolean onScroll(MotionEvent e1, MotionEvent e2, float distX, float distY) {
+        //box.disp.hideUI();
+        return false;
+    }
+
+    @Override
+    public void onShowPress(MotionEvent e1) {
+        //box.disp.hideUI();
+    }
+
+    @Override
+    public boolean onSingleTapUp(MotionEvent e1) {
+        //box.disp.hideUI();
+        return false;
+    }
+
+    @Override
+    public boolean onSingleTapConfirmed(MotionEvent e1) {
+        box.disp.hideUI();
+        return false;
+    }
+
+    @Override
+    public boolean onDoubleTap(MotionEvent e1) {
+        box.disp.hideUI();
+        return false;
+    }
+
+    @Override
+    public boolean onDoubleTapEvent(MotionEvent e1) {
+        //box.disp.hideUI();
+        return false;
+    }
+
+    private void processGesture(Motion motion) {
+        Box b = null;
+
+        /* If this is the first time, ignore the motion and just display */
+        if (box.isModeNone() && !boxList.empty()) {
+            box.setModeDisplay();
+            b = boxList.currentBox();
+            if (b != null) {
+                box.disp.displayBox(b);
+            }
+        } else {
+            switch (motion) {
+                case Down:
+                    Log.d(TAG, "Gesture: motion down");
+                    if (box.isModeDisplay()) {
+                        try {
+                            b = boxList.nextBox();
+                        } catch (IndexOutOfBoundsException e) {
+                            Log.d(TAG, "No boxes to display");
+                        }
+                    }
+                    break;
+
+                case Up:
+                    Log.d(TAG, "Gesture: motion up");
+                    if (box.isModeDisplay()) {
+                        try {
+                            b = boxList.prevBox();
+                        } catch (IndexOutOfBoundsException e) {
+                            Log.d(TAG, "No boxes to display");
+                        }
+                    }
+                    break;
+
+                case Right:
+                    Log.d(TAG, "Gesture: motion right");
+                    if (box.isModeDisplay()) {
+                        try {
+                            b = boxList.prevBox();
+                        } catch (IndexOutOfBoundsException e) {
+                            Log.d(TAG, "No boxes to display");
+                        }
+                    }
+                    break;
+
+                case Left:
+                    Log.d(TAG, "Gesture: motion left");
+                    if (box.isModeDisplay()) {
+                        try {
+                            b = boxList.nextBox();
+                        } catch (IndexOutOfBoundsException e) {
+                            Log.d(TAG, "No boxes to display");
+                        }
+                    }
+                    break;
+
+                case None:
+                    Log.d(TAG, "Gesture: motion none");
+                    break;
+            }
+        }
+        if (b != null) {
+            Log.d(TAG, "Displaying box " + b);
+            box.disp.displayBox(b);
+        }
     }
 }

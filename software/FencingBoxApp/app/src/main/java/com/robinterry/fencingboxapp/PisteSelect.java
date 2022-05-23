@@ -8,9 +8,10 @@ import android.widget.Button;
 import android.os.Bundle;
 import android.util.Log;
 
+@SuppressWarnings("ALL")
 public class PisteSelect extends Activity {
 
-    private static final String TAG = "PisteSelect";
+    private static final String TAG = PisteSelect.class.getSimpleName();
     public static final int ACTIVITY_CODE = 0;
     private NumberPicker pisteSelectPicker;
     private Button pisteSelectButton;
@@ -37,7 +38,7 @@ public class PisteSelect extends Activity {
 
         pisteSelectButton.setOnClickListener(new View.OnClickListener() {
             public void onClick(View v) {
-                /* Send the piste value to MainActivity */
+                /* Send the piste value to FencingBoxApp */
                 Log.d(TAG,"Final value of piste " + piste);
                 Intent pisteResult = new Intent();
                 pisteResult.putExtra("piste", piste);

@@ -1,0 +1,8 @@
+To compile on Mac OS X:
+
+$ gcc -o FencingBoxTest FencingBoxTest.c
+
+To compile on Linux:
+
+$ gcc -o FencingBoxTest -pthread FencingBoxTest.c
+

@@ -6,14 +6,15 @@ import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
 import java.lang.String;
+import com.robinterry.fencingboxapp.FencingBoxActivity.*;
 
 import android.util.Log;
 
 @SuppressWarnings("ALL")
 public class HitLightView extends View {
 
-    private static final String TAG = "HitLightView";
-    private MainActivity mainActivity;
+    private static final String TAG = HitLightView.class.getSimpleName();
+    private FencingBoxActivity mainActivity;
     private ConstraintLayout layout;
     private Paint paint;
     private Box.Hit hit = Box.Hit.None;
@@ -34,18 +35,18 @@ public class HitLightView extends View {
 
     public static FixedCoords coords = new FixedCoords();
 
-    public HitLightView(MainActivity mainActivity) {
+    public HitLightView(FencingBoxActivity mainActivity) {
         super(mainActivity.getBaseContext());
         this.mainActivity = mainActivity;
 
     }
 
-    public HitLightView(MainActivity mainActivity, ConstraintLayout layout, HitLight hitLight, int color) {
+    public HitLightView(FencingBoxActivity mainActivity, ConstraintLayout layout, HitLight hitLight, int color) {
         super(mainActivity.getBaseContext());
         this.mainActivity = mainActivity;
 
         Log.d(TAG, "constructor start");
-        if (mainActivity.getOrientation() == MainActivity.Orientation.Portrait) {
+        if (mainActivity.getOrientation() == Orientation.Portrait) {
             Log.d(TAG, "Orientation: portrait");
         } else {
             Log.d(TAG, "Orientation: landscape");
@@ -107,7 +108,7 @@ public class HitLightView extends View {
         setMeasuredDimension(width, height);
 
         coords.topPos = screenHeight/TOP_MARGIN_DIV;
-        if (mainActivity.getOrientation() == MainActivity.Orientation.Portrait) {
+        if (mainActivity.getOrientation() == Orientation.Portrait) {
             coords.ledSizeX = screenWidth/LED_SIZE_X_DIV_PORT;
             coords.ledSizeY = screenHeight/LED_SIZE_Y_DIV_PORT;
         } else {

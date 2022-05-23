@@ -9,9 +9,10 @@ import android.widget.Button;
 import android.widget.RadioButton;
 import android.widget.RadioGroup;
 
+@SuppressWarnings("ALL")
 public class WeaponSelect extends Activity {
 
-    private static final String TAG = "WeaponSelect";
+    private static final String TAG = WeaponSelect.class.getSimpleName();
     public static final int ACTIVITY_CODE = 1;
     private Button weaponSelectButton;
     private RadioGroup weaponGroup;
@@ -66,7 +67,7 @@ public class WeaponSelect extends Activity {
 
         weaponSelectButton.setOnClickListener(new View.OnClickListener() {
             public void onClick(View v) {
-                /* Send the weapon value to MainActivity */
+                /* Send the weapon value to FencingBoxActivity */
                 Intent weaponResult = new Intent();
                 switch (weapon) {
                     case Foil:

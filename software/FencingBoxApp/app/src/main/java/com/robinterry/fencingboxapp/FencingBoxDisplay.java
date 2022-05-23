@@ -12,6 +12,7 @@ import android.widget.ImageView;
 import android.widget.ProgressBar;
 import android.widget.TextView;
 import androidx.constraintlayout.widget.ConstraintLayout;
+import com.robinterry.fencingboxapp.FencingBoxActivity.*;
 
 import com.robinterry.fencingboxapp.databinding.ActivityMainBinding;
 import com.robinterry.fencingboxapp.databinding.ActivityMainLandBinding;
@@ -19,7 +20,7 @@ import com.robinterry.fencingboxapp.databinding.ActivityMainLandBinding;
 @SuppressWarnings("ALL")
 public class FencingBoxDisplay {
     private Box box;
-    public static final String TAG = "FencingBoxDisplay";
+    public static final String TAG = FencingBoxDisplay.class.getSimpleName();
     public TextView textScore, textScoreA, textScoreB, textClock;
     public TextView priorityA, priorityB;
     public TextView passivityClock, batteryLevel, time;
@@ -28,8 +29,8 @@ public class FencingBoxDisplay {
     private ImageView onlineIcon;
     public ConstraintLayout layout;
     private ProgressBar progress;
-    private MainActivity mainActivity;
-    private MainActivity.Orientation orientation = MainActivity.Orientation.Portrait;
+    private FencingBoxActivity mainActivity;
+    private Orientation orientation = Orientation.Portrait;
     private final boolean controlUI = true;
     private boolean visibleUI = true;
     private Typeface face;
@@ -42,10 +43,10 @@ public class FencingBoxDisplay {
     private HitLightView hitLightA, hitLightB;
     private CardLightView cardLightA, cardLightB;
 
-    public FencingBoxDisplay(MainActivity mainActivity,
+    public FencingBoxDisplay(FencingBoxActivity mainActivity,
                              Box box,
                              ConstraintLayout layout,
-                             MainActivity.Orientation orientation,
+                             Orientation orientation,
                              ActivityMainBinding portBinding,
                              ActivityMainLandBinding landBinding) {
 
@@ -67,7 +68,7 @@ public class FencingBoxDisplay {
 
     public boolean isUIVisible() { return visibleUI; }
 
-    public void setupText(Box box, ConstraintLayout layout, MainActivity.Orientation orient) {
+    public void setupText(Box box, ConstraintLayout layout, FencingBoxActivity.Orientation orient) {
         hitLightA.setLayout(layout);
         hitLightB.setLayout(layout);
         cardLightA.setLayout(layout);
@@ -76,12 +77,12 @@ public class FencingBoxDisplay {
         setupText(box, orient);
     }
 
-    public void setupText(Box box, MainActivity.Orientation orient) {
+    public void setupText(Box box, FencingBoxActivity.Orientation orient) {
         orientation = orient;
         mainActivity.runOnUiThread(new Runnable() {
             @Override
             public void run() {
-                if (orientation == MainActivity.Orientation.Landscape) {
+                if (orientation == FencingBoxActivity.Orientation.Landscape) {
                     textScoreA = landBinding.textScoreAL;
                     textScoreB = landBinding.textScoreBL;
                     textScoreA.setGravity(Gravity.CENTER);
@@ -113,7 +114,7 @@ public class FencingBoxDisplay {
                     progress = portBinding.priorityChoose;
                 }
                 try {
-                    if (orientation == MainActivity.Orientation.Landscape) {
+                    if (orientation == FencingBoxActivity.Orientation.Landscape) {
                         textScoreA.setTypeface(face);
                         textScoreA.setTextColor(Color.RED);
                         textScoreB.setTypeface(face);
@@ -160,7 +161,9 @@ public class FencingBoxDisplay {
                             mainActivity.getWindow().setDecorFitsSystemWindows(false);
                             if (mainActivity.getWindow().getInsetsController() != null) {
                                 mainActivity.getWindow().getInsetsController().hide(WindowInsets.Type.statusBars() | WindowInsets.Type.navigationBars());
-                                mainActivity.getWindow().getInsetsController().setSystemBarsBehavior(WindowInsetsController.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE);
+                                mainActivity.getWindow().getInsetsController().setSystemBarsBehavior(
+                                        /*WindowInsetsController.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE*/
+                                        WindowInsetsController.BEHAVIOR_SHOW_BARS_BY_SWIPE);
                             }
                         } else {
                             View decorView = mainActivity.getWindow().getDecorView();
@@ -226,11 +229,9 @@ public class FencingBoxDisplay {
             public void run() {
                 if (scoreHidden) {
                     clearScore(orientation);
-                } else if (box.isModeStopwatch()
-                           ||
-                           box.isModeDisplay()) {
+                } else if (box.isModeStopwatch()) {
                     clearScore(orientation);
-                } else if (orientation == MainActivity.Orientation.Landscape) {
+                } else if (orientation == FencingBoxActivity.Orientation.Landscape) {
                     textScoreA.setTextColor(Color.RED);
                     textScoreA.setText(scoreA);
                     textScoreB.setTextColor(Color.RED);
@@ -243,11 +244,11 @@ public class FencingBoxDisplay {
         });
     }
 
-    public void clearScore(MainActivity.Orientation orient) {
+    public void clearScore(FencingBoxActivity.Orientation orient) {
         mainActivity.runOnUiThread(new Runnable() {
             @Override
             public void run() {
-                if (orientation == MainActivity.Orientation.Landscape) {
+                if (orientation == FencingBoxActivity.Orientation.Landscape) {
                     textScoreA.setTextColor(Color.BLACK);
                     textScoreB.setTextColor(Color.BLACK);
                     textScoreA.setText("--");
@@ -335,28 +336,53 @@ public class FencingBoxDisplay {
     }
 
     public void displayPassivityAsClock(int pClock) {
-        passivityClock.setTypeface(face);
-        passivityClock.setText(String.format("%02d", pClock));
+        mainActivity.runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                passivityClock.setTypeface(face);
+                passivityClock.setText(String.format("%02d", pClock));
+            }
+        });
     }
 
     public void displayPassivityAsPiste(Integer piste) {
-        passivityClock.setTypeface(null);
-        passivityClock.setTextColor(Color.WHITE);
-        passivityClock.setText(piste.toString());
+        mainActivity.runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                passivityClock.setTypeface(null);
+                passivityClock.setTextColor(Color.WHITE);
+                passivityClock.setText(piste.toString());
+            }
+        });
     }
 
     public void blankPassivityClock() {
-        passivityClock.setTypeface(face);
-        passivityClock.setText("--");
+        mainActivity.runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                passivityClock.setTypeface(face);
+                passivityClock.setText("--");
+            }
+        });
     }
 
     public void setPassivityClockColor(int color) {
-        passivityClock.setTextColor(color);
+        mainActivity.runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                passivityClock.setTextColor(color);
+            }
+        });
     }
 
     public void setProgressBarVisibility(int visibility) {
         if (progress != null) {
-            progress.setVisibility(visibility);
+            mainActivity.runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                    progress.setVisibility(visibility);
+                }
+            });
         }
     }
 
@@ -384,75 +410,144 @@ public class FencingBoxDisplay {
     }
 
     public void setBatteryLevel(int batteryLvl, boolean batteryDangerFlash) {
-        if (batteryLvl >= 0 && batteryLvl <= 100) {
-            batteryLevel.setTextColor(batteryDangerFlash ? Color.BLACK : Color.WHITE);
-            batteryLevel.setText(String.valueOf(batteryLvl) + "%");
-        } else {
-            batteryLevel.setTextColor(Color.BLACK);
-            batteryLevel.setText("----");
-        }
+        mainActivity.runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                if (batteryLvl >= 0 && batteryLvl <= 100) {
+                    batteryLevel.setTextColor(batteryDangerFlash ? Color.BLACK : Color.WHITE);
+                    batteryLevel.setText(String.valueOf(batteryLvl) + "%");
+                } else {
+                    batteryLevel.setTextColor(Color.BLACK);
+                    batteryLevel.setText("----");
+                }
+            }
+        });
     }
 
     public void blankBatteryLevel() {
-        batteryLevel.setTextColor(Color.BLACK);
+        mainActivity.runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                batteryLevel.setTextColor(Color.BLACK);
+            }
+        });
     }
 
     public void setVolumeMuted(boolean muted) {
-        muteIcon.setImageAlpha(muted ? 255 : 0);
+        mainActivity.runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                muteIcon.setImageAlpha(muted ? 255 : 0);
+            }
+        });
     }
 
     public void setOnline(boolean online) {
-        onlineIcon.setImageAlpha(online ? 255:0);
+        mainActivity.runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                onlineIcon.setImageAlpha(online ? 255 : 0);
+            }
+        });
     }
 
     public void setTime(String currentTime) {
-        time.setText(currentTime);
+        mainActivity.runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                time.setText(currentTime);
+            }
+        });
     }
 
     public void displayPassivityCard(Box box, int fencer) {
         displayPassivityCard(box, fencer, box.pCard[fencer]);
     }
 
-    public void displayPassivityCard(Box box, int fencer, MainActivity.PassivityCard pCard) {
-        switch (pCard) {
-            case None:
-                passCard[fencer].setTextColor(Color.BLACK);
-                passCard[fencer].setText("-");
-                break;
-            case Yellow:
-                passCard[fencer].setTextColor(Color.YELLOW);
-                passCard[fencer].setText("1");
-                break;
-
-            case Red1:
-                passCard[fencer].setTextColor(Color.RED);
-                passCard[fencer].setText("1");
-                break;
-
-            case Red2:
-                passCard[fencer].setTextColor(Color.RED);
-                passCard[fencer].setText("2");
-                break;
-
-            default:
-                break;
-        }
+    public void displayPassivityCard(Box box, int fencer, PassivityCard pCard) {
+        mainActivity.runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                switch (pCard) {
+                    case None:
+                        passCard[fencer].setTextColor(Color.BLACK);
+                        passCard[fencer].setText("-");
+                        break;
+                    case Yellow:
+                        passCard[fencer].setTextColor(Color.YELLOW);
+                        passCard[fencer].setText("1");
+                        break;
+                    case Red1:
+                        passCard[fencer].setTextColor(Color.RED);
+                        passCard[fencer].setText("1");
+                        break;
+                    case Red2:
+                        passCard[fencer].setTextColor(Color.RED);
+                        passCard[fencer].setText("2");
+                        break;
+                    default:
+                        break;
+                }
+            }
+        });
     }
 
     public void displayBox(Box box) {
-        displayClock(box.timeMins, box.timeSecs, box.timeHund, false);
-        displayScore(box.scoreA, box.scoreB);
-        displayHitLights(box.hitA, box.hitB);
-        displayPriority(box.priA, box.priB);
-        displayCard("0", box.cardA);
-        displayCard("1", box.cardB);
-        if (box.passivityActive) {
-            setPassivityClockColor(Color.GREEN);
-            displayPassivityAsClock(box.passivityTimer);
-        } else {
-            displayPassivityAsPiste(box.piste);
+        synchronized (this) {
+            Log.d(TAG, "displayBox " + box);
+            displayClock(box.timeMins, box.timeSecs, box.timeHund, false);
+            displayScore(box.scoreA, box.scoreB);
+            displayHitLights(box.hitA, box.hitB);
+            displayPriority(box.priA, box.priB);
+            displayCard("0", box.cardA);
+            displayCard("1", box.cardB);
+            if (box.passivityActive) {
+                setPassivityClockColor(Color.GREEN);
+                displayPassivityAsClock(box.passivityTimer);
+            } else {
+                setPassivityClockColor(Color.WHITE);
+                displayPassivityAsPiste(box.piste);
+            }
+            displayPassivityCard(box, 0, box.pCard[0]);
+            displayPassivityCard(box, 1, box.pCard[1]);
         }
-        displayPassivityCard(box, 0, box.pCard[0]);
-        displayPassivityCard(box, 1, box.pCard[1]);
+    }
+
+    public void displayBoxIfChanged(Box oldBox, Box newBox) {
+        synchronized (this) {
+            if (newBox.compareTime(oldBox)) {
+                displayClock(newBox.timeMins, newBox.timeSecs, newBox.timeHund, false);
+            }
+            if (newBox.compareScore(oldBox)) {
+                displayScore(newBox.scoreA, newBox.scoreB);
+            }
+            if (oldBox.hitA != newBox.hitA || oldBox.hitB != newBox.hitB) {
+                displayHitLights(newBox.hitA, newBox.hitB);
+            }
+            if (oldBox.priA != newBox.priA || oldBox.priB != newBox.priB) {
+                displayPriority(newBox.priA, newBox.priB);
+            }
+            if (oldBox.cardA != newBox.cardA) {
+                displayCard("0", newBox.cardA);
+            }
+            if (oldBox.cardB != newBox.cardB) {
+                displayCard("1", newBox.cardB);
+            }
+            if (box.passivityActive) {
+                if (oldBox.passivityTimer != newBox.passivityTimer) {
+                    setPassivityClockColor(Color.GREEN);
+                    displayPassivityAsClock(newBox.passivityTimer);
+                }
+            } else {
+                setPassivityClockColor(Color.WHITE);
+                displayPassivityAsPiste(newBox.piste);
+            }
+            if (oldBox.pCard[0] != newBox.pCard[0]) {
+                displayPassivityCard(box, 0, newBox.pCard[0]);
+            }
+            if (oldBox.pCard[1] != newBox.pCard[1]) {
+                displayPassivityCard(box, 1, newBox.pCard[1]);
+            }
+        }
     }
 }

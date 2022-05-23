@@ -6,11 +6,13 @@ import androidx.annotation.NonNull;
 public class Box {
     public enum Weapon {Foil, Epee, Sabre}
     public static enum Hit {None, OnTarget, OffTarget}
-    public enum Mode {Display, Sparring, Bout, Stopwatch, Demo}
-    public Mode mode = Mode.Display;
+    public enum Mode {None, Display, Sparring, Bout, Stopwatch, Demo}
+    public Mode mode = Mode.None;
+    private Mode oldMode = Mode.None;
     public Integer piste = 0;
     public Hit hitA = Hit.None;
     public Hit hitB = Hit.None;
+    public String host = null;
     public String scoreA = "00";
     public String scoreB = "00";
     public String timeMins = "00";
@@ -28,8 +30,8 @@ public class Box {
     public static final Integer yellowCardBit = 0x01;
     public static final Integer redCardBit = 0x02;
     public static final Integer shortCircuitBit = 0x04;
-    public MainActivity.PassivityCard[] pCard =
-            new MainActivity.PassivityCard[] {MainActivity.PassivityCard.None, MainActivity.PassivityCard.None};
+    public FencingBoxActivity.PassivityCard[] pCard =
+            new FencingBoxActivity.PassivityCard[] {FencingBoxActivity.PassivityCard.None, FencingBoxActivity.PassivityCard.None};
 
     public Box() {
         this.piste = 0;
@@ -40,6 +42,7 @@ public class Box {
     }
 
     public FencingBoxDisplay disp;
+    public boolean changed = false;
 
     @NonNull
     public String toString() {
@@ -57,9 +60,13 @@ public class Box {
                 + ",priB=" + priB;
     }
 
+    public boolean isModeNone() { return mode == Mode.None; }
+
     public boolean isModeDisplay() {
         return mode == Mode.Display;
     }
+
+    public boolean isModeConnected() { return mode != Mode.None && mode != Mode.Display; }
 
     public boolean isModeBout() {
         return mode == Mode.Bout;
@@ -77,9 +84,9 @@ public class Box {
         return mode == Mode.Demo;
     }
 
-    public void setModeDisplay() {
-        this.mode = Mode.Display;
-    }
+    public void setModeNone() { this.mode = Mode.None; }
+
+    public void setModeDisplay() { this.mode = Mode.Display; }
 
     public void setModeBout() {
         this.mode = Mode.Bout;
@@ -99,5 +106,25 @@ public class Box {
 
     public Mode getBoxMode() {
         return mode;
+    }
+
+    public void saveMode() {
+        oldMode = mode;
+    }
+
+    public void restoreMode() {
+        mode = oldMode;
+    }
+
+    public boolean compareTime(Box otherBox) {
+        return  timeMins != otherBox.timeMins
+                ||
+                timeSecs != otherBox.timeSecs;
+    }
+
+    public boolean compareScore(Box otherBox) {
+        return  scoreA != otherBox.scoreA
+                ||
+                scoreB != otherBox.scoreB;
     }
 }

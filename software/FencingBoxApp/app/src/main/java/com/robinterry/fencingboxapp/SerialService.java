@@ -24,7 +24,7 @@ import android.util.Log;
  */
 public class SerialService extends Service implements SerialListener {
 
-    public static final String TAG = "FencingBoxApp";
+    public static final String TAG = FencingBoxActivity.class.getSimpleName();
 
     class SerialBinder extends Binder {
         SerialService getService() { return SerialService.this; }

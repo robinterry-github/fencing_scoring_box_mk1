@@ -6,14 +6,15 @@ import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
 import java.lang.String;
+import com.robinterry.fencingboxapp.FencingBoxActivity.*;
 
 import android.util.Log;
 
 @SuppressWarnings("ALL")
 public class CardLightView extends View {
 
-    private static final String TAG = "CardLightView";
-    private MainActivity mainActivity;
+    private static final String TAG = CardLightView.class.getSimpleName();
+    private FencingBoxActivity mainActivity;
     private ConstraintLayout layout;
     private Paint yellowLed, redLed, whiteLed;
     private int areaXSize = 0;
@@ -26,15 +27,15 @@ public class CardLightView extends View {
     private CardLight cardLight = CardLight.CardA;
     private final int offColor = Color.BLACK;
 
-    public CardLightView(MainActivity mainActivity) {
+    public CardLightView(FencingBoxActivity mainActivity) {
         super(mainActivity.getBaseContext());
         this.mainActivity = mainActivity;
     }
 
-    public CardLightView(MainActivity mainActivity, ConstraintLayout layout, CardLight cardLight) {
+    public CardLightView(FencingBoxActivity mainActivity, ConstraintLayout layout, CardLight cardLight) {
         super(mainActivity.getBaseContext());
         this.mainActivity = mainActivity;
-        if (mainActivity.getOrientation() == MainActivity.Orientation.Portrait) {
+        if (mainActivity.getOrientation() == Orientation.Portrait) {
             Log.d(TAG, "Orientation: portrait");
         } else {
             Log.d(TAG, "Orientation: landscape");
@@ -101,7 +102,7 @@ public class CardLightView extends View {
         }
         setMeasuredDimension(width, height);
 
-        if (mainActivity.getOrientation() == MainActivity.Orientation.Portrait) {
+        if (mainActivity.getOrientation() == Orientation.Portrait) {
             areaXSize = HitLightView.coords.ledSizeX;
             areaYSize = screenHeight / CARD_SIZE_Y_DIV_PORT;
             topPos = HitLightView.coords.bottomPos;
@@ -170,7 +171,7 @@ public class CardLightView extends View {
         float cx;
         float cy = (float) getHeight()/2;
         float radius;
-        if (mainActivity.getOrientation() == MainActivity.Orientation.Landscape) {
+        if (mainActivity.getOrientation() == Orientation.Landscape) {
             radius = (float) areaXSize/16;
         } else {
             radius = (float) areaXSize/8;

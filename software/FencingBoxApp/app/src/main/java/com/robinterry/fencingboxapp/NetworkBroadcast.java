@@ -22,7 +22,7 @@ import android.util.Log;
 
 @SuppressWarnings("ALL")
 public class NetworkBroadcast {
-    public static final String TAG = "NetworkBroadcast";
+    public static final String TAG = NetworkBroadcast.class.getSimpleName();
     private DatagramSocket txSocket = null;
     private DatagramSocket rxSocket = null;
     private static final String MCADDR = "224.0.0.1";
@@ -36,12 +36,14 @@ public class NetworkBroadcast {
     private boolean isThreadRunning = false;
     private boolean connected = false;
     private boolean networkOnline = false;
+    private FencingBoxActivity mainActivity;
 
-    public NetworkBroadcast() throws IOException {
-        this(PORT);
+    public NetworkBroadcast(FencingBoxActivity mainActivity) throws IOException {
+        this(mainActivity, PORT);
     }
 
-    public NetworkBroadcast(int port) throws IOException {
+    public NetworkBroadcast(FencingBoxActivity mainActivity, int port) throws IOException {
+        this.mainActivity = mainActivity;
         this.port = port;
         txMsgs = new ArrayBlockingQueue<String>(5);
         tryConnect();
@@ -233,7 +235,7 @@ public class NetworkBroadcast {
                                 String msg = new String(p.getData(), p.getOffset(), p.getLength());
                                 try {
                                     /* Add this box to the list, if it is not already there */
-                                    MainActivity.boxList.updateBox(msg);
+                                    mainActivity.boxList.updateBox(msg, p.getAddress().getHostAddress());
                                 } catch (IllegalStateException e) { /* Ignore (queue full) */ }
                             } catch (SocketTimeoutException e) {
                                 /* Ignore - wait for network to be reconnected */
