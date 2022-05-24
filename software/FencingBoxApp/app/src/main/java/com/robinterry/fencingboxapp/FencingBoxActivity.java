@@ -722,7 +722,7 @@ public class FencingBoxActivity extends AppCompatActivity
     }
 
     public void startBoxMonitor() {
-        final int delayMillis = 100;
+        final int delayMillis = 250;
 
         HandlerThread handlerThread = new HandlerThread("boxMonitor");
         handlerThread.start();

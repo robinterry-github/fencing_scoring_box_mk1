@@ -156,61 +156,65 @@ public class CardLightView extends View {
     @Override
     protected void onDraw(Canvas canvas) {
         super.onDraw(canvas);
-        setLeft(leftPos);
-        setRight(leftPos+areaXSize);
-        setTop(topPos);
-        setBottom(topPos+areaYSize);
+        mainActivity.runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                setLeft(leftPos);
+                setRight(leftPos + areaXSize);
+                setTop(topPos);
+                setBottom(topPos + areaYSize);
 
-        canvas.drawColor(Color.TRANSPARENT);
+                canvas.drawColor(Color.TRANSPARENT);
 
-        float cx;
-        float cy = (float) getHeight()/2;
-        float radius;
-        if (mainActivity.getOrientation() == Orientation.Landscape) {
-            radius = (float) areaXSize/16;
-        } else {
-            radius = (float) areaXSize/8;
-        }
+                float cx;
+                float cy = (float) getHeight() / 2;
+                float radius;
+                if (mainActivity.getOrientation() == Orientation.Landscape) {
+                    radius = (float) areaXSize / 16;
+                } else {
+                    radius = (float) areaXSize / 8;
+                }
 
-        /* We want to keep the yellow and red LEDs in the same order,
-           so for  fencer A: yellow, red, white
-           and for fencer B: white, yellow red
-         */
+                /* We want to keep the yellow and red LEDs in the same order,
+                   so for  fencer A: yellow, red, white
+                   and for fencer B: white, yellow red
+                */
+                if (cardLight == CardLight.CardA) {
+                    // For fencer A, plot the LEDs forwards
+                    cx = radius;
 
-        if (cardLight == CardLight.CardA) {
-            // For fencer A, plot the LEDs forwards
-            cx = radius;
+                    // Plot yellow LED first
+                    yellowLed.setColor(yellowCardOn ? Color.YELLOW : offColor);
+                    canvas.drawCircle(cx, cy, radius, yellowLed);
 
-            // Plot yellow LED first
-            yellowLed.setColor(yellowCardOn ? Color.YELLOW : offColor);
-            canvas.drawCircle(cx, cy, radius, yellowLed);
+                    // Change position and plot red LED second
+                    cx += (float) (radius * 3);
+                    redLed.setColor(redCardOn ? Color.RED : offColor);
+                    canvas.drawCircle(cx, cy, radius, redLed);
 
-            // Change position and plot red LED second
-            cx += (float) (radius * 3);
-            redLed.setColor(redCardOn ? Color.RED : offColor);
-            canvas.drawCircle(cx, cy, radius, redLed);
+                    // Change position and plot white LED third
+                    cx += (float) (radius * 3);
+                    whiteLed.setColor(shortCircuitOn ? Color.WHITE : offColor);
+                    canvas.drawCircle(cx, cy, radius, whiteLed);
+                } else {
+                    // For fencer B, plot the LEDs backwards
+                    cx = areaXSize - radius;
 
-            // Change position and plot white LED third
-            cx += (float) (radius * 3);
-            whiteLed.setColor(shortCircuitOn ? Color.WHITE : offColor);
-            canvas.drawCircle(cx, cy, radius, whiteLed);
-        } else {
-            // For fencer B, plot the LEDs backwards
-            cx = areaXSize - radius;
+                    // Plot red LED first
+                    redLed.setColor(redCardOn ? Color.RED : offColor);
+                    canvas.drawCircle(cx, cy, radius, redLed);
 
-            // Plot red LED first
-            redLed.setColor(redCardOn ? Color.RED : offColor);
-            canvas.drawCircle(cx, cy, radius, redLed);
+                    // Change position and plot yellow LED second
+                    cx -= (float) (radius * 3);
+                    yellowLed.setColor(yellowCardOn ? Color.YELLOW : offColor);
+                    canvas.drawCircle(cx, cy, radius, yellowLed);
 
-            // Change position and plot yellow LED second
-            cx -= (float) (radius * 3);
-            yellowLed.setColor(yellowCardOn ? Color.YELLOW : offColor);
-            canvas.drawCircle(cx, cy, radius, yellowLed);
-
-            // Change position and plot white LED third
-            cx -= (float) (radius * 3);
-            whiteLed.setColor(shortCircuitOn ? Color.WHITE : offColor);
-            canvas.drawCircle(cx, cy, radius, whiteLed);
-        }
+                    // Change position and plot white LED third
+                    cx -= (float) (radius * 3);
+                    whiteLed.setColor(shortCircuitOn ? Color.WHITE : offColor);
+                    canvas.drawCircle(cx, cy, radius, whiteLed);
+                }
+            }
+        });
     }
 }

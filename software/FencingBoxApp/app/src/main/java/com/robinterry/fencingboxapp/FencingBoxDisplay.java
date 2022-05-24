@@ -438,7 +438,6 @@ public class FencingBoxDisplay {
             @Override
             public void run() {
                 muteIcon.setVisibility(muted ? View.VISIBLE:View.INVISIBLE);
-                //muteIcon.setImageAlpha(muted ? 255 : 0);
             }
         });
     }
@@ -448,7 +447,6 @@ public class FencingBoxDisplay {
             @Override
             public void run() {
                 onlineIcon.setVisibility(online ? View.VISIBLE:View.INVISIBLE);
-                //onlineIcon.setImageAlpha(online ? 255 : 0);
             }
         });
     }

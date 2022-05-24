@@ -52,6 +52,10 @@ public class HitLightView extends View {
             Log.i(TAG, "Orientation: landscape");
         }
 
+        this.layout = layout;
+        this.hitLight = hitLight;
+        layout.addView(this);
+
         paint = new Paint();
         paint.setStyle(Paint.Style.FILL);
 
@@ -59,12 +63,6 @@ public class HitLightView extends View {
         onTargetColor = color;
         paint.setColor(offColor);
         paint.setAntiAlias(true);
-
-        this.layout = layout;
-        this.hitLight = hitLight;
-
-        layout.addView(this);
-
         Log.d(TAG, "constructor end ");
     }
 
@@ -141,32 +139,37 @@ public class HitLightView extends View {
     @Override
     protected void onDraw(Canvas canvas) {
         super.onDraw(canvas);
-        setLeft(leftPos);
-        setRight(leftPos+coords.ledSizeX);
-        setTop(coords.topPos);
-        setBottom(coords.bottomPos);
+        mainActivity.runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                setLeft(leftPos);
+                setRight(leftPos + coords.ledSizeX);
+                setTop(coords.topPos);
+                setBottom(coords.bottomPos);
 
-        int color;
-        switch (hit) {
-            case None:
-            default:
-                color = offColor;
-                break;
+                int color;
+                switch (hit) {
+                    case None:
+                    default:
+                        color = offColor;
+                        break;
 
-            case OnTarget:
-                color = onTargetColor;
-                break;
+                    case OnTarget:
+                        color = onTargetColor;
+                        break;
 
-            case OffTarget:
-                color = offTargetColor;
-                break;
-        }
-        paint.setColor(color);
-        canvas.drawRect(
-                (float) 0,
-                (float) 0,
-                (float) getWidth(),
-                (float) getHeight(),
-                paint);
+                    case OffTarget:
+                        color = offTargetColor;
+                        break;
+                }
+                paint.setColor(color);
+                canvas.drawRect(
+                        (float) 0,
+                        (float) 0,
+                        (float) getWidth(),
+                        (float) getHeight(),
+                        paint);
+            }
+        });
     }
 }

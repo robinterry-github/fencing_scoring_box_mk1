@@ -53,6 +53,7 @@ struct Box
    int                  mins, secs;
    int                  hitA, hitB;
    int                  scoreA, scoreB;
+   int                  cardA, cardB;
 };
 
 struct Box boxList[BOXNUM];
@@ -385,6 +386,37 @@ void *rxBroadcastThread(void *arg)
   return NULL;
 }
 
+char *getCard(int card)
+{
+   switch (card%8)
+   {
+      case 0:
+      default:
+         return "---";
+
+      case 1:
+         return "y--";
+
+      case 2:
+         return "-r-";
+
+      case 3:
+         return "yr-";
+
+      case 4:
+         return "--s";
+
+      case 5:
+         return "y-s";
+
+      case 6:
+         return "yr-";
+
+      case 7:
+         return "yrs";
+   }
+}
+
 void *txrxCommsThread(void *arg)
 {
    char txrxString[MAXSTRING+1]; /* Buffer for transmitted string */
@@ -414,13 +446,16 @@ void *txrxCommsThread(void *arg)
             /* Transmitting to a receiver */
             if (!b->localHost)
             {
-               sprintf(txrxString, "%02dS%c%c:%02d:%02dT%02d:%02d:00P-:-C---:---",
+               sprintf(txrxString, "%02dS%c%c:%02d:%02dT%02d:%02d:00P-:-C%s:%s",
                   b->piste, 
                   b->hitA ? 'h':'-',
                   b->hitB ? 'h':'-',
                   b->scoreA,
                   b->scoreB,
-                  b->mins, b->secs);
+                  b->mins, b->secs,
+                  getCard(b->cardA),
+                  getCard(b->cardB));
+
                if (++cycle >= CYCLE)
                {
                   if (--(b->secs) < 0)
@@ -685,6 +720,8 @@ int main(int argc, char *argv[])
          }
          meTx[i]->scoreA = random()%16;
          meTx[i]->scoreB = random()%16;
+         meTx[i]->cardA  = random()%8;
+         meTx[i]->cardB  = random()%8;
          pthread_create(&meTx[i]->thread, NULL, txrxCommsThread, meTx[i]);
       }
       meRx->dir = DIR_RX;
