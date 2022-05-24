@@ -36,11 +36,10 @@ public class CardLightView extends View {
         super(mainActivity.getBaseContext());
         this.mainActivity = mainActivity;
         if (mainActivity.getOrientation() == Orientation.Portrait) {
-            Log.d(TAG, "Orientation: portrait");
+            Log.i(TAG, "Orientation: portrait");
         } else {
-            Log.d(TAG, "Orientation: landscape");
+            Log.i(TAG, "Orientation: landscape");
         }
-        Log.d(TAG, "layout " + layout);
 
         // Yellow LED
         yellowLed = new Paint();
@@ -80,7 +79,6 @@ public class CardLightView extends View {
         int widthSize = MeasureSpec.getSize(widthMeasureSpec);
         int heightMode = MeasureSpec.getMode(heightMeasureSpec);
         int heightSize = MeasureSpec.getSize(heightMeasureSpec);
-        Log.d(TAG, "widthSize " + widthSize + " heightSize " + heightSize);
 
         screenWidth  = widthSize;
         screenHeight = heightSize;
@@ -125,8 +123,6 @@ public class CardLightView extends View {
                 leftPos = screenWidth / LEFT_MARGIN_DIV;
             }
         }
-        Log.d(TAG, "areaXSize " + areaXSize + "  areaYSize " +
-                    areaYSize + " leftPos " + leftPos + " topPos " + topPos);
     }
 
     public void setLayout(ConstraintLayout layout) {
@@ -135,7 +131,7 @@ public class CardLightView extends View {
             this.layout = layout;
             this.layout.addView(this);
         } catch (Exception e) {
-            Log.d(TAG, "Cannot remove view " + this + " exception " + e);
+            Log.e(TAG, "Cannot remove view " + this + " exception " + e);
         }
         showYellow(this.yellowCardOn);
         showRed(this.redCardOn);
@@ -159,7 +155,6 @@ public class CardLightView extends View {
 
     @Override
     protected void onDraw(Canvas canvas) {
-        Log.d(TAG, "onDraw called on " + this);
         super.onDraw(canvas);
         setLeft(leftPos);
         setRight(leftPos+areaXSize);

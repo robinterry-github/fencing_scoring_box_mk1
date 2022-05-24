@@ -51,6 +51,8 @@ struct Box
    char                 rxBuf[RXBUFSIZE];
    int                  rxPtr, rdPtr;
    int                  mins, secs;
+   int                  hitA, hitB;
+   int                  scoreA, scoreB;
 };
 
 struct Box boxList[BOXNUM];
@@ -412,7 +414,13 @@ void *txrxCommsThread(void *arg)
             /* Transmitting to a receiver */
             if (!b->localHost)
             {
-               sprintf(txrxString, "%02dS--:00:00T%02d:%02d:00P-:-C---:---", b->piste, b->mins, b->secs);
+               sprintf(txrxString, "%02dS%c%c:%02d:%02dT%02d:%02d:00P-:-C---:---",
+                  b->piste, 
+                  b->hitA ? 'h':'-',
+                  b->hitB ? 'h':'-',
+                  b->scoreA,
+                  b->scoreB,
+                  b->mins, b->secs);
                if (++cycle >= CYCLE)
                {
                   if (--(b->secs) < 0)
@@ -487,10 +495,7 @@ void *txrxCommsThread(void *arg)
                }
                if (i >= BOXES)
                {
-                  if (verbose)
-                  {
-                     printf("Received %s from %s:%d on socket %d\n", txrxString, b->host, b->port, b->rx);
-                  }
+                  printf("Received %s from %s:%d on socket %d\n", txrxString, b->host, b->port, b->rx);
                   for (i = 0; i < txrxStringLen; i++)
                   {
                      b->rxBuf[b->rxPtr] = txrxString[i];
@@ -536,6 +541,7 @@ int main(int argc, char *argv[])
    int sendStringLen;                /* Length of sent string */
    struct in_addr ip, bc;
    struct ip_mreq mc;
+   time_t tm;
 
    broadcastPort = DEFPORT;
 
@@ -630,6 +636,9 @@ int main(int argc, char *argv[])
 
    if (!noMCast)
    {
+      time(&tm);
+      srandom((unsigned int) tm);
+
       meRx = &boxList[0];
       for (i = 0; i < BOXES; i++)
       {
@@ -638,11 +647,44 @@ int main(int argc, char *argv[])
       boxListIdx = BOXES+1;
       for (i = 0; i < BOXES; i++)
       {
-         meTx[i]->dir   = DIR_TX;
-         meTx[i]->piste = 2+i;
-         meTx[i]->port  = DEFPORT;
-         meTx[i]->secs  = (30*i)/BOXES;
-         meTx[i]->mins  = 3-((3*i)/BOXES);
+         meTx[i]->dir    = DIR_TX;
+         meTx[i]->piste  = 2+i;
+         meTx[i]->port   = DEFPORT;
+         meTx[i]->secs   = random()%60;
+         if (meTx[i]->secs == 0)
+         {
+            meTx[i]->mins = 1+(random()%3);
+         }
+         else
+         {
+            meTx[i]->mins = random()%3;
+         }
+         switch (random()%6)
+         {
+            case 0:
+            case 2:
+            case 4:
+               meTx[i]->hitA = 0;
+               meTx[i]->hitB = 0;
+               break;
+
+            case 1:
+               meTx[i]->hitA = 1;
+               meTx[i]->hitB = 0;
+               break;
+
+            case 3:
+               meTx[i]->hitA = 0;
+               meTx[i]->hitB = 1;
+               break;
+
+            case 5:
+               meTx[i]->hitA = 1;
+               meTx[i]->hitB = 1;
+               break;
+         }
+         meTx[i]->scoreA = random()%16;
+         meTx[i]->scoreB = random()%16;
          pthread_create(&meTx[i]->thread, NULL, txrxCommsThread, meTx[i]);
       }
       meRx->dir = DIR_RX;

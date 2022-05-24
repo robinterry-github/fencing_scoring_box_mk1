@@ -51,26 +51,26 @@ public class NetworkBroadcast {
 
     public void tryConnect() throws IOException {
         if (!networkOnline) {
-            Log.d(TAG, "Trying to reconnect");
+            Log.i(TAG, "Trying to reconnect");
             /* Try opening a multicast socket first */
             try {
                 openMulticastSocket();
-                Log.d(TAG, "Opened multicast socket on " + MCADDR + ", port " + PORT);
+                Log.i(TAG, "Opened multicast socket on " + MCADDR + ", port " + PORT);
             } catch (SocketException e1) {
-                Log.d(TAG, "Unable to read multicast address, error ", e1);
+                Log.e(TAG, "Unable to read multicast address, error ", e1);
                 try {
                     openBroadcastSocket();
-                    Log.d(TAG, "Opened broadcast socket on " + bcAddr + ", port " + PORT);
+                    Log.i(TAG, "Opened broadcast socket on " + bcAddr + ", port " + PORT);
                 } catch (SocketException e) {
-                    Log.d(TAG, "Unable to read broadcast address, error ", e);
+                    Log.e(TAG, "Unable to read broadcast address, error ", e);
                 }
             } catch (UnknownHostException e2) {
-                Log.d(TAG, "Unable to find host " + MCADDR + ", error " + e2);
+                Log.e(TAG, "Unable to find host " + MCADDR + ", error " + e2);
                 try {
                     openBroadcastSocket();
-                    Log.d(TAG, "Opened broadcast socket on " + bcAddr + ", port " + PORT);
+                    Log.i(TAG, "Opened broadcast socket on " + bcAddr + ", port " + PORT);
                 } catch (SocketException e) {
-                    Log.d(TAG, "Unable to read broadcast address, error ", e);
+                    Log.e(TAG, "Unable to read broadcast address, error ", e);
                 }
             }
             new Thread(new Runnable() {
@@ -79,7 +79,7 @@ public class NetworkBroadcast {
                     try {
                         ip4Addr = getIPAddress();
                         networkOnline = true;
-                        Log.d(TAG, "IP address " + ip4Addr.getHostName());
+                        Log.i(TAG, "IP address " + ip4Addr.getHostName());
                     } catch (SocketException e) {
                         Log.e(TAG, "Unable to get IP address, error " + e);
                     }
@@ -132,7 +132,7 @@ public class NetworkBroadcast {
             for (InterfaceAddress ifAddr : netIf.getInterfaceAddresses()) {
                 InetAddress bcAddr = ifAddr.getBroadcast();
                 if (bcAddr != null) {
-                    Log.d(TAG, "Broadcast address " + bcAddr);
+                    Log.i(TAG, "Broadcast address " + bcAddr);
                     return bcAddr;
                 }
             }
@@ -242,7 +242,7 @@ public class NetworkBroadcast {
                             } catch (NullPointerException e) {
                                 return;
                             } catch (IOException e) {
-                                Log.d(TAG, "Unable to receive, error " + e);
+                                Log.e(TAG, "Unable to receive, error " + e);
                                 networkOnline = false;
                             }
                         }

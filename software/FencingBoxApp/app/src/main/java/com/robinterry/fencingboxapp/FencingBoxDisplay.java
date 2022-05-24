@@ -145,7 +145,7 @@ public class FencingBoxDisplay {
                     passCard[1].setTextColor(Color.BLACK);
                     passCard[1].setGravity(Gravity.CENTER);
                 } catch (Exception e) {
-                    Log.d(TAG, "unable to find font " + e);
+                    Log.e(TAG, "unable to find font " + e);
                 }
             }
         });
@@ -153,7 +153,7 @@ public class FencingBoxDisplay {
 
     public void hideUI() {
         if (controlUI) {
-            if (true /*mode != Mode.None*/) {
+            if (!box.isModeNone()) {
                 mainActivity.runOnUiThread(new Runnable() {
                     @Override
                     public void run() {
@@ -437,7 +437,8 @@ public class FencingBoxDisplay {
         mainActivity.runOnUiThread(new Runnable() {
             @Override
             public void run() {
-                muteIcon.setImageAlpha(muted ? 255 : 0);
+                muteIcon.setVisibility(muted ? View.VISIBLE:View.INVISIBLE);
+                //muteIcon.setImageAlpha(muted ? 255 : 0);
             }
         });
     }
@@ -446,7 +447,8 @@ public class FencingBoxDisplay {
         mainActivity.runOnUiThread(new Runnable() {
             @Override
             public void run() {
-                onlineIcon.setImageAlpha(online ? 255 : 0);
+                onlineIcon.setVisibility(online ? View.VISIBLE:View.INVISIBLE);
+                //onlineIcon.setImageAlpha(online ? 255 : 0);
             }
         });
     }
@@ -494,7 +496,6 @@ public class FencingBoxDisplay {
 
     public void displayBox(Box box) {
         synchronized (this) {
-            Log.d(TAG, "displayBox " + box);
             displayClock(box.timeMins, box.timeSecs, box.timeHund, false);
             displayScore(box.scoreA, box.scoreB);
             displayHitLights(box.hitA, box.hitB);

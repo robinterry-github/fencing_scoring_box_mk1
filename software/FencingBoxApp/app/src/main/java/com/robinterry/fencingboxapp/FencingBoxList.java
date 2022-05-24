@@ -66,16 +66,13 @@ public class FencingBoxList {
 
         /* Don't process this message if this is us */
         if (newBox.piste == myPiste) {
-            Log.d(TAG, "Piste " + newBox.piste + " is us");
             return;
         }
         newBox.host = host;
-        Log.d(TAG, "RX message (" + newBox.host + ") [" + msg + "]");
 
         try {
             /* Read hits */
             if (msg.charAt(2) != 'S') {
-                Log.d(TAG, "Missing 'S'");
                 return;
             } else {
                 String hA = msg.substring(3, 4);
@@ -110,7 +107,6 @@ public class FencingBoxList {
 
             /* Read clock */
             if (msg.charAt(11) != 'T') {
-                Log.d(TAG, "Missing 'T'");
                 return;
             } else {
                 newBox.timeMins = msg.substring(12, 14);
@@ -120,7 +116,6 @@ public class FencingBoxList {
 
             /* Read priority */
             if (msg.charAt(20) != 'P') {
-                Log.d(TAG, "Missing 'P'");
                 return;
             } else {
                 String pA = msg.substring(21, 22);
@@ -131,7 +126,6 @@ public class FencingBoxList {
 
             /* Read cards */
             if (msg.charAt(24) != 'C') {
-                Log.d(TAG, "Missing 'C'");
                 return;
             } else {
                 newBox.sCardA = msg.substring(25, 28);
@@ -167,7 +161,6 @@ public class FencingBoxList {
                 int idx = boxList.indexOf(b);
                 if (idx >= 0) {
                     if (!b.equals(newBox)) {
-                        Log.d(TAG, "Updating " + newBox);
                         newBox.changed = true;
                         boxList.set(idx, newBox);
                     }
@@ -177,7 +170,6 @@ public class FencingBoxList {
         }
 
         /* This is a new box, so add to the list */
-        Log.d(TAG, "Adding " + newBox);
         boxList.add(newBox);
     }
 
@@ -191,7 +183,6 @@ public class FencingBoxList {
         } else {
             idx = 0;
         }
-        Log.d(TAG, "TESTRT next idx " + idx + " piste " + boxList.get(idx).piste);
         return boxList.get(idx);
     }
 
@@ -201,12 +192,10 @@ public class FencingBoxList {
         } else {
             idx = boxList.size()-1;
         }
-        Log.d(TAG, "TESTRT prev idx " + idx + " piste " + boxList.get(idx).piste);
         return boxList.get(idx);
     }
 
     public Box currentBox() throws IndexOutOfBoundsException {
-        Log.d(TAG, "TESTRT current idx " + idx + " piste " + boxList.get(idx).piste);
         return boxList.get(idx);
     }
 }

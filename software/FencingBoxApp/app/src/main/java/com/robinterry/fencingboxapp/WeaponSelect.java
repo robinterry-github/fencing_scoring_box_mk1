@@ -71,21 +71,21 @@ public class WeaponSelect extends Activity {
                 Intent weaponResult = new Intent();
                 switch (weapon) {
                     case Foil:
-                        Log.d(TAG, "FOIL selected");
+                        Log.i(TAG, "FOIL selected");
                         weapon = Box.Weapon.Foil;
                         weaponResult.putExtra("weapon", "FOIL");
                         setResult(Activity.RESULT_OK, weaponResult);
                         break;
 
                     case Epee:
-                        Log.d(TAG, "EPEE selected");
+                        Log.i(TAG, "EPEE selected");
                         weapon = Box.Weapon.Epee;
                         weaponResult.putExtra("weapon", "EPEE");
                         setResult(Activity.RESULT_OK, weaponResult);
                         break;
 
                     case Sabre:
-                        Log.d(TAG, "SABRE selected");
+                        Log.i(TAG, "SABRE selected");
                         weapon = Box.Weapon.Sabre;
                         weaponResult.putExtra("weapon", "SABRE");
                         setResult(Activity.RESULT_OK, weaponResult);

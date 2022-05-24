@@ -60,15 +60,10 @@ public class FencingBoxActivity extends AppCompatActivity
     private static final String TAG = FencingBoxActivity.class.getSimpleName();
     private Box box;
     private Box demoBox;
-
     private enum Connected {False, Pending, True};
-
     public enum PassivityCard {None, Yellow, Red1, Red2};
-
     public static enum Orientation {Portrait, Landscape};
-
     public enum Motion {None, Up, Down, Left, Right};
-
     public Orientation orientation = Orientation.Portrait;
     public Motion motion = Motion.None;
     public static final boolean useBroadcast = true;
@@ -94,11 +89,9 @@ public class FencingBoxActivity extends AppCompatActivity
     private boolean isResumed = false;
     private SerialSocket socket;
     private final int ledSize = 200;
-
     private boolean soundMute = false;
     private boolean displayPaused = false;
     private FencingBoxSound sound, click;
-
     private boolean networkOnline = false;
 
     /* View bindings */
@@ -106,6 +99,7 @@ public class FencingBoxActivity extends AppCompatActivity
     private ActivityMainLandBinding landBinding = null;
     private View mainBinding;
 
+    /* Key queue */
     private Queue<Character> keyQ;
 
     /* Commands from the fencing scoring box */
@@ -118,18 +112,19 @@ public class FencingBoxActivity extends AppCompatActivity
     private final byte passivityCardMarker = '+';
     private final byte shortCircuitMarker = '<';
     private final byte pollMarker = '/';
-
     private boolean monitorStarted = false;
     private int batteryLvl = 0;
     private String currentTime;
-
     private NetworkBroadcast bc;
     private static boolean txFullStarted = false;
     public static WifiManager.MulticastLock wifiLock;
-
     public static FencingBoxList boxList;
-
     private GestureDetectorCompat gesture;
+
+    /* Settings flags */
+
+    /* If true, then when the serial is lost, the app switches to display mode */
+    private final boolean DISPLAY_AFTER_CONNECT_ERROR = false;
 
     public FencingBoxActivity() {
         Log.d(TAG, "initialising broadcast receiver");
@@ -140,7 +135,7 @@ public class FencingBoxActivity extends AppCompatActivity
                 Log.d(TAG, "broadcast receiver intent " + intent);
                 if (com.robinterry.fencingboxapp.Constants.INTENT_ACTION_GRANT_USB.equals(intent.getAction())) {
                     Boolean granted = intent.getBooleanExtra(UsbManager.EXTRA_PERMISSION_GRANTED, false);
-                    Log.d(TAG, "GRANT_USB intent " + granted + " received, trying to connect");
+                    Log.i(TAG, "GRANT_USB intent " + granted + " received, trying to connect");
                     connect(granted);
                 }
             }
@@ -187,7 +182,7 @@ public class FencingBoxActivity extends AppCompatActivity
                 wifiLock.acquire();
             }
         } catch (IOException e) {
-            Log.d(TAG, "Unable to create broadcast socket, error " + e);
+            Log.e(TAG, "Unable to create broadcast socket, error " + e);
             bc = null;
         }
 
@@ -198,11 +193,11 @@ public class FencingBoxActivity extends AppCompatActivity
         // Get the current orientation
         orientation = getCurrentOrientation();
         if (orientation == Orientation.Landscape) {
-            Log.d(TAG, "initial orientation is landscape");
+            Log.i(TAG, "initial orientation is landscape");
             mainBinding = landBinding.getRoot();
             layout = (ConstraintLayout) mainBinding;
         } else {
-            Log.d(TAG, "initial orientation is portrait");
+            Log.i(TAG, "initial orientation is portrait");
             mainBinding = portBinding.getRoot();
             layout = (ConstraintLayout) mainBinding;
         }
@@ -275,10 +270,16 @@ public class FencingBoxActivity extends AppCompatActivity
         startService(new Intent(this, SerialService.class));
         orientation = getCurrentOrientation();
         box.disp.setupText(box, orientation);
-        box.disp.hideUI();
+
         if (box.isModeDemo()) {
+            box.disp.hideUI();
             showDemo();
         } else {
+            if (box.isModeNone()) {
+                box.disp.showUI();
+            } else {
+                box.disp.hideUI();
+            }
             setHitLights();
             setScore();
             setClock();
@@ -343,7 +344,7 @@ public class FencingBoxActivity extends AppCompatActivity
         Log.d(TAG, "onNewIntent start");
         super.onNewIntent(intent);
         if ("android.hardware.usb.action.USB_DEVICE_ATTACHED".equals(intent.getAction())) {
-            Log.d(TAG, "USB device attached");
+            Log.i(TAG, "USB device attached");
         }
         Log.d(TAG, "onNewIntent end");
     }
@@ -358,7 +359,11 @@ public class FencingBoxActivity extends AppCompatActivity
             bindService(new Intent(this, SerialService.class), this, Context.BIND_AUTO_CREATE);
         }
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
-        box.disp.hideUI();
+        if (box.isModeNone()) {
+            box.disp.showUI();
+        } else {
+            box.disp.hideUI();
+        }
         sound.soundOff();
         Log.d(TAG, "onResume end");
     }
@@ -396,11 +401,11 @@ public class FencingBoxActivity extends AppCompatActivity
         /* Checks the orientation of the screen */
         orientation = getCurrentOrientation();
         if (orientation == Orientation.Landscape) {
-            Log.d(TAG, "orientation is now landscape");
+            Log.i(TAG, "orientation is now landscape");
             mainBinding = landBinding.getRoot();
             orientation = Orientation.Landscape;
         } else {
-            Log.d(TAG, "orientation is now portrait");
+            Log.i(TAG, "orientation is now portrait");
             mainBinding = portBinding.getRoot();
             orientation = Orientation.Portrait;
         }
@@ -410,7 +415,11 @@ public class FencingBoxActivity extends AppCompatActivity
         layout = (ConstraintLayout) mainBinding;
 
         // Display the screen in the new orientation
-        box.disp.hideUI();
+        if (box.isModeNone()) {
+            box.disp.showUI();
+        } else {
+            box.disp.hideUI();
+        }
         box.disp.setupText(box, layout, orientation);
         if (box.isModeDemo()) {
             showDemo();
@@ -419,7 +428,7 @@ public class FencingBoxActivity extends AppCompatActivity
                 Box b = boxList.currentBox();
                 box.disp.displayBox(b);
             } catch (Exception e) {
-                Log.d(TAG, "Unable to display current box");
+                Log.i(TAG, "No box to display");
             }
         } else {
             setHitLights();
@@ -442,7 +451,7 @@ public class FencingBoxActivity extends AppCompatActivity
 
     @Override
     public boolean onKeyUp(int keyCode, KeyEvent event) {
-        Log.d(TAG, "key code " + keyCode);
+        Log.i(TAG, "key code " + keyCode);
         switch (keyCode) {
             case KeyEvent.KEYCODE_DPAD_DOWN:
             case KeyEvent.KEYCODE_D:
@@ -522,7 +531,7 @@ public class FencingBoxActivity extends AppCompatActivity
                 keyQ.add('9');
                 return true;
             default:
-                Log.d(TAG, "unrecognised keycode " + keyCode);
+                Log.i(TAG, "unrecognised keycode " + keyCode);
                 return super.onKeyUp(keyCode, event);
         }
     }
@@ -634,7 +643,7 @@ public class FencingBoxActivity extends AppCompatActivity
     }
 
     public void showDemo() {
-        Log.d(TAG, "demo");
+        Log.i(TAG, "Show demo");
         box.disp.displayBox(demoBox);
         box.disp.setVolumeMuted(true);
         box.disp.setOnline(true);
@@ -681,7 +690,7 @@ public class FencingBoxActivity extends AppCompatActivity
                             if (box.isModeDemo()) {
                                 box.disp.setVolumeMuted(true);
                                 box.disp.setOnline(true);
-                            } else {
+                            } else if (!box.isModeNone()) {
                                 // Control the "volume muted" icon
                                 box.disp.setVolumeMuted(soundMute || sound.isMuted());
                                 // Control the "online" icon
@@ -691,13 +700,18 @@ public class FencingBoxActivity extends AppCompatActivity
                                         bc.tryConnect();
                                         box.disp.setOnline(bc.isNetworkOnline());
                                     } catch (IOException e) {
-                                        Log.d(TAG, "Network unable to connect, error " + e);
+                                        Log.e(TAG, "Network unable to connect, error " + e);
                                         box.disp.setOnline(false);
                                     }
                                 }
+                            } else {
+                                box.disp.setVolumeMuted(false);
+                                box.disp.setOnline(false);
                             }
                         } else {
                             box.disp.blankBatteryLevel();
+                            box.disp.setVolumeMuted(false);
+                            box.disp.setOnline(false);
                         }
                     }
                 });
@@ -717,10 +731,14 @@ public class FencingBoxActivity extends AppCompatActivity
             @Override
             public void run() {
                 if (box.isModeDisplay()) {
-                    Box b = boxList.currentBox();
-                    if (b.changed) {
-                        box.disp.displayBox(b);
-                        b.changed = false;
+                    try {
+                        Box b = boxList.currentBox();
+                        if (b.changed) {
+                            box.disp.displayBox(b);
+                            b.changed = false;
+                        }
+                    } catch (IndexOutOfBoundsException e) {
+                        /* Do nothing */
                     }
                 }
                 handler.postDelayed(this, delayMillis);
@@ -744,11 +762,11 @@ public class FencingBoxActivity extends AppCompatActivity
     }
 
     protected void connect(Boolean permissionGranted) {
-        Log.d(TAG, "connecting to USB device");
+        Log.i(TAG, "connecting to USB device");
         UsbDevice device = null;
         UsbManager usbManager = (UsbManager) getSystemService(Context.USB_SERVICE);
         for (UsbDevice v : usbManager.getDeviceList().values()) {
-            Log.d(TAG, "found USB product: " + v.getProductName() + " vendor: "
+            Log.i(TAG, "found USB product: " + v.getProductName() + " vendor: "
                     + v.getVendorId() + " device: " + v.getDeviceName());
             if (v.getProductName().equals("USB Serial")) {
                 device = v;
@@ -756,7 +774,7 @@ public class FencingBoxActivity extends AppCompatActivity
             }
         }
         if (device == null) {
-            Log.d(TAG, "connection failed: device not found");
+            Log.e(TAG, "connection failed: device not found");
             return;
         }
         UsbSerialDriver driver = UsbSerialProber.getDefaultProber().probeDevice(device);
@@ -764,7 +782,7 @@ public class FencingBoxActivity extends AppCompatActivity
             driver = com.robinterry.fencingboxapp.CustomProber.getCustomProber().probeDevice(device);
         }
         if (driver == null) {
-            Log.d(TAG, "connection failed: no driver for device");
+            Log.e(TAG, "connection failed: no driver for device");
             return;
         }
         usbSerialPort = driver.getPorts().get(portNum);
@@ -776,9 +794,9 @@ public class FencingBoxActivity extends AppCompatActivity
         }
         if (usbConnection == null) {
             if (!usbManager.hasPermission(driver.getDevice()))
-                Log.d(TAG, "connection failed: permission denied");
+                Log.e(TAG, "connection failed: permission denied");
             else
-                Log.d(TAG, "connection failed: open failed");
+                Log.e(TAG, "connection failed: open failed");
             return;
         }
 
@@ -801,7 +819,7 @@ public class FencingBoxActivity extends AppCompatActivity
     }
 
     private void disconnect(boolean quitActivity) {
-        Log.d(TAG, "disconnected from USB device");
+        Log.i(TAG, "disconnected from USB device");
         serialConnected = Connected.False;
         if (bc != null) {
             bc.connected(false);
@@ -1092,14 +1110,12 @@ public class FencingBoxActivity extends AppCompatActivity
         for (byte b : data) {
             str.append(String.format("%02X", b));
         }
-        Log.d(TAG, "data: " + str.toString());
 
         for (int i = 0; i < data.length; ) {
             if (data[i] == cmdMarker) {
                 i += 1;
                 String cmd = new String(data, i, 2, StandardCharsets.UTF_8);
                 i += 2;
-                Log.d(TAG, "cmd: " + cmd);
                 processCmd(cmd);
             } else if (data[i] == scoreMarker) {
                 i += 1;
@@ -1107,13 +1123,11 @@ public class FencingBoxActivity extends AppCompatActivity
                 i += 2;
                 String s_B = new String(data, i, 2, StandardCharsets.UTF_8);
                 i += 2;
-                Log.d(TAG, "scoreA: " + s_A + " scoreB: " + s_B);
                 processScore(s_A, s_B);
             } else if (data[i] == hitMarker) {
                 i += 1;
                 String hit = new String(data, i, 2, StandardCharsets.UTF_8);
                 i += 2;
-                Log.d(TAG, "hit: " + hit);
                 processHit(hit);
             } else if (data[i] == clockMarker1) {
                 i += 1;
@@ -1121,7 +1135,6 @@ public class FencingBoxActivity extends AppCompatActivity
                 i += 2;
                 String sec = new String(data, i, 2, StandardCharsets.UTF_8);
                 i += 2;
-                Log.d(TAG, "min: " + min + " sec: " + sec);
                 processClock(min, sec, "00", false);
             } else if (data[i] == clockMarker2) {
                 i += 1;
@@ -1129,7 +1142,6 @@ public class FencingBoxActivity extends AppCompatActivity
                 i += 2;
                 String hund = new String(data, i, 2, StandardCharsets.UTF_8);
                 i += 2;
-                Log.d(TAG, "sec: " + sec + " hund: " + hund);
                 processClock("00", sec, hund, true);
             } else if (data[i] == cardMarker) {
                 i += 1;
@@ -1137,7 +1149,6 @@ public class FencingBoxActivity extends AppCompatActivity
                 i += 1;
                 String whichCard = new String(data, i, 1, StandardCharsets.UTF_8);
                 i += 1;
-                Log.d(TAG, "card fencer: " + whichFencer + " card: " + whichCard);
                 processCard(whichFencer, whichCard);
             } else if (data[i] == passivityCardMarker) {
                 i += 1;
@@ -1145,7 +1156,6 @@ public class FencingBoxActivity extends AppCompatActivity
                 i += 1;
                 String whichCard = new String(data, i, 1, StandardCharsets.UTF_8);
                 i += 1;
-                Log.d(TAG, "card fencer: " + whichFencer + " card: " + whichCard);
                 clearPassivity();
                 setPassivityCard(whichFencer, whichCard);
             } else if (data[i] == shortCircuitMarker) {
@@ -1154,7 +1164,6 @@ public class FencingBoxActivity extends AppCompatActivity
                 i += 1;
                 String scState = new String(data, i, 1, StandardCharsets.UTF_8);
                 i += 1;
-                Log.d(TAG, "card fencer: " + whichFencer + " s/c: " + scState);
                 clearPassivity();
                 setShortCircuit(whichFencer, scState);
             } else if (data[i] == pollMarker) {
@@ -1172,12 +1181,8 @@ public class FencingBoxActivity extends AppCompatActivity
     public synchronized void processCmd(String cmd) {
         switch (cmd) {
             case "GO":
-                Log.d(TAG, "fencing box started up");
-                if (boxList.empty()) {
-                    box.setModeNone();
-                } else {
-                    box.setModeDisplay();
-                }
+                Log.i(TAG, "fencing box started up");
+                box.setModeNone();
                 invalidateOptionsMenu();
                 box.disp.hideUI();
                 clearHitLights();
@@ -1190,12 +1195,12 @@ public class FencingBoxActivity extends AppCompatActivity
                 try {
                     socket.write("OK".getBytes(StandardCharsets.UTF_8));
                 } catch (IOException e) {
-                    Log.d(TAG, "unable to respond to GO command");
+                    Log.e(TAG, "unable to respond to GO command");
                 }
                 break;
 
             case "PC":
-                Log.d(TAG, "choosing priority");
+                Log.i(TAG, "choosing priority");
                 box.disp.hideUI();
                 Toast.makeText(getApplicationContext(), R.string.priority, Toast.LENGTH_SHORT).show();
                 box.disp.setProgressBarVisibility(View.VISIBLE);
@@ -1205,7 +1210,7 @@ public class FencingBoxActivity extends AppCompatActivity
                 break;
 
             case "BS":
-                Log.d(TAG, "bout start");
+                Log.i(TAG, "bout start");
                 box.disp.hideUI();
                 box.setModeBout();
                 invalidateOptionsMenu();
@@ -1219,17 +1224,17 @@ public class FencingBoxActivity extends AppCompatActivity
                 break;
 
             case "BR":
-                Log.d(TAG, "bout resume");
+                Log.i(TAG, "bout resume");
                 restartPassivity();
                 displayPassivityCard();
                 break;
 
             case "BC":
-                Log.d(TAG, "bout continue");
+                Log.i(TAG, "bout continue");
                 break;
 
             case "BE":
-                Log.d(TAG, "bout end");
+                Log.i(TAG, "bout end");
                 break;
 
             case "P0":
@@ -1237,7 +1242,7 @@ public class FencingBoxActivity extends AppCompatActivity
                 box.disp.hideUI();
                 setHitLights(Box.Hit.None, Box.Hit.None);
                 setPriorityA();
-                Log.d(TAG, "priority fencer A start");
+                Log.i(TAG, "priority fencer A start");
                 break;
 
             case "P1":
@@ -1245,16 +1250,16 @@ public class FencingBoxActivity extends AppCompatActivity
                 box.disp.hideUI();
                 setHitLights(Box.Hit.None, Box.Hit.None);
                 setPriorityB();
-                Log.d(TAG, "priority fencer B start");
+                Log.i(TAG, "priority fencer B start");
                 break;
 
             case "PE":
                 box.disp.hideUI();
-                Log.d(TAG, "priority end");
+                Log.i(TAG, "priority end");
                 break;
 
             case "SS":
-                Log.d(TAG, "sparring start");
+                Log.i(TAG, "sparring start");
                 box.disp.hideUI();
                 box.setModeSparring();
                 invalidateOptionsMenu();
@@ -1268,19 +1273,19 @@ public class FencingBoxActivity extends AppCompatActivity
                 break;
 
             case "HS":
-                Log.d(TAG, "hide score");
+                Log.i(TAG, "hide score");
                 scoreHidden = true;
                 clearScore();
                 break;
 
             case "RS":
-                Log.d(TAG, "1 minute rest start");
+                Log.i(TAG, "1 minute rest start");
                 box.disp.hideUI();
                 Toast.makeText(getApplicationContext(), R.string.rest_period, Toast.LENGTH_SHORT).show();
                 break;
 
             case "WS":
-                Log.d(TAG, "stopwatch start");
+                Log.i(TAG, "stopwatch start");
                 box.disp.hideUI();
                 box.setModeStopwatch();
                 invalidateOptionsMenu();
@@ -1296,7 +1301,7 @@ public class FencingBoxActivity extends AppCompatActivity
                 break;
 
             case "WR":
-                Log.d(TAG, "stopwatch reset");
+                Log.i(TAG, "stopwatch reset");
                 if (!box.isModeStopwatch()) {
                     box.disp.hideUI();
                     box.setModeStopwatch();
@@ -1313,7 +1318,7 @@ public class FencingBoxActivity extends AppCompatActivity
                 break;
 
             case "WW":
-                Log.d(TAG, "stopwatch wrap");
+                Log.i(TAG, "stopwatch wrap");
                 if (stopwatchHours >= 99) {
                     stopwatchHours = 0;
                 } else {
@@ -1323,7 +1328,7 @@ public class FencingBoxActivity extends AppCompatActivity
                 break;
 
             case "RL":
-                Log.d(TAG, "reset lights");
+                Log.i(TAG, "reset lights");
                 box.disp.hideUI();
                 box.hitA = box.hitB = Box.Hit.None;
                 setHitLights(box.hitA, box.hitB);
@@ -1332,7 +1337,7 @@ public class FencingBoxActivity extends AppCompatActivity
                 break;
 
             case "TF":
-                Log.d(TAG, "weapon: foil");
+                Log.i(TAG, "weapon: foil");
                 box.weapon = box.changeWeapon = Box.Weapon.Foil;
                 WeaponSelect.setWeapon(box.weapon);
                 setScore();
@@ -1342,7 +1347,7 @@ public class FencingBoxActivity extends AppCompatActivity
                 break;
 
             case "TE":
-                Log.d(TAG, "weapon: epee");
+                Log.i(TAG, "weapon: epee");
                 box.weapon = box.changeWeapon = Box.Weapon.Epee;
                 WeaponSelect.setWeapon(box.weapon);
                 setScore();
@@ -1352,7 +1357,7 @@ public class FencingBoxActivity extends AppCompatActivity
                 break;
 
             case "TS":
-                Log.d(TAG, "weapon: sabre");
+                Log.i(TAG, "weapon: sabre");
                 box.weapon = box.changeWeapon = Box.Weapon.Sabre;
                 WeaponSelect.setWeapon(box.weapon);
                 setScore();
@@ -1362,7 +1367,7 @@ public class FencingBoxActivity extends AppCompatActivity
                 break;
 
             case "VS":
-                Log.d(TAG, "passivity start");
+                Log.i(TAG, "passivity start");
                 box.passivityActive = true;
                 box.passivityTimer = passivityMaxTime;
                 setPassivity(box.passivityTimer);
@@ -1370,31 +1375,31 @@ public class FencingBoxActivity extends AppCompatActivity
                 break;
 
             case "VC":
-                Log.d(TAG, "passivity clear");
+                Log.i(TAG, "passivity clear");
                 clearPassivity();
                 displayPassivityCard();
                 break;
 
             case "VT":
-                Log.d(TAG, "passivity signal");
+                Log.i(TAG, "passivity signal");
                 setPassivity(0);
                 box.passivityActive = false;
                 break;
 
             case "Z1":
-                Log.d(TAG, "sound on");
+                Log.i(TAG, "sound on");
                 if (!soundMute) {
                     sound.soundOn();
                 }
                 break;
 
             case "Z0":
-                Log.d(TAG, "sound off");
+                Log.i(TAG, "sound off");
                 sound.soundOff();
                 break;
 
             case "CR":
-                Log.d(TAG, "clock restart");
+                Log.i(TAG, "clock restart");
                 box.disp.hideUI();
                 break;
 
@@ -1403,7 +1408,7 @@ public class FencingBoxActivity extends AppCompatActivity
                 break;
 
             default:
-                Log.d(TAG, "unknown command " + cmd);
+                Log.e(TAG, "unknown command " + cmd);
                 break;
         }
     }
@@ -1461,7 +1466,7 @@ public class FencingBoxActivity extends AppCompatActivity
     }
 
     public synchronized void processCard(String whichFencer, String whichCard) {
-        Log.d(TAG, "process card");
+        Log.i(TAG, "process card");
         box.disp.hideUI();
 
         if (whichFencer.equals("0")) {
@@ -1535,13 +1540,13 @@ public class FencingBoxActivity extends AppCompatActivity
             try {
                 socket.write(msg.getBytes(StandardCharsets.UTF_8));
             } catch (IOException e) {
-                Log.d(TAG, "unable to respond to poll");
+                Log.e(TAG, "unable to respond to poll");
             }
         }
     }
 
     public void setShortCircuit(String fencer, String scState) {
-        Log.d(TAG, "short-circuit: fencer " + fencer + " state " + scState);
+        Log.i(TAG, "short-circuit: fencer " + fencer + " state " + scState);
 
         // Ignore for now, as the short-circuit LED already works
     }
@@ -1626,7 +1631,6 @@ public class FencingBoxActivity extends AppCompatActivity
     }
 
     public void txResetLights() {
-        Log.d(TAG, "txResetLights");
         String msg = msgResetLights();
         if (bc != null) {
             if (serialConnected == Connected.True) {
@@ -1644,7 +1648,6 @@ public class FencingBoxActivity extends AppCompatActivity
     }
 
     public void startTxFull() {
-        Log.d(TAG, "Tx full status");
         new Thread(new Runnable() {
             @Override
             public void run() {
@@ -1678,7 +1681,7 @@ public class FencingBoxActivity extends AppCompatActivity
      */
     @Override
     public void onSerialConnect() {
-        Log.d(TAG, "connected to " + socket.getName());
+        Log.i(TAG, "connected to " + socket.getName());
         serialConnected = Connected.True;
         if (bc != null) {
             bc.connected(true);
@@ -1704,7 +1707,7 @@ public class FencingBoxActivity extends AppCompatActivity
             public void run() {
                 disconnect();
                 while (serialConnected != Connected.True) {
-                    Log.d(TAG, "reconnecting USB device");
+                    Log.i(TAG, "reconnecting USB device");
                     try {
                         Thread.sleep(1000);
                     } catch (InterruptedException e) {
@@ -1712,7 +1715,7 @@ public class FencingBoxActivity extends AppCompatActivity
                     }
                     connect();
                 }
-                Log.d(TAG, "reconnected USB device");
+                Log.i(TAG, "reconnected USB device");
                 if (bc != null) {
                     bc.connected(true);
                 }
@@ -1722,10 +1725,20 @@ public class FencingBoxActivity extends AppCompatActivity
 
     @Override
     public void onSerialConnectError(Exception e) {
-        Log.d(TAG, "connection failed: " + e.getMessage());
+        Log.i(TAG, "connection failed: " + e.getMessage());
         if (bc != null) {
             bc.connected(false);
         }
+        if (DISPLAY_AFTER_CONNECT_ERROR) {
+            if (boxList.empty()) {
+                box.setModeNone();
+            } else {
+                box.setModeDisplay();
+            }
+        } else {
+            box.setModeNone();
+        }
+        invalidateOptionsMenu();
         runOnUiThread(new Runnable() {
             @Override
             public void run() {
@@ -1754,14 +1767,18 @@ public class FencingBoxActivity extends AppCompatActivity
 
     @Override
     public void onSerialIoError(Exception e) {
-        Log.d(TAG, "connection lost: " + e.getMessage());
+        Log.i(TAG, "connection lost: " + e.getMessage());
         if (bc != null) {
             bc.connected(false);
         }
-        if (boxList.empty()) {
-            box.setModeNone();
+        if (DISPLAY_AFTER_CONNECT_ERROR) {
+            if (boxList.empty()) {
+                box.setModeNone();
+            } else {
+                box.setModeDisplay();
+            }
         } else {
-            box.setModeDisplay();
+            box.setModeNone();
         }
         invalidateOptionsMenu();
         runOnUiThread(new Runnable() {
@@ -1787,7 +1804,7 @@ public class FencingBoxActivity extends AppCompatActivity
         service.attach(this);
         if (initialStart && isResumed) {
             initialStart = false;
-            Log.d(TAG, "service connected - connecting to device");
+            Log.i(TAG, "service connected - connecting to device");
             runOnUiThread(this::connect);
         }
     }
@@ -1795,13 +1812,12 @@ public class FencingBoxActivity extends AppCompatActivity
     @Override
     public void onServiceDisconnected(ComponentName name) {
         service = null;
-        Log.d(TAG, "service not connected");
+        Log.i(TAG, "service not connected");
     }
 
     @Override
     public boolean onDown(MotionEvent e1) {
         //box.disp.hideUI();
-        Log.d(TAG, "onFling " + e1);
         return false;
     }
 
@@ -1857,13 +1873,45 @@ public class FencingBoxActivity extends AppCompatActivity
 
     @Override
     public boolean onSingleTapConfirmed(MotionEvent e1) {
-        box.disp.hideUI();
+        if (box.isModeNone()) {
+            if (!boxList.empty()) {
+                try {
+                    Box b = boxList.currentBox();
+                    if (b != null) {
+                        box.setModeDisplay();
+                        box.disp.hideUI();
+                        box.disp.displayBox(b);
+                        return true;
+                    }
+                } catch (IndexOutOfBoundsException e) {
+                    Log.i(TAG, "No box to display");
+                }
+            }
+        } else {
+            box.disp.hideUI();
+        }
         return false;
     }
 
     @Override
     public boolean onDoubleTap(MotionEvent e1) {
-        box.disp.hideUI();
+        if (box.isModeNone()) {
+            if (!boxList.empty()) {
+                try {
+                    Box b = boxList.currentBox();
+                    if (b != null) {
+                        box.setModeDisplay();
+                        box.disp.hideUI();
+                        box.disp.displayBox(b);
+                        return true;
+                    }
+                } catch (IndexOutOfBoundsException e) {
+                    Log.i(TAG, "No box to display");
+                }
+            }
+        } else {
+            box.disp.hideUI();
+        }
         return false;
     }
 
@@ -1878,64 +1926,63 @@ public class FencingBoxActivity extends AppCompatActivity
 
         /* If this is the first time, ignore the motion and just display */
         if (box.isModeNone() && !boxList.empty()) {
-            box.setModeDisplay();
-            b = boxList.currentBox();
-            if (b != null) {
-                box.disp.displayBox(b);
+            try {
+                b = boxList.currentBox();
+                if (b != null) {
+                    box.setModeDisplay();
+                    box.disp.hideUI();
+                    box.disp.displayBox(b);
+                }
+            } catch (IndexOutOfBoundsException e) {
+                Log.i(TAG, "No box to display");
             }
         } else {
             switch (motion) {
                 case Down:
-                    Log.d(TAG, "Gesture: motion down");
                     if (box.isModeDisplay()) {
                         try {
                             b = boxList.nextBox();
                         } catch (IndexOutOfBoundsException e) {
-                            Log.d(TAG, "No boxes to display");
+                            Log.i(TAG, "No boxes to display");
                         }
                     }
                     break;
 
                 case Up:
-                    Log.d(TAG, "Gesture: motion up");
                     if (box.isModeDisplay()) {
                         try {
                             b = boxList.prevBox();
                         } catch (IndexOutOfBoundsException e) {
-                            Log.d(TAG, "No boxes to display");
+                            Log.i(TAG, "No boxes to display");
                         }
                     }
                     break;
 
                 case Right:
-                    Log.d(TAG, "Gesture: motion right");
                     if (box.isModeDisplay()) {
                         try {
                             b = boxList.prevBox();
                         } catch (IndexOutOfBoundsException e) {
-                            Log.d(TAG, "No boxes to display");
+                            Log.i(TAG, "No boxes to display");
                         }
                     }
                     break;
 
                 case Left:
-                    Log.d(TAG, "Gesture: motion left");
                     if (box.isModeDisplay()) {
                         try {
                             b = boxList.nextBox();
                         } catch (IndexOutOfBoundsException e) {
-                            Log.d(TAG, "No boxes to display");
+                            Log.i(TAG, "No boxes to display");
                         }
                     }
                     break;
 
                 case None:
-                    Log.d(TAG, "Gesture: motion none");
                     break;
             }
         }
         if (b != null) {
-            Log.d(TAG, "Displaying box " + b);
             box.disp.displayBox(b);
         }
     }

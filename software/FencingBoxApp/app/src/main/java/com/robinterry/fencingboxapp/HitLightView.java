@@ -47,11 +47,10 @@ public class HitLightView extends View {
 
         Log.d(TAG, "constructor start");
         if (mainActivity.getOrientation() == Orientation.Portrait) {
-            Log.d(TAG, "Orientation: portrait");
+            Log.i(TAG, "Orientation: portrait");
         } else {
-            Log.d(TAG, "Orientation: landscape");
+            Log.i(TAG, "Orientation: landscape");
         }
-        Log.d(TAG, "layout " + layout);
 
         paint = new Paint();
         paint.setStyle(Paint.Style.FILL);
@@ -83,7 +82,6 @@ public class HitLightView extends View {
         int widthSize = MeasureSpec.getSize(widthMeasureSpec);
         int heightMode = MeasureSpec.getMode(heightMeasureSpec);
         int heightSize = MeasureSpec.getSize(heightMeasureSpec);
-        Log.d(TAG, "widthSize " + widthSize + " heightSize " + heightSize);
 
         screenWidth  = widthSize;
         screenHeight = heightSize;
@@ -104,7 +102,6 @@ public class HitLightView extends View {
             height = desiredHeight;
         }
 
-        Log.d(TAG, "onMeasure width " + width + ", height " + height);
         setMeasuredDimension(width, height);
 
         coords.topPos = screenHeight/TOP_MARGIN_DIV;
@@ -123,8 +120,6 @@ public class HitLightView extends View {
         } else {
             leftPos = screenWidth/LEFT_MARGIN_DIV;
         }
-        Log.d(TAG, "ledSizeX " + coords.ledSizeX + " ledSizeY " + coords.ledSizeY
-                + " leftPos " + leftPos + " topPos " + coords.topPos);
     }
 
     public void setLayout(ConstraintLayout layout) {
@@ -133,7 +128,7 @@ public class HitLightView extends View {
             this.layout = layout;
             this.layout.addView(this);
         } catch (Exception e) {
-            Log.d(TAG, "Cannot remove view " + this + " exception " + e);
+            Log.e(TAG, "Cannot remove view " + this + " exception " + e);
         }
         showLights(this.hit);
     }
@@ -145,7 +140,6 @@ public class HitLightView extends View {
 
     @Override
     protected void onDraw(Canvas canvas) {
-        Log.d(TAG, "onDraw called on " + this);
         super.onDraw(canvas);
         setLeft(leftPos);
         setRight(leftPos+coords.ledSizeX);
