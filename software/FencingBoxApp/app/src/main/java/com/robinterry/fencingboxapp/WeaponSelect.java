@@ -4,6 +4,7 @@ import android.app.Activity;
 import android.content.Intent;
 import android.os.Bundle;
 import android.util.Log;
+import android.view.KeyEvent;
 import android.view.View;
 import android.widget.Button;
 import android.widget.RadioButton;
@@ -17,7 +18,17 @@ public class WeaponSelect extends Activity {
     private Button weaponSelectButton;
     private RadioGroup weaponGroup;
     private RadioButton weaponSelectFoil, weaponSelectEpee, weaponSelectSabre;
+    private FencingBoxKeys keyHandler;
     private static Box.Weapon weapon = Box.Weapon.Foil;
+
+    public WeaponSelect() {
+        keyHandler = new FencingBoxKeys() {
+            @Override
+            public String processKey(Character c) {
+                return "";
+            }
+        };
+    }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -119,6 +130,12 @@ public class WeaponSelect extends Activity {
     @Override
     protected void onPause() {
         super.onPause();
+    }
+
+    @Override
+    public boolean onKeyUp(int keyCode, KeyEvent event) {
+        Log.i(TAG, "key code " + keyCode);
+        return super.onKeyUp(keyCode, event);
     }
 
     static void setWeapon(Box.Weapon w) {

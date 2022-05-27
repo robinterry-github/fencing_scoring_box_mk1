@@ -12,6 +12,7 @@ import com.hoho.android.usbserial.driver.UsbSerialPort;
 import com.hoho.android.usbserial.driver.UsbSerialProber;
 
 import android.app.PendingIntent;
+import android.app.UiModeManager;
 import android.net.wifi.WifiManager;
 import android.content.BroadcastReceiver;
 import android.content.ComponentName;
@@ -44,14 +45,13 @@ import java.nio.charset.StandardCharsets;
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
 import java.util.Date;
-import java.util.Queue;
-import java.util.LinkedList;
-import java.util.Iterator;
 import java.io.IOException;
 
 import android.util.Log;
 import com.robinterry.fencingboxapp.databinding.ActivityMainBinding;
 import com.robinterry.fencingboxapp.databinding.ActivityMainLandBinding;
+
+import com.robinterry.fencingboxapp.C.*;
 
 @SuppressWarnings("ALL")
 public class FencingBoxActivity extends AppCompatActivity
@@ -60,19 +60,20 @@ public class FencingBoxActivity extends AppCompatActivity
     private static final String TAG = FencingBoxActivity.class.getSimpleName();
     private Box box;
     private Box demoBox;
+    private FencingBoxKeys keyHandler;
     private enum Connected {False, Pending, True};
     public enum PassivityCard {None, Yellow, Red1, Red2};
     public static enum Orientation {Portrait, Landscape};
     public enum Motion {None, Up, Down, Left, Right};
+    public enum Platform {Phone, TV};
     public Orientation orientation = Orientation.Portrait;
     public Motion motion = Motion.None;
+    public Platform platform = Platform.Phone;
     public static final boolean useBroadcast = true;
     private boolean batteryDangerActive = false;
     private boolean batteryDangerFlash = false;
     public int stopwatchHours = 0;
     private boolean scoreHidden = false;
-    private final int passivityMaxTime = 60;
-    private final int batteryDangerLevel = 15;
     public static final Integer hitAColor = 0xFFFF0000;
     public static final Integer hitBColor = 0xFF00FF00;
     public static final Integer inactiveColor = 0xFFE0E0E0;
@@ -81,8 +82,6 @@ public class FencingBoxActivity extends AppCompatActivity
     public FencingBoxActivity thisActivity;
     public ConstraintLayout layout;
     private Connected serialConnected = Connected.False;
-    private final Integer portNum = 0;
-    private final Integer baudRate = 115200;
     private UsbSerialPort usbSerialPort;
     private SerialService service;
     private boolean initialStart = true;
@@ -98,9 +97,6 @@ public class FencingBoxActivity extends AppCompatActivity
     private ActivityMainBinding portBinding = null;
     private ActivityMainLandBinding landBinding = null;
     private View mainBinding;
-
-    /* Key queue */
-    private Queue<Character> keyQ;
 
     /* Commands from the fencing scoring box */
     private final byte cmdMarker = '!';
@@ -120,11 +116,10 @@ public class FencingBoxActivity extends AppCompatActivity
     public static WifiManager.MulticastLock wifiLock;
     public static FencingBoxList boxList;
     private GestureDetectorCompat gesture;
+    private Menu optionsMenu = null;
+    private boolean optionsMenuActive = false;
 
     /* Settings flags */
-
-    /* If true, then when the serial is lost, the app switches to display mode */
-    private final boolean DISPLAY_AFTER_CONNECT_ERROR = false;
 
     public FencingBoxActivity() {
         Log.d(TAG, "initialising broadcast receiver");
@@ -140,9 +135,6 @@ public class FencingBoxActivity extends AppCompatActivity
                 }
             }
         };
-
-        /* Keypress queue */
-        keyQ = new LinkedList<Character>();
 
         /* Various fencing box related variables */
         box = new Box(1);
@@ -253,6 +245,98 @@ public class FencingBoxActivity extends AppCompatActivity
         gesture = new GestureDetectorCompat(this, this);
         gesture.setOnDoubleTapListener(this);
 
+        /* Set up keypress handlers for either TV operation or phone operation */
+        UiModeManager uiModeMgr = (UiModeManager) getSystemService(UI_MODE_SERVICE);
+        if (uiModeMgr.getCurrentModeType() == Configuration.UI_MODE_TYPE_TELEVISION) {
+            platform = Platform.TV;
+            /* Keypress handler when it's a TV platform */
+            keyHandler = new FencingBoxKeys() {
+                @Override
+                public String processKey(Character c) {
+                    Log.i(TAG, "TV keypress " + c.toString());
+                    if (isSerialConnected()) {
+                        /* If the fencing scoring box is connected, send the key to that */
+                        String msg = "/" + c.toString();
+                        return msg;
+                    } else {
+                        /* When the fencing scoring box is not connected */
+                        switch (c) {
+                            case 'D': /* Down */
+                                break;
+                            case 'L': /* Left */
+                                break;
+                            case 'U': /* Up */
+                                break;
+                            case 'R': /* Right */
+                                break;
+                            case 'K': /* OK, Play/Pause*/
+                                if (optionsMenuActive) {
+                                    /* Select the item */
+                                    optionsMenuActive = false;
+                                }
+                                break;
+                            case '*': /* Channel up, Page up */
+                                break;
+                            case '$': /* Channel down */
+                                break;
+                            case '#': /* Page down, Fast forward */
+                                break;
+                            case 'B': /* Back */
+                                if (optionsMenuActive) {
+                                    /* Hide the menu */
+                                    optionsMenuActive = false;
+                                }
+                                break;
+                            case 'C': /* Record */
+                                break;
+                            case 'W': /* Rewind */
+                                break;
+                            case 'G': /* Guide */
+                                break;
+                            case 'M': /* Menu */
+                                try {
+                                    onOptionsItemSelected(optionsMenu.findItem(R.id.piste_select));
+                                    optionsMenuActive = true;
+                                } catch (Exception e) {
+                                    /* Ignore if the options menu has not been created yet */
+                                }
+                                break;
+                            case '0': /* Numeric keys */
+                            case '1':
+                            case '2':
+                            case '3':
+                            case '4':
+                            case '5':
+                            case '6':
+                            case '7':
+                            case '8':
+                            case '9':
+                                break;
+                            default:
+                                break;
+                        }
+                    }
+                    return "";
+                }
+            };
+        } else {
+            platform = Platform.Phone;
+            /* Keypress handler when it's a phone platform */
+            keyHandler = new FencingBoxKeys() {
+                @Override
+                public String processKey(Character c) {
+                    Log.i(TAG, "Phone keypress " + c.toString());
+                    if (isSerialConnected()) {
+                        /* If the fencing scoring box is connected, send the key to that */
+                        String msg = "/" + c.toString();
+                        return msg;
+                    } else {
+                        /* When the fencing scoring box is not connected */
+                    }
+                    return "";
+                }
+            };
+        }
         Log.d(TAG, "onCreate end");
     }
 
@@ -455,80 +539,89 @@ public class FencingBoxActivity extends AppCompatActivity
         switch (keyCode) {
             case KeyEvent.KEYCODE_DPAD_DOWN:
             case KeyEvent.KEYCODE_D:
-                keyQ.add('D');
+                keyHandler.addKey('D');
                 return true;
             case KeyEvent.KEYCODE_DPAD_LEFT:
             case KeyEvent.KEYCODE_L:
-                keyQ.add('L');
+                keyHandler.addKey('L');
                 return true;
             case KeyEvent.KEYCODE_DPAD_UP:
             case KeyEvent.KEYCODE_U:
-                keyQ.add('U');
+                keyHandler.addKey('U');
                 return true;
             case KeyEvent.KEYCODE_DPAD_RIGHT:
             case KeyEvent.KEYCODE_R:
-                keyQ.add('R');
+                keyHandler.addKey('R');
                 return true;
             case KeyEvent.KEYCODE_DPAD_CENTER:
             case KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE:
             case KeyEvent.KEYCODE_ENTER:
             case KeyEvent.KEYCODE_NUMPAD_ENTER:
             case KeyEvent.KEYCODE_K:
-                keyQ.add('K');
+                keyHandler.addKey('K');
                 return true;
             case KeyEvent.KEYCODE_CHANNEL_UP:
             case KeyEvent.KEYCODE_PAGE_UP:
             case KeyEvent.KEYCODE_STAR:
             case KeyEvent.KEYCODE_SEARCH:
-                keyQ.add('*');
+                keyHandler.addKey('*');
                 return true;
             case KeyEvent.KEYCODE_CHANNEL_DOWN:
-                keyQ.add('$');
+                keyHandler.addKey('$');
                 return true;
             case KeyEvent.KEYCODE_MEDIA_FAST_FORWARD:
             case KeyEvent.KEYCODE_PAGE_DOWN:
             case KeyEvent.KEYCODE_POUND:
-                keyQ.add('#');
+                keyHandler.addKey('#');
                 return true;
             case KeyEvent.KEYCODE_BACK:
             case KeyEvent.KEYCODE_B:
-                keyQ.add('B');
+                keyHandler.addKey('B');
                 return true;
             case KeyEvent.KEYCODE_VOLUME_MUTE:
                 soundMute = (soundMute == true) ? false : true;
                 return super.onKeyUp(keyCode, event);
-            case KeyEvent.KEYCODE_0:
             case KeyEvent.KEYCODE_MEDIA_RECORD:
+                keyHandler.addKey('C');
+                return true;
             case KeyEvent.KEYCODE_MEDIA_REWIND:
+                keyHandler.addKey('W');
+                return true;
             case KeyEvent.KEYCODE_GUIDE:
-                keyQ.add('0');
+                keyHandler.addKey('G');
+                return true;
+            case KeyEvent.KEYCODE_MENU:
+                keyHandler.addKey('M');
+                return true;
+            case KeyEvent.KEYCODE_0:
+                keyHandler.addKey('0');
                 return true;
             case KeyEvent.KEYCODE_1:
-                keyQ.add('1');
+                keyHandler.addKey('1');
                 return true;
             case KeyEvent.KEYCODE_2:
-                keyQ.add('2');
+                keyHandler.addKey('2');
                 return true;
             case KeyEvent.KEYCODE_3:
-                keyQ.add('3');
+                keyHandler.addKey('3');
                 return true;
             case KeyEvent.KEYCODE_4:
-                keyQ.add('4');
+                keyHandler.addKey('4');
                 return true;
             case KeyEvent.KEYCODE_5:
-                keyQ.add('5');
+                keyHandler.addKey('5');
                 return true;
             case KeyEvent.KEYCODE_6:
-                keyQ.add('6');
+                keyHandler.addKey('6');
                 return true;
             case KeyEvent.KEYCODE_7:
-                keyQ.add('7');
+                keyHandler.addKey('7');
                 return true;
             case KeyEvent.KEYCODE_8:
-                keyQ.add('8');
+                keyHandler.addKey('8');
                 return true;
             case KeyEvent.KEYCODE_9:
-                keyQ.add('9');
+                keyHandler.addKey('9');
                 return true;
             default:
                 Log.i(TAG, "unrecognised keycode " + keyCode);
@@ -538,12 +631,13 @@ public class FencingBoxActivity extends AppCompatActivity
 
     @Override
     public void onBackPressed() {
-        keyQ.add('B');
+        keyHandler.addKey('B');
     }
 
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
         getMenuInflater().inflate(R.menu.menu, menu);
+        this.optionsMenu = menu;
         return super.onCreateOptionsMenu(menu);
     }
 
@@ -665,7 +759,7 @@ public class FencingBoxActivity extends AppCompatActivity
                     BatteryManager batt = (BatteryManager) getApplicationContext().getSystemService(BATTERY_SERVICE);
                     batteryLvl = batt.getIntProperty(BatteryManager.BATTERY_PROPERTY_CAPACITY);
                     if (batteryLvl >= 0 && batteryLvl <= 100) {
-                        if (batteryLvl <= batteryDangerLevel) {
+                        if (batteryLvl <= C.BATTERY_DANGER_LEVEL) {
                             if (!batteryDangerActive) {
                                 batteryDangerActive = batteryDangerFlash = true;
                             } else {
@@ -731,15 +825,20 @@ public class FencingBoxActivity extends AppCompatActivity
             @Override
             public void run() {
                 if (box.isModeDisplay()) {
-                    try {
-                        Box b = boxList.currentBox();
-                        if (b.changed) {
-                            box.disp.displayBox(b);
-                            b.changed = false;
+                    runOnUiThread(new Runnable() {
+                        @Override
+                        public void run() {
+                            try {
+                                Box b = boxList.currentBox();
+                                if (b.changed) {
+                                    box.disp.displayBox(b);
+                                    b.changed = false;
+                                }
+                            } catch (IndexOutOfBoundsException e) {
+                                /* Do nothing */
+                            }
                         }
-                    } catch (IndexOutOfBoundsException e) {
-                        /* Do nothing */
-                    }
+                    });
                 }
                 handler.postDelayed(this, delayMillis);
             }
@@ -785,7 +884,7 @@ public class FencingBoxActivity extends AppCompatActivity
             Log.e(TAG, "connection failed: no driver for device");
             return;
         }
-        usbSerialPort = driver.getPorts().get(portNum);
+        usbSerialPort = driver.getPorts().get(C.USB_PORT_NUMBER);
         UsbDeviceConnection usbConnection = usbManager.openDevice(driver.getDevice());
         if (usbConnection == null && permissionGranted == null && !usbManager.hasPermission(driver.getDevice())) {
             PendingIntent usbPermissionIntent = PendingIntent.getBroadcast(this, 0, new Intent(com.robinterry.fencingboxapp.Constants.INTENT_ACTION_GRANT_USB), 0);
@@ -803,7 +902,7 @@ public class FencingBoxActivity extends AppCompatActivity
         serialConnected = Connected.Pending;
         try {
             usbSerialPort.open(usbConnection);
-            usbSerialPort.setParameters(baudRate, UsbSerialPort.DATABITS_8, UsbSerialPort.STOPBITS_1, UsbSerialPort.PARITY_NONE);
+            usbSerialPort.setParameters(C.USB_BAUD_RATE, UsbSerialPort.DATABITS_8, UsbSerialPort.STOPBITS_1, UsbSerialPort.PARITY_NONE);
             socket = new SerialSocket(this.getApplicationContext(), usbConnection, usbSerialPort);
             service.connect(socket);
             // usb connect is not asynchronous. connect-success and connect-error are returned immediately from socket.connect
@@ -1011,9 +1110,9 @@ public class FencingBoxActivity extends AppCompatActivity
                 if (box.passivityActive) {
                     box.disp.setPassivityClockColor(Color.GREEN);
                     if (box.isModeBout()) {
-                        if (pClock > passivityMaxTime) {
-                            box.passivityTimer = passivityMaxTime;
-                            displayPassivity(box, passivityMaxTime);
+                        if (pClock > C.PASSIVITY_MAX_TIME) {
+                            box.passivityTimer = C.PASSIVITY_MAX_TIME;
+                            displayPassivity(box, C.PASSIVITY_MAX_TIME);
                         } else {
                             box.passivityTimer = pClock;
                             displayPassivity(box, pClock);
@@ -1037,7 +1136,7 @@ public class FencingBoxActivity extends AppCompatActivity
 
     public void clearPassivity() {
         box.passivityActive = false;
-        box.passivityTimer = passivityMaxTime;
+        box.passivityTimer = C.PASSIVITY_MAX_TIME;
         if (box.isModeBout() || box.isModeStopwatch()) {
             box.disp.setPassivityClockColor(Color.GREEN);
         } else {
@@ -1369,7 +1468,7 @@ public class FencingBoxActivity extends AppCompatActivity
             case "VS":
                 Log.i(TAG, "passivity start");
                 box.passivityActive = true;
-                box.passivityTimer = passivityMaxTime;
+                box.passivityTimer = C.PASSIVITY_MAX_TIME;
                 setPassivity(box.passivityTimer);
                 displayPassivityCard();
                 break;
@@ -1526,12 +1625,9 @@ public class FencingBoxActivity extends AppCompatActivity
                     break;
             }
         } else {
-            Iterator it = keyQ.iterator();
-
-            while (it.hasNext()) {
-                Character key = (Character) it.next();
-                msg = "/" + key.toString();
-                it.remove();
+            while (keyHandler.keyPresent()) {
+                Character key = keyHandler.getKey();
+                msg = keyHandler.processKey(key);
             }
         }
 
@@ -1729,7 +1825,7 @@ public class FencingBoxActivity extends AppCompatActivity
         if (bc != null) {
             bc.connected(false);
         }
-        if (DISPLAY_AFTER_CONNECT_ERROR) {
+        if (C.DISPLAY_AFTER_CONNECT_ERROR) {
             if (boxList.empty()) {
                 box.setModeNone();
             } else {
@@ -1771,7 +1867,7 @@ public class FencingBoxActivity extends AppCompatActivity
         if (bc != null) {
             bc.connected(false);
         }
-        if (DISPLAY_AFTER_CONNECT_ERROR) {
+        if (C.DISPLAY_AFTER_CONNECT_ERROR) {
             if (boxList.empty()) {
                 box.setModeNone();
             } else {

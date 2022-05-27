@@ -2,6 +2,7 @@ package com.robinterry.fencingboxapp;
 
 import android.app.Activity;
 import android.content.Intent;
+import android.view.KeyEvent;
 import android.view.View;
 import android.widget.NumberPicker;
 import android.widget.Button;
@@ -15,8 +16,18 @@ public class PisteSelect extends Activity {
     public static final int ACTIVITY_CODE = 0;
     private NumberPicker pisteSelectPicker;
     private Button pisteSelectButton;
+    private FencingBoxKeys keyHandler;
     private static Integer piste = 1;
     private final Integer MAX_PISTE = 20;
+
+    public PisteSelect() {
+        keyHandler = new FencingBoxKeys() {
+            @Override
+            public String processKey(Character c) {
+                return "";
+            }
+        };
+    }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -71,5 +82,11 @@ public class PisteSelect extends Activity {
     @Override
     protected void onPause() {
         super.onPause();
+    }
+
+    @Override
+    public boolean onKeyUp(int keyCode, KeyEvent event) {
+        Log.i(TAG, "key code " + keyCode);
+        return super.onKeyUp(keyCode, event);
     }
 }
