@@ -201,6 +201,7 @@ public class NetworkBroadcast {
                                     try {
                                         if (connected) {
                                             txSocket.send(p);
+                                            networkOnline = true;
                                             if (txMsgs.peek() != null) {
                                                 break;
                                             } else {
@@ -213,7 +214,12 @@ public class NetworkBroadcast {
                                     } catch (Exception e) {
                                         Log.e(TAG, "Unable to send broadcast message, error " + e);
                                         networkOnline = false;
-                                        break;
+                                        /* Wait a second before trying again */
+                                        try {
+                                            Thread.sleep(1000);
+                                        } catch (Exception f) {
+                                            /* Ignore */
+                                        }
                                     }
                                 } while (txMsgs.peek() == null);
                             }
@@ -232,6 +238,7 @@ public class NetworkBroadcast {
                             try {
                                 rxSocket.setBroadcast(true);
                                 rxSocket.receive(p);
+                                networkOnline = true;
                                 String msg = new String(p.getData(), p.getOffset(), p.getLength());
                                 try {
                                     /* Add this box to the list, if it is not already there */

@@ -15,13 +15,11 @@
 #define MAXSTRING  255     /* Longest string to send or receive */
 #define DEFPORT    28888   /* Default port number */
 #define IASIZE     20
-#define BOXNUM     20
-#define MAXTHREADS BOXNUM
 #define RXBUFSIZE  (MAXSTRING+1) 
 #define IPMC_PORT  DEFPORT 
 #define IPMC_ADDR  "224.0.0.1"
-#define CYCLE      5
-#define BOXES      5
+#define BOXES      50
+#define INTERVAL   250 
 
 enum Dir
 {
@@ -36,6 +34,7 @@ int  noBCast = 1;
 int  noMCast = 0;
 int  verbose = 0;
 char ipAddr[IASIZE];
+int  pistes = BOXES;
 
 struct Box
 {
@@ -54,9 +53,11 @@ struct Box
    int                  hitA, hitB;
    int                  scoreA, scoreB;
    int                  cardA, cardB;
+   time_t               tm;
+   struct tm            gmt;
 };
 
-struct Box boxList[BOXNUM];
+struct Box boxList[BOXES+1];
 struct Box *me, *meTx[3], *meRx;
 int boxListIdx;
 pthread_t bcThread;
@@ -65,14 +66,27 @@ int txEnable = 0;
 unsigned short broadcastPort;
 void *txrxCommsThread(void *arg);
 
-void Error(char *host, char *errorMessage)
+void Error(struct Box *b, char *host, char *errorMessage)
 {
-   printf("ERROR: (%s) \"%s\", %s\n", host, errorMessage, strerror(errno));
+   char timeBuf[30];
+
+   if (b)
+   {
+      time(&b->tm);
+      gmtime_r(&b->tm, &b->gmt);
+      strftime(timeBuf, 30, "%H:%M:%S", &b->gmt);
+   }
+   else
+   {
+      strcpy(timeBuf, "-");
+   }
+   printf("ERROR: (%s) %s:\"%s\", %s\n", host, timeBuf, errorMessage, strerror(errno));
 }
 
 int openConnection(struct Box *b)
 {
    int reuseAddr = 1;
+   char timeBuf[30];
 
    if (b->sock == 0)
    {
@@ -89,17 +103,18 @@ int openConnection(struct Box *b)
             }
             if (b->sock < 0)
             {
-               Error(b->host, "socket() failed");
+               Error(b, b->host, "socket() failed");
                return -1;
             }
             else if (setsockopt(b->sock, SOL_SOCKET, SO_REUSEADDR, (void *) &reuseAddr,
                 sizeof(reuseAddr)) < 0)
             {
-               Error(b->host, "setsockopt() failed");
+               Error(b, b->host, "setsockopt() failed");
                return -1;
             }
             else
             {
+               b->piste                 = -1;
                b->rxPtr = b->rdPtr      = 0;
                b->addr.sin_family       = AF_INET;
                b->addr.sin_addr.s_addr  = htonl(INADDR_ANY);
@@ -113,18 +128,21 @@ int openConnection(struct Box *b)
                   if (setsockopt(b->sock, 
                      IPPROTO_IP, IP_ADD_MEMBERSHIP, &b->mc, sizeof(b->mc)) < 0)
                   {
-                     Error("localhost", "setsockopt() IP multicast failed");
+                     Error(NULL, "localhost", "setsockopt() IP multicast failed");
                      return -1;
                   }
                   else
                   {
                      b->rx = b->sock;
                   }
-                  printf("Socket %d joined RX multicast group %s:%d\n", b->rx, IPMC_ADDR, b->port);
+                  time(&b->tm);
+                  gmtime_r(&b->tm, &b->gmt);
+                  strftime(timeBuf, 30, "%H:%M:%S", &b->gmt);
+                  printf("%s: socket %02d joined RX multicast group %s:%d\n", timeBuf, b->rx, IPMC_ADDR, b->port);
                }
                else
                {
-                  listen(b->sock, BOXNUM);
+                  listen(b->sock, pistes);
                   b->rx = accept(b->sock, NULL, NULL);
                }
                return 0;
@@ -146,13 +164,13 @@ int openConnection(struct Box *b)
                   }
                   if (b->sock < 0)
                   {
-                     Error(b->host, "socket failed");
+                     Error(b, b->host, "socket failed");
                      return -1;
                   }
                   else if (setsockopt(b->sock, SOL_SOCKET, SO_REUSEADDR, (void *) &reuseAddr,
                      sizeof(reuseAddr)) < 0)
                   {
-                     Error(b->host, "setsockopt() failed");
+                     Error(b, b->host, "setsockopt() failed");
                      return -1;
                   }
                   else
@@ -168,16 +186,20 @@ int openConnection(struct Box *b)
                         if (setsockopt(b->sock, 
                            IPPROTO_IP, IP_ADD_MEMBERSHIP, &b->mc, sizeof(b->mc)) < 0)
                         {
-                           Error("localhost", "setsockopt() IP multicast failed");
+                           Error(NULL, "localhost", "setsockopt() IP multicast failed");
                            return -1;
                         }
-                        printf("Socket %d joined TX multicast group %s:%d\n", b->sock, IPMC_ADDR, b->port);
+                        time(&b->tm);
+                        gmtime_r(&b->tm, &b->gmt);
+                        strftime(timeBuf, 30, "%H:%M:%S", &b->gmt);
+                        printf("%s: socket %02d, piste %02d joined TX multicast group %s:%d\n", 
+                           timeBuf, b->sock, b->piste, IPMC_ADDR, b->port);
                      }
                      else
                      {
                         if (connect(b->sock, (struct sockaddr *) &b->addr, sizeof(b->addr)) < 0)
                         {
-                           Error(b->host, "connect failed");
+                           Error(b, b->host, "connect failed");
                            return -1;
                         }
                      }
@@ -239,7 +261,7 @@ int addBox(char *msg, int port)
    {
       return -1;
    }
-   else if (i <= BOXNUM-1)
+   else if (i <= pistes)
    {
       b.idx = i;
       strcpy(b.host, &msg[3]);
@@ -372,7 +394,7 @@ void *rxBroadcastThread(void *arg)
       {
           if (errno != EBADF)
           {
-             Error("localhost", "recvfrom failed");
+             Error(NULL, "localhost", "recvfrom failed");
           }
           quitThread = 1;
       }
@@ -423,18 +445,13 @@ void *txrxCommsThread(void *arg)
    int i, ret, txrxStringLen;    /* Length of transmitted string */
    struct Box *b = (struct Box *) arg;
    struct timespec tm;
-   int cycle = 0;
+   char timeBuf[50];
+   time_t tm1, tm2;
 
-   if (CYCLE == 1)
-   {
-      tm.tv_sec  = 1;
-      tm.tv_nsec = 0;
-   }
-   else
-   {
-      tm.tv_sec  = 0;
-      tm.tv_nsec = (1000/CYCLE)*1000*1000;
-   }
+   tm.tv_sec  = INTERVAL/1000;
+   tm.tv_nsec = (INTERVAL%1000)*1000*1000;
+
+   tm1 = time(NULL);
 
    switch (b->dir)
    {
@@ -456,39 +473,51 @@ void *txrxCommsThread(void *arg)
                   getCard(b->cardA),
                   getCard(b->cardB));
 
-               if (++cycle >= CYCLE)
+               tm2 = time(NULL);
+               if (tm2 > tm1)
                {
-                  if (--(b->secs) < 0)
+                  b->secs -= (tm2-tm1);
+                  if (b->secs <= 0)
                   {
-                     b->secs = 59;
+                     b->secs += 59;
                      if (--(b->mins) < 0)
                         b->mins = 2;
                   }
-                  cycle = 0;
+                  tm1 = tm2;
                }
                txrxStringLen = strlen(txrxString);
                if (verbose)
                {
-                  printf("Sending  %s to   %s:%d on socket %d\n", txrxString, b->host, b->port, b->sock);
+                  time(&b->tm);
+                  gmtime_r(&b->tm, &b->gmt);
+                  strftime(timeBuf, 30, "%H:%M:%S", &b->gmt);
+                  printf("%s: sending  %s to   %s:%d on socket %d\n", 
+                     timeBuf, txrxString, b->host, b->port, b->sock);
                }
-               if ((ret = sendto(b->sock, txrxString, txrxStringLen, 0, 
-                     (struct sockaddr *) &b->addr, sizeof(b->addr))) != txrxStringLen)
                {
-                  if (errno != EBADF && errno != ENOTCONN)
+                  if ((ret = sendto(b->sock, txrxString, txrxStringLen, 0, 
+                     (struct sockaddr *) &b->addr, sizeof(b->addr))) != txrxStringLen)
                   {
-                     Error(b->host, "sendto failed");
-                     quitThread = 1;
-                     break;
+                     if (errno != EBADF && errno != ENOTCONN)
+                     {
+                        Error(b, b->host, "sendto failed");
+                        quitThread = 1;
+                        break;
+                     }
+                     else
+                     {
+                        printf("Receiver has dropped the connection\n");
+                        b->dir = DIR_NONE;
+                        close(b->sock);
+                        b->sock = 0;
+                        quitThread = 1;
+                        break;
+                     }
                   }
-                  else
-                  {
-                     printf("Receiver has dropped the connection\n");
-                     b->dir = DIR_NONE;
-                     close(b->sock);
-                     b->sock = 0;
-                     quitThread = 1;
-                     break;
-                  }
+               }
+               if (quitThread)
+               {
+                  break;
                }
             }
             nanosleep(&tm, NULL);
@@ -507,7 +536,7 @@ void *txrxCommsThread(void *arg)
                printf("recvfrom returned %d\n", errno);
                if (errno != EBADF)
                {
-                  Error(b->host, "recvfrom failed");
+                  Error(b, b->host, "recvfrom failed");
                   quitThread = 1;
                }
                else
@@ -521,16 +550,20 @@ void *txrxCommsThread(void *arg)
             else if (txrxStringLen > 0)
             {
                int piste = atoi(txrxString);
-               for (i = 0; i < BOXES; i++)
+               for (i = 0; i < pistes; i++)
                {
                   if (meTx[i]->piste == piste)
                   {
                      break;
                   }
                }
-               if (i >= BOXES)
+               if (i >= pistes)
                {
-                  printf("Received %s from %s:%d on socket %d\n", txrxString, b->host, b->port, b->rx);
+                  time(&b->tm);
+                  gmtime_r(&b->tm, &b->gmt);
+                  strftime(timeBuf, 30, "%H:%M:%S", &b->gmt);
+                  printf("%s: received %s from %s:%d on socket %d\n", 
+                     timeBuf, txrxString, b->host, b->port, b->rx);
                   for (i = 0; i < txrxStringLen; i++)
                   {
                      b->rxBuf[b->rxPtr] = txrxString[i];
@@ -562,6 +595,7 @@ void printUsage(void)
    printf("-bc        enable broadcast of IP messages\n");
    printf("-nomc      disable IP multicast\n");
    printf("-verbose   verbose operation\n");
+   printf("-pistes    number of pistes (between 1 and %d)\n", BOXES);
    printf("\n");
 }
 
@@ -616,6 +650,21 @@ int main(int argc, char *argv[])
       {
          verbose = 1;
       }
+      else if (!strcmp(argv[i], "-pistes"))
+      {
+         if (++i >= argc)
+	      {
+	         printf("ERROR: missing argument to '-pistes'\n");
+	         printUsage();
+	         return 1;
+	      }
+	      else if ((pistes = atoi(argv[i])) < 1 || pistes > BOXES)
+	      {
+	         printf("ERROR: invalid argument to '-pistes'\n");
+	         printUsage();
+	         return 1;
+	      }
+      }
       else
       {
          printf("ERROR: unknown argument\n");
@@ -631,7 +680,7 @@ int main(int argc, char *argv[])
    /* Create a datagram socket using UDP */
    if ((sock = socket(PF_INET, SOCK_DGRAM, IPPROTO_UDP)) < 0)
    {
-      Error("localhost", "socket() failed");
+      Error(NULL, "localhost", "socket() failed");
       exit(1);
    }
 
@@ -650,7 +699,7 @@ int main(int argc, char *argv[])
       broadcastPermission = reuseAddr = 1;
       if (setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, (void *) &reuseAddr, sizeof(reuseAddr)) < 0)
       {
-         Error("localhost", "setsockopt() failed 1");
+         Error(NULL, "localhost", "setsockopt() failed 1");
          exit(1);
       }
 
@@ -660,7 +709,7 @@ int main(int argc, char *argv[])
       if (setsockopt(sock, SOL_SOCKET, SO_BROADCAST, (void *) &broadcastPermission, 
                 sizeof(broadcastPermission)) < 0)
       {
-         Error("localhost", "setsockopt() failed 2");
+         Error(NULL, "localhost", "setsockopt() failed 2");
          exit(1);
       }
       else
@@ -675,12 +724,12 @@ int main(int argc, char *argv[])
       srandom((unsigned int) tm);
 
       meRx = &boxList[0];
-      for (i = 0; i < BOXES; i++)
+      for (i = 0; i < pistes; i++)
       {
          meTx[i] = &boxList[1+i];
       }
-      boxListIdx = BOXES+1;
-      for (i = 0; i < BOXES; i++)
+      boxListIdx = pistes+1;
+      for (i = 0; i < pistes; i++)
       {
          meTx[i]->dir    = DIR_TX;
          meTx[i]->piste  = 2+i;
@@ -776,7 +825,7 @@ int main(int argc, char *argv[])
           if (sendto(sock, sendString, sendStringLen, 0, 
                (struct sockaddr *) &broadcastAddr, sizeof(broadcastAddr)) != sendStringLen)
           {
-             Error("localhost", "sendto() sent a different number of bytes than expected");
+             Error(NULL, "localhost", "sendto() sent a different number of bytes than expected");
              quitThread = 1;
           }
           else

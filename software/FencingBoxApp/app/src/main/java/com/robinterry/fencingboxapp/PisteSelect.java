@@ -18,7 +18,7 @@ public class PisteSelect extends Activity {
     private Button pisteSelectButton;
     private FencingBoxKeys keyHandler;
     private static Integer piste = 1;
-    private final Integer MAX_PISTE = 20;
+
 
     public PisteSelect() {
         keyHandler = new FencingBoxKeys() {
@@ -37,7 +37,7 @@ public class PisteSelect extends Activity {
         pisteSelectButton = findViewById(R.id.piste_select_button);
 
         pisteSelectPicker.setMinValue(1);
-        pisteSelectPicker.setMaxValue(MAX_PISTE);
+        pisteSelectPicker.setMaxValue(C.MAX_PISTE);
         pisteSelectPicker.setValue(piste);
         pisteSelectPicker.setOnValueChangedListener(new NumberPicker.OnValueChangeListener() {
             @Override

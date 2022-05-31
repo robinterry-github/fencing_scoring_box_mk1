@@ -51,8 +51,6 @@ import android.util.Log;
 import com.robinterry.fencingboxapp.databinding.ActivityMainBinding;
 import com.robinterry.fencingboxapp.databinding.ActivityMainLandBinding;
 
-import com.robinterry.fencingboxapp.C.*;
-
 @SuppressWarnings("ALL")
 public class FencingBoxActivity extends AppCompatActivity
         implements ServiceConnection, SerialListener,
@@ -1975,7 +1973,7 @@ public class FencingBoxActivity extends AppCompatActivity
                     Box b = boxList.currentBox();
                     if (b != null) {
                         box.setModeDisplay();
-                        box.disp.hideUI();
+                        //box.disp.hideUI();
                         box.disp.displayBox(b);
                         return true;
                     }
@@ -2026,7 +2024,7 @@ public class FencingBoxActivity extends AppCompatActivity
                 b = boxList.currentBox();
                 if (b != null) {
                     box.setModeDisplay();
-                    box.disp.hideUI();
+                    //box.disp.hideUI();
                     box.disp.displayBox(b);
                 }
             } catch (IndexOutOfBoundsException e) {

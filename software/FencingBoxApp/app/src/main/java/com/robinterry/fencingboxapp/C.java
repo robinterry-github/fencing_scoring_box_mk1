@@ -13,4 +13,6 @@ public class C {
     public static final int PASSIVITY_MAX_TIME = 60;
     /* Low battery danger level in percent */
     public static final int BATTERY_DANGER_LEVEL = 15;
+    /* Maximum number of supported pistes */
+    public static final int MAX_PISTE = 50;
 }
