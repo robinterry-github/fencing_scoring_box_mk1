@@ -9,6 +9,9 @@ import android.widget.Button;
 import android.os.Bundle;
 import android.util.Log;
 
+/* Import constant values */
+import com.robinterry.constants.C;
+
 @SuppressWarnings("ALL")
 public class PisteSelect extends Activity {
 

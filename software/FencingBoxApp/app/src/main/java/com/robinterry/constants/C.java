@@ -1,4 +1,4 @@
-package com.robinterry.fencingboxapp;
+package com.robinterry.constants;
 
 /* Class of configuration constants */
 
@@ -15,4 +15,6 @@ public class C {
     public static final int BATTERY_DANGER_LEVEL = 15;
     /* Maximum number of supported pistes */
     public static final int MAX_PISTE = 50;
+    /* The fling distance as a proportion of X or Y axis */
+    public static final int FLING_RATIO = 5;
 }

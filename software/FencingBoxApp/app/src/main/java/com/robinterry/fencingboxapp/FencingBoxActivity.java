@@ -51,6 +51,9 @@ import android.util.Log;
 import com.robinterry.fencingboxapp.databinding.ActivityMainBinding;
 import com.robinterry.fencingboxapp.databinding.ActivityMainLandBinding;
 
+/* Import constant values */
+import com.robinterry.constants.C;
+
 @SuppressWarnings("ALL")
 public class FencingBoxActivity extends AppCompatActivity
         implements ServiceConnection, SerialListener,
@@ -1922,22 +1925,26 @@ public class FencingBoxActivity extends AppCompatActivity
 
     @Override
     public boolean onFling(MotionEvent e1, MotionEvent e2, float velX, float velY) {
-        //box.disp.hideUI();
-        final int MAX_FLING = 200;
         if (e1.getAction() == MotionEvent.ACTION_DOWN && e2.getAction() == MotionEvent.ACTION_UP) {
-            if (e1.getX() - e2.getX() > MAX_FLING) {
+            int height = getResources().getDisplayMetrics().heightPixels;
+            int width  = getResources().getDisplayMetrics().widthPixels;
+
+            /* The fling distance as a ratio of the width or height depending on the direction */
+            int flingY = height/C.FLING_RATIO;
+            int flingX = width/C.FLING_RATIO;
+            if (e1.getX() - e2.getX() > flingX) {
                 motion = Motion.Left;
                 processGesture(motion);
                 return true;
-            } else if (e2.getX() - e1.getX() > MAX_FLING) {
+            } else if (e2.getX() - e1.getX() > flingX) {
                 motion = Motion.Right;
                 processGesture(motion);
                 return true;
-            } else if (e2.getY() - e1.getY() > MAX_FLING) {
+            } else if (e2.getY() - e1.getY() > flingY) {
                 motion = Motion.Down;
                 processGesture(motion);
                 return true;
-            } else if (e1.getY() - e2.getY() > MAX_FLING) {
+            } else if (e1.getY() - e2.getY() > flingY) {
                 motion = Motion.Up;
                 processGesture(motion);
                 return true;

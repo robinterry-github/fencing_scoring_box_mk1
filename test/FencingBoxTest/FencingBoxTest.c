@@ -477,9 +477,9 @@ void *txrxCommsThread(void *arg)
                if (tm2 > tm1)
                {
                   b->secs -= (tm2-tm1);
-                  if (b->secs <= 0)
+                  if (b->secs < 0)
                   {
-                     b->secs += 59;
+                     b->secs += 60;
                      if (--(b->mins) < 0)
                         b->mins = 2;
                   }
@@ -589,7 +589,7 @@ void *txrxCommsThread(void *arg)
 
 void printUsage(void)
 {
-   printf("FencingBoxTest [-port P] [-tx]\n");
+   printf("FencingBoxTest [-port P] [-tx] [-bc] [-nomc] [-verbose] [-pistes P]\n");
    printf("-port P    set IP network port to P\n");
    printf("-tx        enable TX testing\n");
    printf("-bc        enable broadcast of IP messages\n");
