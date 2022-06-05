@@ -8,7 +8,6 @@ import java.io.IOException;
 import java.net.SocketException;
 import java.net.SocketTimeoutException;
 import java.net.NetworkInterface;
-import java.net.InterfaceAddress;
 import java.net.MulticastSocket;
 import java.net.UnknownHostException;
 import java.util.Enumeration;
@@ -20,13 +19,16 @@ import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
 import android.util.Log;
 
+import com.robinterry.constants.C;
+
 @SuppressWarnings("ALL")
 public class NetworkBroadcast {
     public static final String TAG = NetworkBroadcast.class.getSimpleName();
     private DatagramSocket txSocket = null;
     private DatagramSocket rxSocket = null;
-    private static final String MCADDR = "224.0.0.1";
-    private static final int PORT = 28888;
+    private enum SocketConnection { None, Multicast, Broadcast };
+    SocketConnection conn = SocketConnection.None;
+
     private InetAddress bcAddr = null;
     private Inet4Address ip4Addr = null;
     private int port;
@@ -39,7 +41,7 @@ public class NetworkBroadcast {
     private FencingBoxActivity mainActivity;
 
     public NetworkBroadcast(FencingBoxActivity mainActivity) throws IOException {
-        this(mainActivity, PORT);
+        this(mainActivity, C.IPMCPORT);
     }
 
     public NetworkBroadcast(FencingBoxActivity mainActivity, int port) throws IOException {
@@ -51,94 +53,85 @@ public class NetworkBroadcast {
 
     public void tryConnect() throws IOException {
         if (!networkOnline) {
-            Log.i(TAG, "Trying to reconnect");
             /* Try opening a multicast socket first */
             try {
                 openMulticastSocket();
-                Log.i(TAG, "Opened multicast socket on " + MCADDR + ", port " + PORT);
+                joinMulticastGroup();
+                conn = SocketConnection.Multicast;
             } catch (SocketException e1) {
-                Log.e(TAG, "Unable to read multicast address, error ", e1);
-                try {
-                    openBroadcastSocket();
-                    Log.i(TAG, "Opened broadcast socket on " + bcAddr + ", port " + PORT);
-                } catch (SocketException e) {
-                    Log.e(TAG, "Unable to read broadcast address, error ", e);
+                if (!e1.getMessage().contains("EADDRINUSE")) {
+                    Log.e(TAG, "Unable to read multicast address, error " + e1);
+                    networkOnline = false;
                 }
             } catch (UnknownHostException e2) {
-                Log.e(TAG, "Unable to find host " + MCADDR + ", error " + e2);
-                try {
-                    openBroadcastSocket();
-                    Log.i(TAG, "Opened broadcast socket on " + bcAddr + ", port " + PORT);
-                } catch (SocketException e) {
-                    Log.e(TAG, "Unable to read broadcast address, error ", e);
-                }
+                Log.e(TAG, "Unable to find host " + C.IPMCADDR + ", error " + e2);
             }
             new Thread(new Runnable() {
                 @Override
                 public void run() {
                     try {
                         ip4Addr = getIPAddress();
-                        networkOnline = true;
-                        Log.i(TAG, "IP address " + ip4Addr.getHostName());
                     } catch (SocketException e) {
-                        Log.e(TAG, "Unable to get IP address, error " + e);
+                        /* Ignore */
+                    }
+                    try {
+                        networkOnline = true;
+                        rxSocket.setSoTimeout(C.RX_TIMEOUT);
+                        joinMulticastGroup();
+                    } catch (SocketException e1) {
+                        if (!e1.getMessage().contains("EADDRINUSE")) {
+                            Log.e(TAG, "Unable to get IP address, error " + e1);
+                            networkOnline = false;
+                        }
+                    } catch (IOException e2) {
+                        Log.e(TAG, "Unable to get IP address, error " + e2);
+                        networkOnline = false;
                     }
                 }
             }).start();
         }
     }
 
-    private void openBroadcastSocket() throws IOException, SocketException {
-        bcAddr = getBroadcastAddress();
+    private void openMulticastSocket() throws SocketException, UnknownHostException, IOException {
+        bcAddr = InetAddress.getByName(C.IPMCADDR);
         if (txSocket == null) {
-            /* The IP address/port are set when the datagram is constructed */
-            txSocket = new DatagramSocket();
-            txSocket.setBroadcast(true);
+            txSocket = new MulticastSocket(C.IPMCPORT);
         }
         if (rxSocket == null) {
-            /* Bind to wildcard address and fixed port for receive */
-            rxSocket = new DatagramSocket(port);
-            rxSocket.setBroadcast(true);
+            rxSocket = new MulticastSocket(C.IPMCPORT);
         }
     }
 
-    private void openMulticastSocket() throws SocketException, UnknownHostException, IOException {
-        bcAddr = InetAddress.getByName(MCADDR);
-        txSocket = new MulticastSocket(PORT);
-        ((MulticastSocket) txSocket).joinGroup(bcAddr);
-        rxSocket = new MulticastSocket(PORT);
-        ((MulticastSocket) rxSocket).joinGroup(bcAddr);
+    private void joinMulticastGroup() throws IOException {
+        if (txSocket != null) {
+            ((MulticastSocket) txSocket).joinGroup(bcAddr);
+        }
+        if (rxSocket != null) {
+            ((MulticastSocket) rxSocket).joinGroup(bcAddr);
+        }
     }
 
     private void closeSocket() {
         if (txSocket != null) {
-            txSocket.close();
-            txSocket = null;
+            try {
+                ((MulticastSocket) txSocket).leaveGroup(bcAddr);
+            } catch (IOException e) {
+                /* Ignore */
+            } finally {
+                txSocket.close();
+            }
         }
         if (rxSocket != null) {
-            rxSocket.close();
-            rxSocket = null;
-        }
-        networkOnline = false;
-    }
-
-    private InetAddress getBroadcastAddress() throws SocketException {
-        Enumeration<NetworkInterface> ifs = NetworkInterface.getNetworkInterfaces();
-        while (ifs.hasMoreElements()) {
-            NetworkInterface netIf = ifs.nextElement();
-            if (netIf.isLoopback() || !netIf.supportsMulticast()) {
-                continue;
-            }
-            for (InterfaceAddress ifAddr : netIf.getInterfaceAddresses()) {
-                InetAddress bcAddr = ifAddr.getBroadcast();
-                if (bcAddr != null) {
-                    Log.i(TAG, "Broadcast address " + bcAddr);
-                    return bcAddr;
-                }
+            try {
+                ((MulticastSocket) rxSocket).leaveGroup(bcAddr);
+            } catch (IOException e) {
+                /* Ignore */
+            } finally {
+                rxSocket.close();
             }
         }
         networkOnline = false;
-        throw new SocketException("No broadcast address found");
+        conn = SocketConnection.None;
     }
 
     private Inet4Address getIPAddress() throws SocketException {
@@ -154,6 +147,7 @@ public class NetworkBroadcast {
                     if (!ifAddr.isLoopbackAddress()) {
                         if (ifAddr instanceof Inet4Address) {
                             Inet4Address if4Addr = (Inet4Address) ifAddr;
+                            networkOnline = true;
                             return if4Addr;
                         }
                     }
@@ -193,35 +187,37 @@ public class NetworkBroadcast {
                                 break;
                             }
 
-                            /* Only send the message if we are connected, otherwise junk it */
+                            /* Only send the message if we are connected to a box, otherwise junk it */
                             if (connected) {
                                 DatagramPacket p = new DatagramPacket(str.getBytes(), str.length(), bcAddr, port);
                                 /* Keep sending this message if this is the only one */
-                                do {
-                                    try {
-                                        if (connected) {
-                                            txSocket.send(p);
-                                            networkOnline = true;
-                                            if (txMsgs.peek() != null) {
-                                                break;
-                                            } else {
-                                                /* If there are no more messages, wait a bit before resending */
-                                                Thread.sleep(250);
-                                            }
-                                        } else {
-                                            break;
-                                        }
-                                    } catch (Exception e) {
-                                        Log.e(TAG, "Unable to send broadcast message, error " + e);
-                                        networkOnline = false;
-                                        /* Wait a second before trying again */
+                                if (!txSocket.isClosed()) {
+                                    do {
                                         try {
-                                            Thread.sleep(1000);
-                                        } catch (Exception f) {
-                                            /* Ignore */
+                                            if (connected) {
+                                                txSocket.send(p);
+                                                networkOnline = true;
+                                                if (txMsgs.peek() != null) {
+                                                    break;
+                                                } else {
+                                                    /* If there are no more messages, wait a bit before resending */
+                                                    Thread.sleep(250);
+                                                }
+                                            } else {
+                                                break;
+                                            }
+                                        } catch (Exception e) {
+                                            Log.e(TAG, "Unable to send broadcast message, error " + e);
+                                            networkOnline = false;
+                                            /* Wait a second before trying again */
+                                            try {
+                                                Thread.sleep(1000);
+                                            } catch (Exception f) {
+                                                /* Ignore */
+                                            }
                                         }
-                                    }
-                                } while (txMsgs.peek() == null);
+                                    } while (txMsgs.peek() == null);
+                                }
                             }
                         }
                     }
@@ -235,22 +231,32 @@ public class NetworkBroadcast {
                     while (true) {
                         DatagramPacket p = new DatagramPacket(buf, 100);
                         while (true) {
-                            try {
-                                rxSocket.setBroadcast(true);
-                                rxSocket.receive(p);
-                                networkOnline = true;
-                                String msg = new String(p.getData(), p.getOffset(), p.getLength());
+                            if (networkOnline) {
                                 try {
-                                    /* Add this box to the list, if it is not already there */
-                                    mainActivity.boxList.updateBox(msg, p.getAddress().getHostAddress());
-                                } catch (IllegalStateException e) { /* Ignore (queue full) */ }
-                            } catch (SocketTimeoutException e) {
-                                /* Ignore - wait for network to be reconnected */
-                            } catch (NullPointerException e) {
-                                return;
-                            } catch (IOException e) {
-                                Log.e(TAG, "Unable to receive, error " + e);
-                                networkOnline = false;
+                                    rxSocket.receive(p);
+                                    String msg = new String(p.getData(), p.getOffset(), p.getLength());
+                                    try {
+                                        /* Add this box to the list, if it is not already there */
+                                        mainActivity.boxList.updateBox(msg, p.getAddress().getHostAddress());
+                                    } catch (IllegalStateException e) {
+                                        /* Ignore (queue full) */
+                                    }
+                                } catch (SocketTimeoutException e) {
+                                    /* Ignore - wait for network to be reconnected */
+                                    networkOnline = false;
+                                } catch (NullPointerException e) {
+                                    return;
+                                } catch (IOException e) {
+                                    Log.e(TAG, "Unable to receive, error " + e);
+                                    networkOnline = false;
+                                }
+                            } else {
+                                try {
+                                    Thread.sleep(500);
+                                    tryConnect();
+                                } catch (Exception e) {
+                                    /* Ignore */
+                                }
                             }
                         }
                     }

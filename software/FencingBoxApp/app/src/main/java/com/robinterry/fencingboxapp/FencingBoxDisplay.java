@@ -345,13 +345,13 @@ public class FencingBoxDisplay {
         });
     }
 
-    public void displayPassivityAsPiste(Integer piste) {
+    public void displayPassivityAsPiste(Box b) {
         mainActivity.runOnUiThread(new Runnable() {
             @Override
             public void run() {
                 passivityClock.setTypeface(null);
-                passivityClock.setTextColor(Color.WHITE);
-                passivityClock.setText(piste.toString());
+                passivityClock.setTextColor(b.rxOk ? Color.WHITE:Color.RED);
+                passivityClock.setText(b.piste.toString());
             }
         });
     }
@@ -505,7 +505,7 @@ public class FencingBoxDisplay {
                 displayPassivityAsClock(box.passivityTimer);
             } else {
                 setPassivityClockColor(Color.WHITE);
-                displayPassivityAsPiste(box.piste);
+                displayPassivityAsPiste(box);
             }
             displayPassivityCard(box, 0, box.pCard[0]);
             displayPassivityCard(box, 1, box.pCard[1]);
@@ -539,7 +539,7 @@ public class FencingBoxDisplay {
                 }
             } else {
                 setPassivityClockColor(Color.WHITE);
-                displayPassivityAsPiste(newBox.piste);
+                displayPassivityAsPiste(newBox);
             }
             if (oldBox.pCard[0] != newBox.pCard[0]) {
                 displayPassivityCard(box, 0, newBox.pCard[0]);

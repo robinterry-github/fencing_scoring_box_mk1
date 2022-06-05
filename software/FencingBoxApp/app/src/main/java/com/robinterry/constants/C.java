@@ -17,4 +17,19 @@ public class C {
     public static final int MAX_PISTE = 50;
     /* The fling distance as a proportion of X or Y axis */
     public static final int FLING_RATIO = 5;
+    /* Enables quantisation of the clock in network messages */
+    public static final boolean QUANTISE_CLOCK = true;
+    /* Clock quantisation factor in seconds */
+    public static final int QUANTISE_FACTOR_SECS = 5;
+    /* Network receive timeout in milliseconds */
+    public static final int RX_TIMEOUT = 2000;
+    /* Multicast IP address */
+    public static final String IPMCADDR = "224.0.0.1";
+    /* Multicast IP port */
+    public static final int IPMCPORT = 28888;
+    /* Limit on count of received messages */
+    public static final int MAX_RXMESSAGES = 20;
+    /* The boost to the received message count when one first comes in */
+    public static final int BOOST_RXMESSAGES = (MAX_RXMESSAGES/2);
 }
+

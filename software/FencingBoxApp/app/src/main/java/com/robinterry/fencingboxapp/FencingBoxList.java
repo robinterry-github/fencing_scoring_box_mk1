@@ -4,6 +4,8 @@ import java.util.List;
 import java.util.ArrayList;
 import android.util.Log;
 
+import com.robinterry.constants.C;
+
 @SuppressWarnings("ALL")
 public class FencingBoxList {
     private static final String TAG = FencingBoxList.class.getSimpleName();
@@ -109,8 +111,40 @@ public class FencingBoxList {
             if (msg.charAt(11) != 'T') {
                 return;
             } else {
-                newBox.timeMins = msg.substring(12, 14);
-                newBox.timeSecs = msg.substring(15, 17);
+                if (C.QUANTISE_CLOCK) {
+                    int mins = Integer.parseInt(msg.substring(12, 14));
+                    int secs = Integer.parseInt(msg.substring(15, 17));
+                    /* Round the seconds to the next highest multiple of the factor -
+                       if this is 60, then increment the minutes, and set seconds to 0 */
+
+                    /* Example (quantisation factor is 5):
+                       03:00 -> 03:00
+                       02:59 -> 03:00
+                       02:58 -> 03:00
+                       02:55 -> 02:55
+                       02:54 -> 02:55
+                       01:59 -> 02:00 */
+
+                    /* The reason for quantising is due to the message loss rate for
+                       multicast over Wifi - if we count down every second, the clock
+                       count as displayed looks very irregular due to lost messages.
+                       If we quantise the clock to more than one second (say 5) then the
+                       clock count looks less irregular, which is visually more acceptable */
+                    if (secs % C.QUANTISE_FACTOR_SECS != 0) {
+                        if (secs > (60-C.QUANTISE_FACTOR_SECS)) {
+                            secs = 0;
+                            mins++;
+                        } else {
+                            secs = ((secs + C.QUANTISE_FACTOR_SECS) /
+                                    C.QUANTISE_FACTOR_SECS) * C.QUANTISE_FACTOR_SECS;
+                        }
+                    }
+                    newBox.timeMins = String.format("%02d", mins);
+                    newBox.timeSecs = String.format("%02d", secs);
+                } else {
+                    newBox.timeMins = msg.substring(14, 14);
+                    newBox.timeSecs = msg.substring(15, 17);
+                }
                 newBox.timeHund = msg.substring(18, 20);
             }
 
@@ -154,6 +188,18 @@ public class FencingBoxList {
         }
         newBox.passivityActive = false;
         newBox.passivityTimer = 0;
+
+        /* Keep a check that messages are being received from this box */
+        if (newBox.rxMessages < C.MAX_RXMESSAGES) {
+            /* If a message is received and the app was previously
+               not receiving messages, then boost the message counter */
+            if (!newBox.rxOk) {
+                newBox.rxMessages = C.BOOST_RXMESSAGES;
+            } else {
+                newBox.rxMessages++;
+            }
+            newBox.rxOk = true;
+        }
 
         /* Check that the box already exists in the list */
         for (Box b : boxList) {

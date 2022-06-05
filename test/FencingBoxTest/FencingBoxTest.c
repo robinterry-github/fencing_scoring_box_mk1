@@ -18,8 +18,9 @@
 #define RXBUFSIZE  (MAXSTRING+1) 
 #define IPMC_PORT  DEFPORT 
 #define IPMC_ADDR  "224.0.0.1"
-#define BOXES      50
-#define INTERVAL   250 
+#define BOXES      20
+#define INTERVAL   250
+#define CLKINCR    1 
 
 enum Dir
 {
@@ -49,7 +50,7 @@ struct Box
    int                  localHost;
    char                 rxBuf[RXBUFSIZE];
    int                  rxPtr, rdPtr;
-   int                  mins, secs;
+   int                  mins, secs, clock;
    int                  hitA, hitB;
    int                  scoreA, scoreB;
    int                  cardA, cardB;
@@ -476,12 +477,17 @@ void *txrxCommsThread(void *arg)
                tm2 = time(NULL);
                if (tm2 > tm1)
                {
-                  b->secs -= (tm2-tm1);
-                  if (b->secs < 0)
+                  b->clock -= (tm2-tm1);
+                  if (b->clock < 0)
                   {
-                     b->secs += 60;
-                     if (--(b->mins) < 0)
-                        b->mins = 2;
+                     b->clock += CLKINCR;
+                     b->secs -= CLKINCR;
+                     if (b->secs < 0)
+                     {
+                        b->secs += 60;
+                        if (--(b->mins) < 0)
+                           b->mins = 2;
+                     }
                   }
                   tm1 = tm2;
                }
@@ -734,7 +740,8 @@ int main(int argc, char *argv[])
          meTx[i]->dir    = DIR_TX;
          meTx[i]->piste  = 2+i;
          meTx[i]->port   = DEFPORT;
-         meTx[i]->secs   = random()%60;
+         meTx[i]->clock  = 0;
+         meTx[i]->secs   = (random()%(60/CLKINCR))*CLKINCR;
          if (meTx[i]->secs == 0)
          {
             meTx[i]->mins = 1+(random()%3);

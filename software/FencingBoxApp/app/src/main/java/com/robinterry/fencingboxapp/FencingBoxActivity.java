@@ -834,6 +834,14 @@ public class FencingBoxActivity extends AppCompatActivity
                                 if (b.changed) {
                                     box.disp.displayBox(b);
                                     b.changed = false;
+                                } else {
+                                    if (b.rxMessages > 0) {
+                                        b.rxMessages--;
+                                    } else if (b.rxOk) {
+                                        /* No messages received - highlight this */
+                                        b.rxOk = false;
+                                        box.disp.displayBox(b);
+                                    }
                                 }
                             } catch (IndexOutOfBoundsException e) {
                                 /* Do nothing */
@@ -1156,7 +1164,7 @@ public class FencingBoxActivity extends AppCompatActivity
                     box.disp.setPassivityClockColor(Color.BLACK);
                 }
             } else {
-                box.disp.displayPassivityAsPiste(box.piste);
+                box.disp.displayPassivityAsPiste(box);
             }
         } else {
             clearPassivity();

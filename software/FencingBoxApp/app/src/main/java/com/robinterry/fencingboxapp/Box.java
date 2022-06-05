@@ -18,6 +18,7 @@ public class Box {
     public String timeMins = "00";
     public String timeSecs = "00";
     public String timeHund = "00";
+    public int clock = 0;
     public String sCardA = "---";
     public String sCardB = "---";
     public Integer cardA = 0;
@@ -43,6 +44,8 @@ public class Box {
 
     public FencingBoxDisplay disp;
     public boolean changed = false;
+    public int rxMessages = 5;
+    public boolean rxOk = false;
 
     @NonNull
     public String toString() {
