@@ -2,7 +2,11 @@ package com.robinterry.fencingboxapp;
 
 import java.util.List;
 import java.util.ArrayList;
-import android.util.Log;
+
+import android.content.Context;
+import android.os.Build;
+import android.os.VibrationEffect;
+import android.os.Vibrator;
 
 import com.robinterry.constants.C;
 
@@ -13,11 +17,13 @@ public class FencingBoxList {
     private final List<Box> boxList = new ArrayList<Box>() {
         /* Override the add method to add boxes in piste order */
         public boolean add(Box b) {
-            for (Box c: boxList) {
-                int idx = boxList.indexOf(c);
-                if (c.piste > b.piste) {
-                    super.add(idx, b);
-                    return true;
+            synchronized (this) {
+                for (Box c : boxList) {
+                    int i = boxList.indexOf(c);
+                    if (c.piste > b.piste) {
+                        super.add(i, b);
+                        return true;
+                    }
                 }
             }
 
@@ -26,13 +32,15 @@ public class FencingBoxList {
             return true;
         }
     };
-    private Integer myPiste = 1;
+    private Integer myPiste = 0;
     private Box thisBox;
-    private int idx = 0;
+    private int currentBoxIndex = 0;
+    private FencingBoxActivity mainActivity;
 
-    public FencingBoxList(Box thisBox, Integer piste) {
-        this.thisBox = thisBox;
-        this.myPiste = piste;
+    public FencingBoxList(FencingBoxActivity mainActivity, Box thisBox, Integer piste) {
+        this.thisBox    = thisBox;
+        this.myPiste    = piste;
+        this.mainActivity = mainActivity;
     }
 
     public void setMyPiste(Integer piste) {
@@ -66,8 +74,8 @@ public class FencingBoxList {
             return;
         }
 
-        /* Don't process this message if this is us */
-        if (newBox.piste == myPiste) {
+        /* Don't process this message if this is us, and we're connected to the box */
+        if (newBox.piste == myPiste && mainActivity.isSerialConnected()) {
             return;
         }
         newBox.host = host;
@@ -202,15 +210,24 @@ public class FencingBoxList {
         }
 
         /* Check that the box already exists in the list */
-        for (Box b : boxList) {
-            if (b.piste.equals(newBox.piste)) {
-                int idx = boxList.indexOf(b);
-                if (idx >= 0) {
-                    if (!b.equals(newBox)) {
-                        newBox.changed = true;
-                        boxList.set(idx, newBox);
+        synchronized (this) {
+            for (Box b : boxList) {
+                if (b.piste.equals(newBox.piste)) {
+                    int i = boxList.indexOf(b);
+                    if (i >= 0) {
+                        if (!b.equals(newBox)) {
+                            newBox.changed = true;
+
+                            /* Check for a new hit on the currently-displayed box */
+                            if (isNewHit(b, newBox)) {
+                                if (i == currentBoxIndex) {
+                                    vibrateForHit();
+                                }
+                            }
+                            boxList.set(i, newBox);
+                        }
+                        return;
                     }
-                    return;
                 }
             }
         }
@@ -224,24 +241,45 @@ public class FencingBoxList {
     }
 
     public Box nextBox() throws IndexOutOfBoundsException {
-        if (idx+1 < boxList.size()) {
-            ++idx;
+        if (currentBoxIndex+1 < boxList.size()) {
+            ++currentBoxIndex;
         } else {
-            idx = 0;
+            currentBoxIndex = 0;
         }
-        return boxList.get(idx);
+        return boxList.get(currentBoxIndex);
     }
 
     public Box prevBox() throws IndexOutOfBoundsException {
-        if (idx > 0) {
-            --idx;
+        if (currentBoxIndex > 0) {
+            --currentBoxIndex;
         } else {
-            idx = boxList.size()-1;
+            currentBoxIndex = boxList.size()-1;
         }
-        return boxList.get(idx);
+        return boxList.get(currentBoxIndex);
     }
 
     public Box currentBox() throws IndexOutOfBoundsException {
-        return boxList.get(idx);
+        return boxList.get(currentBoxIndex);
+    }
+
+    private boolean isNewHit(Box oldBox, Box newBox) {
+        return ((oldBox.hitA == Box.Hit.None && newBox.hitA != Box.Hit.None)
+                ||
+                (oldBox.hitB == Box.Hit.None && newBox.hitB != Box.Hit.None)) ? true:false;
+    }
+
+    private void vibrateForHit() {
+        Vibrator v = (Vibrator) mainActivity.getSystemService(Context.VIBRATOR_SERVICE);
+
+        if (v.hasVibrator()) {
+            /* Don't vibrate if the app is connected to the fencing scoring box */
+            if (!mainActivity.isSerialConnected()) {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                    v.vibrate(VibrationEffect.createOneShot(C.VIBRATE_PERIOD, VibrationEffect.DEFAULT_AMPLITUDE));
+                } else {
+                    v.vibrate(C.VIBRATE_PERIOD);
+                }
+            }
+        }
     }
 }

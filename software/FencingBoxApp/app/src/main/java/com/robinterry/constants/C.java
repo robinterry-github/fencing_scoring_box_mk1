@@ -14,7 +14,7 @@ public class C {
     /* Low battery danger level in percent */
     public static final int BATTERY_DANGER_LEVEL = 15;
     /* Maximum number of supported pistes */
-    public static final int MAX_PISTE = 50;
+    public static final int MAX_PISTE = 20;
     /* The fling distance as a proportion of X or Y axis */
     public static final int FLING_RATIO = 5;
     /* Enables quantisation of the clock in network messages */
@@ -31,5 +31,7 @@ public class C {
     public static final int MAX_RXMESSAGES = 20;
     /* The boost to the received message count when one first comes in */
     public static final int BOOST_RXMESSAGES = (MAX_RXMESSAGES/2);
+    /* Vibrate period in milliseconds when a hit is detected */
+    public static final int VIBRATE_PERIOD = 500;
 }
 

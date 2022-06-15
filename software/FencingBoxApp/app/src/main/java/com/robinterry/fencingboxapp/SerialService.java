@@ -60,7 +60,7 @@ public class SerialService extends Service implements SerialListener {
 
     @Override
     public void onDestroy() {
-        Log.d(TAG, "service destroyed");
+        Log.i(TAG, "service destroyed");
         disconnect();
         super.onDestroy();
     }
@@ -68,7 +68,7 @@ public class SerialService extends Service implements SerialListener {
     @Nullable
     @Override
     public IBinder onBind(Intent intent) {
-        Log.d(TAG, "service bind on " + intent);
+        Log.i(TAG, "service bind on " + intent);
         return binder;
     }
 
@@ -76,14 +76,14 @@ public class SerialService extends Service implements SerialListener {
      * Api
      */
     public void connect(SerialSocket socket) throws IOException {
-        Log.d(TAG, "service connect to " + socket);
+        Log.i(TAG, "service connect to " + socket);
         socket.connect(this);
         this.socket = socket;
         connected = true;
     }
 
     public void disconnect() {
-        Log.d(TAG, "service disconnected");
+        Log.i(TAG, "service disconnected");
         connected = false; // ignore data,errors while disconnecting
         if (socket != null) {
             socket.disconnect();
@@ -99,7 +99,7 @@ public class SerialService extends Service implements SerialListener {
     }
 
     public void attach(SerialListener listener) {
-        Log.d(TAG, "service attach to listener " + listener);
+        Log.i(TAG, "service attach to listener " + listener);
         if (Looper.getMainLooper().getThread() != Thread.currentThread()) {
             throw new IllegalArgumentException("not in main thread");
         }
@@ -129,7 +129,7 @@ public class SerialService extends Service implements SerialListener {
     }
 
     public void detach() {
-        Log.d(TAG, "service detach from listener " + listener);
+        Log.i(TAG, "service detach from listener " + listener);
         if (connected) {
             // items already in event queue (posted before detach() to mainLooper) will end up in queue1
             // items occurring later, will be moved directly to queue2
@@ -142,7 +142,7 @@ public class SerialService extends Service implements SerialListener {
      * SerialListener
      */
     public void onSerialConnect() {
-        Log.d(TAG, "onSerialConnect connected " + connected);
+        Log.i(TAG, "onSerialConnect connected " + connected);
         if (connected) {
             synchronized (this) {
                 if (listener != null) {
@@ -161,7 +161,7 @@ public class SerialService extends Service implements SerialListener {
     }
 
     public void onSerialConnectError(Exception e) {
-        Log.d(TAG, "onSerialConnectError connected " + connected);
+        Log.i(TAG, "onSerialConnectError connected " + connected);
         if (connected) {
             synchronized (this) {
                 if (listener != null) {
@@ -200,22 +200,22 @@ public class SerialService extends Service implements SerialListener {
     }
 
     public void onSerialIoError(Exception e) {
-        Log.d(TAG, "onSerialIoError connected value " + connected);
+        Log.i(TAG, "onSerialIoError connected value " + connected);
         if (connected) {
             synchronized (this) {
                 if (listener != null) {
                     mainLooper.post(() -> {
                         if (listener != null) {
-                            Log.d(TAG, "onSerialIoError listener " + listener);
+                            Log.i(TAG, "onSerialIoError listener " + listener);
                             listener.onSerialIoError(e);
                         } else {
-                            Log.d(TAG, "onSerialIoError listener null");
+                            Log.e(TAG, "onSerialIoError listener null");
                             queue1.add(new QueueItem(QueueType.IoError, null, e));
                             disconnect();
                         }
                     });
                 } else {
-                    Log.d(TAG, "onSerialIoError listener null (2)");
+                    Log.e(TAG, "onSerialIoError listener null (2)");
                     queue2.add(new QueueItem(QueueType.IoError, null, e));
                     disconnect();
                 }

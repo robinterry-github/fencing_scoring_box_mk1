@@ -45,7 +45,6 @@ public class HitLightView extends View {
         super(mainActivity.getBaseContext());
         this.mainActivity = mainActivity;
 
-        Log.d(TAG, "constructor start");
         if (mainActivity.getOrientation() == Orientation.Portrait) {
             Log.i(TAG, "Orientation: portrait");
         } else {
@@ -63,7 +62,6 @@ public class HitLightView extends View {
         onTargetColor = color;
         paint.setColor(offColor);
         paint.setAntiAlias(true);
-        Log.d(TAG, "constructor end ");
     }
 
     @Override

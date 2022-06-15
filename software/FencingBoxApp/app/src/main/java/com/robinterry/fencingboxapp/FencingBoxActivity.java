@@ -4,6 +4,7 @@ import androidx.annotation.NonNull;
 import androidx.appcompat.app.ActionBar;
 import android.app.Activity;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.appcompat.widget.Toolbar;
 import androidx.constraintlayout.widget.ConstraintLayout;
 import androidx.core.view.GestureDetectorCompat;
 
@@ -118,17 +119,15 @@ public class FencingBoxActivity extends AppCompatActivity
     public static FencingBoxList boxList;
     private GestureDetectorCompat gesture;
     private Menu optionsMenu = null;
-    private boolean optionsMenuActive = false;
+    private static boolean optionsMenuActive = false;
 
     /* Settings flags */
 
     public FencingBoxActivity() {
-        Log.d(TAG, "initialising broadcast receiver");
         thisActivity = this;
         final BroadcastReceiver broadcastReceiver = new BroadcastReceiver() {
             @Override
             public void onReceive(Context context, Intent intent) {
-                Log.d(TAG, "broadcast receiver intent " + intent);
                 if (com.robinterry.fencingboxapp.Constants.INTENT_ACTION_GRANT_USB.equals(intent.getAction())) {
                     Boolean granted = intent.getBooleanExtra(UsbManager.EXTRA_PERMISSION_GRANTED, false);
                     Log.i(TAG, "GRANT_USB intent " + granted + " received, trying to connect");
@@ -162,9 +161,7 @@ public class FencingBoxActivity extends AppCompatActivity
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
-        Log.d(TAG, "onCreate start");
         super.onCreate(savedInstanceState);
-
         try {
             bc = new NetworkBroadcast(this);
 
@@ -199,7 +196,7 @@ public class FencingBoxActivity extends AppCompatActivity
         box.disp = new FencingBoxDisplay(this, box, layout, orientation, portBinding, landBinding);
 
         /* List of other fencing boxes on the network */
-        boxList = new FencingBoxList(box, box.piste);
+        boxList = new FencingBoxList(this, box, box.piste);
 
         // Set the content view from the view binding for the new orientation
         setContentView(mainBinding);
@@ -250,6 +247,11 @@ public class FencingBoxActivity extends AppCompatActivity
         UiModeManager uiModeMgr = (UiModeManager) getSystemService(UI_MODE_SERVICE);
         if (uiModeMgr.getCurrentModeType() == Configuration.UI_MODE_TYPE_TELEVISION) {
             platform = Platform.TV;
+
+            /* The 'Select' button on the Weapon Select activity
+               is invisible when the app is run on an Android TV platform */
+            WeaponSelect.setButtonInvisible(true);
+
             /* Keypress handler when it's a TV platform */
             keyHandler = new FencingBoxKeys() {
                 @Override
@@ -263,45 +265,36 @@ public class FencingBoxActivity extends AppCompatActivity
                         /* When the fencing scoring box is not connected */
                         switch (c) {
                             case 'D': /* Down */
-                                break;
-                            case 'L': /* Left */
-                                break;
                             case 'U': /* Up */
-                                break;
-                            case 'R': /* Right */
-                                break;
-                            case 'K': /* OK, Play/Pause*/
-                                if (optionsMenuActive) {
-                                    /* Select the item */
-                                    optionsMenuActive = false;
+                            case 'G': /* Guide */
+                            case 'M': /* Menu */
+                            case 'K': /* OK, Play/Pause */
+                                if (!optionsMenuActive) {
+                                    try {
+                                        /* Show the menu */
+                                        openOptionsMenu();
+                                        onOptionsItemSelected(optionsMenu.findItem(R.id.piste_select));
+                                        optionsMenuActive = true;
+                                    } catch (Exception e) {
+                                        /* Ignore if the options menu has not been created yet */
+                                    }
                                 }
-                                break;
-                            case '*': /* Channel up, Page up */
-                                break;
-                            case '$': /* Channel down */
-                                break;
-                            case '#': /* Page down, Fast forward */
                                 break;
                             case 'B': /* Back */
                                 if (optionsMenuActive) {
                                     /* Hide the menu */
+                                    getSupportActionBar().closeOptionsMenu();
                                     optionsMenuActive = false;
                                 }
                                 break;
-                            case 'C': /* Record */
-                                break;
+                            case 'L': /* Left */
+                            case 'R': /* Right */
+                            case '*': /* Search */
+                            case 'u': /* Page up, Channel up */
+                            case 'd': /* Page down, Channel down */
                             case 'W': /* Rewind */
-                                break;
-                            case 'G': /* Guide */
-                                break;
-                            case 'M': /* Menu */
-                                try {
-                                    onOptionsItemSelected(optionsMenu.findItem(R.id.piste_select));
-                                    optionsMenuActive = true;
-                                } catch (Exception e) {
-                                    /* Ignore if the options menu has not been created yet */
-                                }
-                                break;
+                            case 'F': /* Fast forward */
+                            case 'C': /* Record */
                             case '0': /* Numeric keys */
                             case '1':
                             case '2':
@@ -312,7 +305,6 @@ public class FencingBoxActivity extends AppCompatActivity
                             case '7':
                             case '8':
                             case '9':
-                                break;
                             default:
                                 break;
                         }
@@ -320,6 +312,7 @@ public class FencingBoxActivity extends AppCompatActivity
                     return "";
                 }
             };
+            Log.i(TAG, "TV key handler created " + keyHandler);
         } else {
             platform = Platform.Phone;
             /* Keypress handler when it's a phone platform */
@@ -333,17 +326,60 @@ public class FencingBoxActivity extends AppCompatActivity
                         return msg;
                     } else {
                         /* When the fencing scoring box is not connected */
+                        switch (c) {
+                            case 'D': /* Down */
+                            case 'U': /* Up */
+                            case 'G': /* Guide */
+                            case 'M': /* Menu */
+                            case 'K': /* OK, Play/Pause */
+                                if (!optionsMenuActive) {
+                                    try {
+                                        /* Show the menu */
+                                        openOptionsMenu();
+                                        onOptionsItemSelected(optionsMenu.findItem(R.id.piste_select));
+                                        optionsMenuActive = true;
+                                    } catch (Exception e) {
+                                        /* Ignore if the options menu has not been created yet */
+                                    }
+                                }
+                                break;
+                            case 'B': /* Back */
+                                if (optionsMenuActive) {
+                                    /* Hide the menu */
+                                    getSupportActionBar().closeOptionsMenu();
+                                    optionsMenuActive = false;
+                                }
+                                break;
+                            case 'L': /* Left */
+                            case 'R': /* Right */
+                            case '*': /* Search */
+                            case 'u': /* Page up, Channel up */
+                            case 'd': /* Page down, Channel down */
+                            case 'W': /* Rewind */
+                            case 'F': /* Fast forward */
+                            case 'C': /* Record */
+                            case '0': /* Numeric keys */
+                            case '1':
+                            case '2':
+                            case '3':
+                            case '4':
+                            case '5':
+                            case '6':
+                            case '7':
+                            case '8':
+                            case '9':
+                            default:
+                                break;
+                        }
                     }
                     return "";
                 }
             };
         }
-        Log.d(TAG, "onCreate end");
     }
 
     @Override
     protected void onStart() {
-        Log.d(TAG, "onStart start");
         super.onStart();
 
         /* Start RX and TX broadcast threads */
@@ -382,33 +418,27 @@ public class FencingBoxActivity extends AppCompatActivity
             startTxFull();
             txFullStarted = true;
         }
-        Log.d(TAG, "onStart end");
     }
 
     @Override
     protected void onStop() {
-        Log.d(TAG, "onStop start");
         super.onStop();
         displayPaused = true;
         sound.soundOff(true);
-        Log.d(TAG, "onStop end");
     }
 
     @Override
     public void onWindowFocusChanged(boolean hasFocus) {
-        Log.d(TAG, "onWindowFocusChanged start hasFocus " + hasFocus);
         super.onWindowFocusChanged(hasFocus);
         if (hasFocus) {
             box.disp.hideUI();
         } else {
             box.disp.showUI();
         }
-        Log.d(TAG, "onWindowFocusChanged end");
     }
 
     @Override
     public void onDestroy() {
-        Log.d(TAG, "onDestroy start");
         super.onDestroy();
         if (serialConnected != Connected.False) {
             disconnect(true);
@@ -420,23 +450,20 @@ public class FencingBoxActivity extends AppCompatActivity
         try {
             wifiLock.release();
         } catch (Exception e) {
+            /* Ignore */
         }
-        Log.d(TAG, "onDestroy end");
     }
 
     @Override
     protected void onNewIntent(Intent intent) {
-        Log.d(TAG, "onNewIntent start");
         super.onNewIntent(intent);
         if ("android.hardware.usb.action.USB_DEVICE_ATTACHED".equals(intent.getAction())) {
             Log.i(TAG, "USB device attached");
         }
-        Log.d(TAG, "onNewIntent end");
     }
 
     @Override
     protected void onResume() {
-        Log.d(TAG, "onResume start");
         super.onResume();
         displayPaused = false;
         if (!isResumed) {
@@ -450,22 +477,18 @@ public class FencingBoxActivity extends AppCompatActivity
             box.disp.hideUI();
         }
         sound.soundOff();
-        Log.d(TAG, "onResume end");
     }
 
     @Override
     protected void onPause() {
-        Log.d(TAG, "onPause start");
         super.onPause();
         displayPaused = true;
         getWindow().clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
         sound.soundOff(true);
-        Log.d(TAG, "onPause end");
     }
 
     @Override
     protected void onRestart() {
-        Log.d(TAG, "onRestart start");
         super.onRestart();
         box.disp.setupText(box, orientation);
         setHitLights();
@@ -476,12 +499,10 @@ public class FencingBoxActivity extends AppCompatActivity
         setPassivity();
         setPassivityCard();
         sound.soundOff();
-        Log.d(TAG, "onRestart end");
     }
 
     @Override
     public void onConfigurationChanged(Configuration newConf) {
-        Log.d(TAG, "onConfigurationChanged start");
         super.onConfigurationChanged(newConf);
         /* Checks the orientation of the screen */
         orientation = getCurrentOrientation();
@@ -524,12 +545,10 @@ public class FencingBoxActivity extends AppCompatActivity
             setPassivity();
             setPassivityCard();
         }
-        Log.d(TAG, "onConfigurationChanged end");
     }
 
     @Override
     public boolean onTouchEvent(MotionEvent event) {
-        Log.d(TAG, "onTouchEvent start");
         gesture.onTouchEvent(event);
         return super.onTouchEvent(event);
     }
@@ -540,89 +559,145 @@ public class FencingBoxActivity extends AppCompatActivity
         switch (keyCode) {
             case KeyEvent.KEYCODE_DPAD_DOWN:
             case KeyEvent.KEYCODE_D:
-                keyHandler.addKey('D');
+                synchronized (keyHandler) {
+                    keyHandler.addKey('D');
+                }
+                return true;
+            case KeyEvent.KEYCODE_CHANNEL_DOWN:
+            case KeyEvent.KEYCODE_PAGE_DOWN:
+                synchronized (keyHandler) {
+                    keyHandler.addKey('d');
+                }
                 return true;
             case KeyEvent.KEYCODE_DPAD_LEFT:
             case KeyEvent.KEYCODE_L:
-                keyHandler.addKey('L');
+                synchronized (keyHandler) {
+                    keyHandler.addKey('L');
+                }
                 return true;
             case KeyEvent.KEYCODE_DPAD_UP:
             case KeyEvent.KEYCODE_U:
-                keyHandler.addKey('U');
-                return true;
-            case KeyEvent.KEYCODE_DPAD_RIGHT:
-            case KeyEvent.KEYCODE_R:
-                keyHandler.addKey('R');
-                return true;
-            case KeyEvent.KEYCODE_DPAD_CENTER:
-            case KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE:
-            case KeyEvent.KEYCODE_ENTER:
-            case KeyEvent.KEYCODE_NUMPAD_ENTER:
-            case KeyEvent.KEYCODE_K:
-                keyHandler.addKey('K');
+                synchronized (keyHandler) {
+                    keyHandler.addKey('U');
+                }
                 return true;
             case KeyEvent.KEYCODE_CHANNEL_UP:
             case KeyEvent.KEYCODE_PAGE_UP:
+                synchronized (keyHandler) {
+                    keyHandler.addKey('u');
+                }
+                return true;
+            case KeyEvent.KEYCODE_DPAD_RIGHT:
+            case KeyEvent.KEYCODE_R:
+                synchronized (keyHandler) {
+                    keyHandler.addKey('R');
+                }
+                return true;
+            case KeyEvent.KEYCODE_DPAD_CENTER:
+            case KeyEvent.KEYCODE_ENTER:
+            case KeyEvent.KEYCODE_NUMPAD_ENTER:
+            case KeyEvent.KEYCODE_K:
+                synchronized (keyHandler) {
+                    keyHandler.addKey('K');
+                }
+                return true;
+            case KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE:
+                synchronized (keyHandler) {
+                    keyHandler.addKey('P');
+                }
+                return true;
             case KeyEvent.KEYCODE_STAR:
             case KeyEvent.KEYCODE_SEARCH:
-                keyHandler.addKey('*');
+                synchronized (keyHandler) {
+                    keyHandler.addKey('*');
+                }
                 return true;
-            case KeyEvent.KEYCODE_CHANNEL_DOWN:
-                keyHandler.addKey('$');
-                return true;
-            case KeyEvent.KEYCODE_MEDIA_FAST_FORWARD:
-            case KeyEvent.KEYCODE_PAGE_DOWN:
             case KeyEvent.KEYCODE_POUND:
-                keyHandler.addKey('#');
+                synchronized (keyHandler) {
+                    keyHandler.addKey('#');
+                }
                 return true;
             case KeyEvent.KEYCODE_BACK:
             case KeyEvent.KEYCODE_B:
-                keyHandler.addKey('B');
+                synchronized (keyHandler) {
+                    keyHandler.addKey('B');
+                }
                 return true;
             case KeyEvent.KEYCODE_VOLUME_MUTE:
                 soundMute = (soundMute == true) ? false : true;
                 return super.onKeyUp(keyCode, event);
             case KeyEvent.KEYCODE_MEDIA_RECORD:
-                keyHandler.addKey('C');
+                synchronized (keyHandler) {
+                    keyHandler.addKey('C');
+                }
                 return true;
             case KeyEvent.KEYCODE_MEDIA_REWIND:
-                keyHandler.addKey('W');
+                synchronized (keyHandler) {
+                    keyHandler.addKey('W');
+                }
+                return true;
+            case KeyEvent.KEYCODE_MEDIA_FAST_FORWARD:
+                synchronized (keyHandler) {
+                    keyHandler.addKey('F');
+                }
                 return true;
             case KeyEvent.KEYCODE_GUIDE:
                 keyHandler.addKey('G');
                 return true;
             case KeyEvent.KEYCODE_MENU:
-                keyHandler.addKey('M');
+                synchronized (keyHandler) {
+                    keyHandler.addKey('M');
+                }
                 return true;
             case KeyEvent.KEYCODE_0:
-                keyHandler.addKey('0');
+                synchronized (keyHandler) {
+                    keyHandler.addKey('0');
+                }
                 return true;
             case KeyEvent.KEYCODE_1:
-                keyHandler.addKey('1');
+                synchronized (keyHandler) {
+                    keyHandler.addKey('1');
+                }
                 return true;
             case KeyEvent.KEYCODE_2:
-                keyHandler.addKey('2');
+                synchronized (keyHandler) {
+                    keyHandler.addKey('2');
+                }
                 return true;
             case KeyEvent.KEYCODE_3:
-                keyHandler.addKey('3');
+                synchronized (keyHandler) {
+                    keyHandler.addKey('3');
+                }
                 return true;
             case KeyEvent.KEYCODE_4:
-                keyHandler.addKey('4');
+                synchronized (keyHandler) {
+                    keyHandler.addKey('4');
+                }
                 return true;
             case KeyEvent.KEYCODE_5:
-                keyHandler.addKey('5');
+                synchronized (keyHandler) {
+                    keyHandler.addKey('5');
+                }
                 return true;
             case KeyEvent.KEYCODE_6:
-                keyHandler.addKey('6');
+                synchronized (keyHandler) {
+                    keyHandler.addKey('6');
+                }
                 return true;
             case KeyEvent.KEYCODE_7:
-                keyHandler.addKey('7');
+                synchronized (keyHandler) {
+                    keyHandler.addKey('7');
+                }
                 return true;
             case KeyEvent.KEYCODE_8:
-                keyHandler.addKey('8');
+                synchronized (keyHandler) {
+                    keyHandler.addKey('8');
+                }
                 return true;
             case KeyEvent.KEYCODE_9:
-                keyHandler.addKey('9');
+                synchronized (keyHandler) {
+                    keyHandler.addKey('9');
+                }
                 return true;
             default:
                 Log.i(TAG, "unrecognised keycode " + keyCode);
@@ -645,13 +720,16 @@ public class FencingBoxActivity extends AppCompatActivity
     @Override
     public boolean onPrepareOptionsMenu(Menu menu) {
         /* Change the options menu to show "Show demo" or "Clear demo" */
+
         MenuItem item = menu.findItem(R.id.menu_demo);
         if (box.isModeDemo() || box.isModeNone()) {
+            Log.i(TAG, "onPrepareOptionsMenu visible " + menu);
             item.setVisible(true);
             item.setEnabled(true);
             item.setTitle(
                     box.isModeDemo() ? R.string.demo_off_label : R.string.demo_on_label);
         } else {
+            Log.i(TAG, "onPrepareOptionsMenu invisible " + menu);
             item.setVisible(false);
             item.setEnabled(false);
         }
@@ -663,15 +741,19 @@ public class FencingBoxActivity extends AppCompatActivity
         switch (item.getItemId()) {
             case R.id.menu_weapon_select:
                 /* Open the Weapon Select activity */
+                optionsMenu.close();
                 Intent weaponSelectIntent = new Intent("com.robinterry.fencingboxapp.WEAPON_SELECT");
                 weaponSelectIntent.addCategory("android.intent.category.DEFAULT");
+                weaponSelectIntent.putExtra("weapon", box.weapon.toString());
                 startActivityForResult(weaponSelectIntent, WeaponSelect.ACTIVITY_CODE);
                 break;
 
             case R.id.menu_piste_select:
                 /* Open the Piste Select activity */
+                optionsMenu.close();
                 Intent pisteSelectIntent = new Intent("com.robinterry.fencingboxapp.PISTE_SELECT");
                 pisteSelectIntent.addCategory("android.intent.category.DEFAULT");
+                pisteSelectIntent.putExtra("piste", box.piste);
                 startActivityForResult(pisteSelectIntent, PisteSelect.ACTIVITY_CODE);
                 break;
 
@@ -723,17 +805,37 @@ public class FencingBoxActivity extends AppCompatActivity
                 synchronized (bc) {
                     switch (wp) {
                         case "FOIL":
-                            box.changeWeapon = Box.Weapon.Foil;
+                            box.weapon = box.changeWeapon = Box.Weapon.Foil;
                             break;
                         case "EPEE":
-                            box.changeWeapon = Box.Weapon.Epee;
+                            box.weapon = box.changeWeapon = Box.Weapon.Epee;
                             break;
                         case "SABRE":
-                            box.changeWeapon = Box.Weapon.Sabre;
+                            box.weapon = box.changeWeapon = Box.Weapon.Sabre;
                             break;
                     }
                 }
             }
+        }
+    }
+
+    @Override
+    public void openOptionsMenu() {
+        final View view = getWindow().getDecorView().findViewById(R.id.action_bar);
+        if (view instanceof Toolbar) {
+            final Toolbar toolbar = (Toolbar) view;
+            toolbar.showOverflowMenu();
+            optionsMenuActive = true;
+        }
+    }
+
+    @Override
+    public void closeOptionsMenu() {
+        final View view = getWindow().getDecorView().findViewById(R.id.action_bar);
+        if (view instanceof Toolbar) {
+            final Toolbar toolbar = (Toolbar) view;
+            toolbar.hideOverflowMenu();
+            optionsMenuActive = false;
         }
     }
 
@@ -807,6 +909,15 @@ public class FencingBoxActivity extends AppCompatActivity
                             box.disp.blankBatteryLevel();
                             box.disp.setVolumeMuted(false);
                             box.disp.setOnline(false);
+                        }
+                        if (!isSerialConnected()) {
+                            /* If we won't get a poll, then just read the keys */
+                            synchronized (keyHandler) {
+                                if (keyHandler.keyPresent()) {
+                                    Character key = keyHandler.getKey();
+                                    keyHandler.processKey(key);
+                                }
+                            }
                         }
                     }
                 });
@@ -1447,7 +1558,6 @@ public class FencingBoxActivity extends AppCompatActivity
             case "TF":
                 Log.i(TAG, "weapon: foil");
                 box.weapon = box.changeWeapon = Box.Weapon.Foil;
-                WeaponSelect.setWeapon(box.weapon);
                 setScore();
                 setClock();
                 setCard();
@@ -1457,7 +1567,6 @@ public class FencingBoxActivity extends AppCompatActivity
             case "TE":
                 Log.i(TAG, "weapon: epee");
                 box.weapon = box.changeWeapon = Box.Weapon.Epee;
-                WeaponSelect.setWeapon(box.weapon);
                 setScore();
                 setClock();
                 setCard();
@@ -1467,7 +1576,6 @@ public class FencingBoxActivity extends AppCompatActivity
             case "TS":
                 Log.i(TAG, "weapon: sabre");
                 box.weapon = box.changeWeapon = Box.Weapon.Sabre;
-                WeaponSelect.setWeapon(box.weapon);
                 setScore();
                 setClock();
                 setCard();
@@ -1634,9 +1742,11 @@ public class FencingBoxActivity extends AppCompatActivity
                     break;
             }
         } else {
-            while (keyHandler.keyPresent()) {
-                Character key = keyHandler.getKey();
-                msg = keyHandler.processKey(key);
+            synchronized (keyHandler) {
+                while (keyHandler.keyPresent()) {
+                    Character key = keyHandler.getKey();
+                    msg = keyHandler.processKey(key);
+                }
             }
         }
 

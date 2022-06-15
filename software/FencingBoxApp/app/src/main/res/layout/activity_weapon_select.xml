@@ -5,7 +5,7 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="#000000"
-    tools:context=".PisteSelect">
+    tools:context=".WeaponSelect">
 
     <Button
         android:id="@+id/weapon_select_button"
@@ -44,8 +44,8 @@
 
     <RadioGroup
         android:id="@+id/weapon_select_group"
-        android:layout_width="114dp"
-        android:layout_height="186dp"
+        android:layout_width="130dp"
+        android:layout_height="223dp"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
@@ -62,7 +62,7 @@
         <RadioButton
             android:id="@+id/weapon_select_epee"
             android:layout_width="match_parent"
-            android:layout_height="63dp"
+            android:layout_height="61dp"
             android:buttonTint="@color/ColorPrimary"
             android:text="@string/weapon_epee"
             android:textColor="@color/white" />
@@ -70,7 +70,7 @@
         <RadioButton
             android:id="@+id/weapon_select_sabre"
             android:layout_width="match_parent"
-            android:layout_height="63dp"
+            android:layout_height="61dp"
             android:buttonTint="@color/ColorPrimary"
             android:text="@string/weapon_sabre"
             android:textColor="@color/white" />

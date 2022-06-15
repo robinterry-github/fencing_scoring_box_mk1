@@ -53,6 +53,7 @@ public class NetworkBroadcast {
 
     public void tryConnect() throws IOException {
         if (!networkOnline) {
+            Log.i(TAG, "Trying to connect");
             /* Try opening a multicast socket first */
             try {
                 openMulticastSocket();

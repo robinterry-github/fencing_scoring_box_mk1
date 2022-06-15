@@ -9,7 +9,7 @@ public class Box {
     public enum Mode {None, Display, Sparring, Bout, Stopwatch, Demo}
     public Mode mode = Mode.None;
     private Mode oldMode = Mode.None;
-    public Integer piste = 0;
+    public Integer piste = 1;
     public Hit hitA = Hit.None;
     public Hit hitB = Hit.None;
     public String host = null;
@@ -35,7 +35,7 @@ public class Box {
             new FencingBoxActivity.PassivityCard[] {FencingBoxActivity.PassivityCard.None, FencingBoxActivity.PassivityCard.None};
 
     public Box() {
-        this.piste = 0;
+        this.piste = 1;
     }
 
     public Box(int piste) {

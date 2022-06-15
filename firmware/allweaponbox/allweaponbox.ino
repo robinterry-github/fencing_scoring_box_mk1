@@ -2321,7 +2321,7 @@ void transIR(unsigned long key)
      
   case 0xFF6897: // *
   case '*':
-  case '$': // Repeater only
+  case 'u': // Repeater only
      if (priorityInactive())
      {
         // In SPARRING mode? Go into BOUT mode
@@ -2329,7 +2329,7 @@ void transIR(unsigned long key)
         {
            // Go into BOUT mode
            keyClick();
-           if (key == '$')
+           if (key == 'd')
            {
               startStopWatch();
            }
@@ -2544,6 +2544,7 @@ void transIR(unsigned long key)
      break;
   case 0xFF38C7: // OK
   case 'K': case 'k':
+  case 'P': // Repeater only
      if (priorityInactive())
      {
 #ifdef ENABLE_STOPWATCH
@@ -2855,7 +2856,7 @@ void transIR(unsigned long key)
 #endif
      break;
   case 0xFF4AB5: // DOWN
-  case 'D': case 'd':
+  case 'D':
      if (priorityInactive())
      {
         if (inBoutOrSpar())
@@ -2949,7 +2950,7 @@ void transIR(unsigned long key)
 #endif
      break;
   case 0xFF9867: // 0
-  case '0':
+  case '0': case 'G': // Repeater only
      if (priorityInactive())
      {
         if (inBoutOrBreak())
@@ -2974,7 +2975,7 @@ void transIR(unsigned long key)
 #endif
      break;
   case 0xFF18E7: // UP
-  case 'U': case'u':
+  case 'U':
      if (priorityInactive())
      {
         if (inBoutOrSpar())
@@ -3068,7 +3069,7 @@ void transIR(unsigned long key)
 #endif
      break;
   case 0xFFB04F: // #
-  case '#':
+  case '#': case 'F': case 'd':
 #ifdef ENABLE_STOPWATCH
      if (inStopWatch())
      {

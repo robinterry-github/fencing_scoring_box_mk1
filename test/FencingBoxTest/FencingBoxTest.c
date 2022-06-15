@@ -18,9 +18,11 @@
 #define RXBUFSIZE  (MAXSTRING+1) 
 #define IPMC_PORT  DEFPORT 
 #define IPMC_ADDR  "224.0.0.1"
-#define BOXES      20
+#define PISTES     20
 #define INTERVAL   250
-#define CLKINCR    1 
+#define CLKINCR    1
+#define HITTIMER   5
+#define HITBLOCK   5
 
 enum Dir
 {
@@ -35,7 +37,9 @@ int  noBCast = 1;
 int  noMCast = 0;
 int  verbose = 0;
 char ipAddr[IASIZE];
-int  pistes = BOXES;
+int  pistes = PISTES;
+int  cards = 0;
+int  allTx = 0;
 
 struct Box
 {
@@ -50,7 +54,7 @@ struct Box
    int                  localHost;
    char                 rxBuf[RXBUFSIZE];
    int                  rxPtr, rdPtr;
-   int                  mins, secs, clock;
+   int                  mins, secs, clock, hitTimer, hitBlock;
    int                  hitA, hitB;
    int                  scoreA, scoreB;
    int                  cardA, cardB;
@@ -58,7 +62,7 @@ struct Box
    struct tm            gmt;
 };
 
-struct Box boxList[BOXES+1];
+struct Box boxList[PISTES+1];
 struct Box *me, *meTx[3], *meRx;
 int boxListIdx;
 pthread_t bcThread;
@@ -481,12 +485,91 @@ void *txrxCommsThread(void *arg)
                   if (b->clock < 0)
                   {
                      b->clock += CLKINCR;
-                     b->secs -= CLKINCR;
-                     if (b->secs < 0)
+                     if (b->hitTimer > 0)
                      {
-                        b->secs += 60;
-                        if (--(b->mins) < 0)
-                           b->mins = 2;
+                        b->hitTimer -= CLKINCR;
+                        if (b->hitTimer <= 0)
+                        {
+                           b->hitTimer = b->hitA = b->hitB = 0;
+                           b->hitBlock = HITBLOCK;
+                        }
+                     }
+                     else
+                     {
+                        if (b->hitBlock > 0)
+                        {
+                           b->hitBlock -= CLKINCR;
+                           if (b->hitBlock < 0)
+                           {
+                              b->hitBlock = 0;
+                           }
+                        }
+                        b->secs -= CLKINCR;
+                        if (b->secs < 0)
+                        {
+                           b->secs += 60;
+
+                           /* Has the timer expired? */
+                           if (--(b->mins) < 0)
+                           {
+                              /* Restart the timer */
+                              b->mins = 2;
+
+                              /* Reset hits and scores */
+                              b->hitA     = b->hitB     = 0;
+                              b->scoreA   = b->scoreB   = 0;
+                              b->hitTimer = b->hitBlock = 0;
+                           }
+                        }
+                     }
+
+                     /* Hit? */
+                     if (
+                           (b->mins == 0 && b->secs < 30)
+                           ||
+                           (b->mins == 2 && b->secs > 30)
+                           ||
+                           (b->hitTimer > 0)
+                           ||
+                           (b->hitBlock > 0))
+                     {
+                        /* No hit allowed */
+                     }
+                     else if (random()%15 == 0)
+                     {
+                        b->hitTimer = HITTIMER;
+
+                        /* Trigger a hit */
+                        switch (random()%3)
+                        {
+                           case 0:
+                              if (b->scoreA < 15) 
+                              {
+                                 b->hitA = 1;
+                                 b->hitB = 0;
+                                 b->scoreA++;
+                              }
+                              break;
+
+                           case 1:
+                              if (b->scoreB < 15) 
+                              {
+                                 b->hitA = 0;
+                                 b->hitB = 1;
+                                 b->scoreB++;
+                              }
+                              break;
+
+                           case 2:
+                              if (b->scoreA < 14 && b->scoreB < 14)
+                              {
+                                 b->hitA = 1;
+                                 b->hitB = 1;
+                                 b->scoreA++;
+                                 b->scoreB++;
+                              }
+                              break;
+                        }
                      }
                   }
                   tm1 = tm2;
@@ -601,7 +684,9 @@ void printUsage(void)
    printf("-bc        enable broadcast of IP messages\n");
    printf("-nomc      disable IP multicast\n");
    printf("-verbose   verbose operation\n");
-   printf("-pistes    number of pistes (between 1 and %d)\n", BOXES);
+   printf("-pistes    number of pistes (between 1 and %d)\n", PISTES);
+   printf("-cards     display a random setting for penalty cards and short-circuit indication\n");
+   printf("-alltx     all pistes are transmit only - there is no receiving piste\n");
    printf("\n");
 }
 
@@ -617,6 +702,7 @@ int main(int argc, char *argv[])
    struct in_addr ip, bc;
    struct ip_mreq mc;
    time_t tm;
+   int offset = 0;
 
    broadcastPort = DEFPORT;
 
@@ -656,6 +742,14 @@ int main(int argc, char *argv[])
       {
          verbose = 1;
       }
+      else if (!strcmp(argv[i], "-cards"))
+      {
+         cards = 1;
+      }
+      else if (!strcmp(argv[i], "-alltx"))
+      {
+         allTx = 1;
+      } 
       else if (!strcmp(argv[i], "-pistes"))
       {
          if (++i >= argc)
@@ -664,7 +758,7 @@ int main(int argc, char *argv[])
 	         printUsage();
 	         return 1;
 	      }
-	      else if ((pistes = atoi(argv[i])) < 1 || pistes > BOXES)
+	      else if ((pistes = atoi(argv[i])) < 1 || pistes > PISTES)
 	      {
 	         printf("ERROR: invalid argument to '-pistes'\n");
 	         printUsage();
@@ -729,16 +823,25 @@ int main(int argc, char *argv[])
       time(&tm);
       srandom((unsigned int) tm);
 
-      meRx = &boxList[0];
+      if (allTx)
+      {
+         meRx = NULL;
+         offset = 0;
+      }
+      else
+      {
+         meRx = &boxList[0];
+         offset = 1;
+      }
       for (i = 0; i < pistes; i++)
       {
-         meTx[i] = &boxList[1+i];
+         meTx[i] = &boxList[offset+i];
       }
       boxListIdx = pistes+1;
       for (i = 0; i < pistes; i++)
       {
          meTx[i]->dir    = DIR_TX;
-         meTx[i]->piste  = 2+i;
+         meTx[i]->piste  = 1+offset+i;
          meTx[i]->port   = DEFPORT;
          meTx[i]->clock  = 0;
          meTx[i]->secs   = (random()%(60/CLKINCR))*CLKINCR;
@@ -750,40 +853,26 @@ int main(int argc, char *argv[])
          {
             meTx[i]->mins = random()%3;
          }
-         switch (random()%6)
+         meTx[i]->hitA     = 0;
+         meTx[i]->hitB     = 0;
+         meTx[i]->hitTimer = 0;
+         meTx[i]->hitBlock = 0;
+         meTx[i]->scoreA   = 0; 
+         meTx[i]->scoreB   = 0;
+         if (cards)
          {
-            case 0:
-            case 2:
-            case 4:
-               meTx[i]->hitA = 0;
-               meTx[i]->hitB = 0;
-               break;
-
-            case 1:
-               meTx[i]->hitA = 1;
-               meTx[i]->hitB = 0;
-               break;
-
-            case 3:
-               meTx[i]->hitA = 0;
-               meTx[i]->hitB = 1;
-               break;
-
-            case 5:
-               meTx[i]->hitA = 1;
-               meTx[i]->hitB = 1;
-               break;
+            meTx[i]->cardA    = random()%8;
+            meTx[i]->cardB    = random()%8;
          }
-         meTx[i]->scoreA = random()%16;
-         meTx[i]->scoreB = random()%16;
-         meTx[i]->cardA  = random()%8;
-         meTx[i]->cardB  = random()%8;
          pthread_create(&meTx[i]->thread, NULL, txrxCommsThread, meTx[i]);
       }
-      meRx->dir = DIR_RX;
-      meRx->port = DEFPORT;
-      meRx->piste = 20;
-      pthread_create(&meRx->thread, NULL, txrxCommsThread, meRx);
+      if (!allTx)
+      {
+         meRx->dir = DIR_RX;
+         meRx->port = DEFPORT;
+         meRx->piste = 20;
+         pthread_create(&meRx->thread, NULL, txrxCommsThread, meRx);
+      }
    }
    else
    {
