@@ -18,7 +18,7 @@
 #define RXBUFSIZE  (MAXSTRING+1) 
 #define IPMC_PORT  DEFPORT 
 #define IPMC_ADDR  "224.0.0.1"
-#define PISTES     20
+#define PISTES     30
 #define INTERVAL   250
 #define CLKINCR    1
 #define HITTIMER   5

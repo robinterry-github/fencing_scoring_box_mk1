@@ -14,7 +14,7 @@ public class C {
     /* Low battery danger level in percent */
     public static final int BATTERY_DANGER_LEVEL = 15;
     /* Maximum number of supported pistes */
-    public static final int MAX_PISTE = 20;
+    public static final int MAX_PISTE = 30;
     /* The fling distance as a proportion of X or Y axis */
     public static final int FLING_RATIO = 5;
     /* Enables quantisation of the clock in network messages */
