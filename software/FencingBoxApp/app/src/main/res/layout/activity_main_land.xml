@@ -12,14 +12,18 @@
         android:id="@+id/icon_mute_l"
         android:layout_width="19dp"
         android:layout_height="19dp"
-        android:layout_marginStart="148dp"
+        android:layout_marginStart="252dp"
+        android:layout_marginTop="3dp"
+        android:layout_marginEnd="80dp"
         android:layout_marginBottom="196dp"
         android:background="#000000"
         android:contentDescription="@string/icon_mute_desc"
         android:visibility="invisible"
         app:layout_constraintBottom_toTopOf="@+id/guideline5"
+        app:layout_constraintEnd_toStartOf="@+id/icon_vibrate_l"
         app:layout_constraintStart_toStartOf="@+id/guideline"
         app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintVertical_bias="0.0"
         app:srcCompat="@android:drawable/ic_lock_silent_mode" />
 
     <TextView
@@ -185,17 +189,19 @@
         android:id="@+id/icon_online_l"
         android:layout_width="19dp"
         android:layout_height="19dp"
-        android:layout_marginEnd="148dp"
+        android:layout_marginStart="80dp"
+        android:layout_marginTop="3dp"
+        android:layout_marginEnd="260dp"
         android:layout_marginBottom="196dp"
         android:background="#000000"
         android:contentDescription="@string/icon_online_desc"
         android:visibility="invisible"
         app:layout_constraintBottom_toTopOf="@+id/guideline5"
         app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintHorizontal_bias="1.0"
-        app:layout_constraintStart_toEndOf="@+id/icon_mute_l"
+        app:layout_constraintHorizontal_bias="0.516"
+        app:layout_constraintStart_toEndOf="@+id/icon_vibrate_l"
         app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintVertical_bias="1.0"
+        app:layout_constraintVertical_bias="0.0"
         app:srcCompat="@android:drawable/ic_menu_share" />
 
     <ProgressBar
@@ -207,9 +213,19 @@
         android:visibility="invisible"
         app:layout_constraintBottom_toTopOf="@+id/guideline5"
         app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintHorizontal_bias="0.484"
         app:layout_constraintStart_toStartOf="@+id/guideline"
         app:layout_constraintTop_toTopOf="@+id/guideline3"
-        app:layout_constraintVertical_bias="0.958" />
+        app:layout_constraintVertical_bias="0.952" />
+
+    <ImageView
+        android:id="@+id/icon_vibrate_l"
+        android:layout_width="19dp"
+        android:layout_height="19dp"
+        android:layout_marginStart="80dp"
+        android:layout_marginTop="3dp"
+        android:visibility="invisible"
+        app:layout_constraintStart_toEndOf="@+id/icon_mute_l"
+        app:layout_constraintTop_toTopOf="parent"
+        app:srcCompat="@drawable/ic_vibrate" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>

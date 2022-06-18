@@ -2,7 +2,7 @@ package com.robinterry.constants;
 
 /* Class of configuration constants */
 
-public class C {
+public final class C {
     /* If true, then when the serial is lost, the app switches to display mode */
     public static final boolean DISPLAY_AFTER_CONNECT_ERROR = false;
     /* USB port number */

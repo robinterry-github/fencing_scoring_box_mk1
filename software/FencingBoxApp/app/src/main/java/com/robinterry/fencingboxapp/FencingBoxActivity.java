@@ -27,6 +27,7 @@ import android.hardware.usb.UsbDevice;
 import android.hardware.usb.UsbDeviceConnection;
 import android.hardware.usb.UsbManager;
 import android.os.IBinder;
+import android.os.Vibrator;
 import android.view.GestureDetector;
 import android.view.Menu;
 import android.view.MenuItem;
@@ -68,6 +69,7 @@ public class FencingBoxActivity extends AppCompatActivity
     public static enum Orientation {Portrait, Landscape};
     public enum Motion {None, Up, Down, Left, Right};
     public enum Platform {Phone, TV};
+    public enum VibrationState {Off, On};
     public Orientation orientation = Orientation.Portrait;
     public Motion motion = Motion.None;
     public Platform platform = Platform.Phone;
@@ -94,6 +96,7 @@ public class FencingBoxActivity extends AppCompatActivity
     private boolean displayPaused = false;
     private FencingBoxSound sound, click;
     private boolean networkOnline = false;
+    private VibrationState vibrationState = VibrationState.On;
 
     /* View bindings */
     private ActivityMainBinding portBinding = null;
@@ -719,10 +722,12 @@ public class FencingBoxActivity extends AppCompatActivity
 
     @Override
     public boolean onPrepareOptionsMenu(Menu menu) {
-        /* Change the options menu to show "Show demo" or "Clear demo" */
 
-        MenuItem item = menu.findItem(R.id.menu_demo);
+        MenuItem item;
+
+        item = menu.findItem(R.id.menu_demo);
         if (box.isModeDemo() || box.isModeNone()) {
+            /* Change the options menu item to show "Show demo" or "Clear demo" */
             Log.i(TAG, "onPrepareOptionsMenu visible " + menu);
             item.setVisible(true);
             item.setEnabled(true);
@@ -733,12 +738,30 @@ public class FencingBoxActivity extends AppCompatActivity
             item.setVisible(false);
             item.setEnabled(false);
         }
+
+        /* Change the options menu to show "Vibration on" or "Vibration off" */
+        item = menu.findItem(R.id.menu_vibration_ctrl);
+        item.setTitle(
+                vibrationState == VibrationState.On ?
+                        R.string.vibration_off_label:R.string.vibration_on_label);
         return super.onPrepareOptionsMenu(menu);
     }
 
     @Override
     public boolean onOptionsItemSelected(@NonNull MenuItem item) {
         switch (item.getItemId()) {
+            case R.id.menu_vibration_ctrl:
+                /* Change the vibration flag */
+                switch (vibrationState) {
+                    case Off:
+                        vibrationState = VibrationState.On;
+                        break;
+                    case On:
+                        vibrationState = VibrationState.Off;
+                        break;
+                }
+                break;
+
             case R.id.menu_weapon_select:
                 /* Open the Weapon Select activity */
                 optionsMenu.close();
@@ -844,6 +867,7 @@ public class FencingBoxActivity extends AppCompatActivity
         box.disp.displayBox(demoBox);
         box.disp.setVolumeMuted(true);
         box.disp.setOnline(true);
+        box.disp.setVibrate(true);
         if (!soundMute) {
             sound.soundOn(1000);
         }
@@ -887,6 +911,7 @@ public class FencingBoxActivity extends AppCompatActivity
                             if (box.isModeDemo()) {
                                 box.disp.setVolumeMuted(true);
                                 box.disp.setOnline(true);
+                                box.disp.setVibrate(true);
                             } else if (!box.isModeNone()) {
                                 // Control the "volume muted" icon
                                 box.disp.setVolumeMuted(soundMute || sound.isMuted());
@@ -901,9 +926,12 @@ public class FencingBoxActivity extends AppCompatActivity
                                         box.disp.setOnline(false);
                                     }
                                 }
+                                // Control the 'vibrate' icon
+                                box.disp.setVibrate(vibrationState == VibrationState.On);
                             } else {
                                 box.disp.setVolumeMuted(false);
                                 box.disp.setOnline(false);
+                                box.disp.setVibrate(false);
                             }
                         } else {
                             box.disp.blankBatteryLevel();
@@ -2203,6 +2231,24 @@ public class FencingBoxActivity extends AppCompatActivity
         }
         if (b != null) {
             box.disp.displayBox(b);
+        }
+    }
+
+    public boolean isVibrationOn() {
+        try {
+            /* Don't vibrate if the app is connected to the fencing scoring box */
+            if (isSerialConnected()) {
+                return false;
+            } else {
+                Vibrator v = (Vibrator) getSystemService(Context.VIBRATOR_SERVICE);
+                if (!v.hasVibrator()) {
+                    return false;
+                } else {
+                    return vibrationState == VibrationState.On;
+                }
+            }
+        } catch (Exception e) {
+            return false;
         }
     }
 }

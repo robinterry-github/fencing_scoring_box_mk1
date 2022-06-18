@@ -27,6 +27,7 @@ public class FencingBoxDisplay {
     public TextView[] passCard = new TextView[]{null, null};
     private ImageView muteIcon;
     private ImageView onlineIcon;
+    private ImageView vibrateIcon;
     public ConstraintLayout layout;
     private ProgressBar progress;
     private FencingBoxActivity mainActivity;
@@ -34,7 +35,6 @@ public class FencingBoxDisplay {
     private final boolean controlUI = true;
     private boolean visibleUI = true;
     private Typeface face;
-
 
     /* View bindings */
     private ActivityMainBinding portBinding = null;
@@ -97,6 +97,7 @@ public class FencingBoxDisplay {
                     passCard[1] = landBinding.pCardBL;
                     muteIcon = (ImageView) landBinding.iconMuteL;
                     onlineIcon = (ImageView) landBinding.iconOnlineL;
+                    vibrateIcon = (ImageView) landBinding.iconVibrateL;
                     progress = landBinding.priorityChooseL;
                 } else {
                     textScore = portBinding.textScore;
@@ -111,6 +112,7 @@ public class FencingBoxDisplay {
                     passCard[1] = portBinding.pCardB;
                     muteIcon = (ImageView) portBinding.iconMute;
                     onlineIcon = (ImageView) portBinding.iconOnline;
+                    vibrateIcon = (ImageView) portBinding.iconVibrate;
                     progress = portBinding.priorityChoose;
                 }
                 try {
@@ -447,6 +449,15 @@ public class FencingBoxDisplay {
             @Override
             public void run() {
                 onlineIcon.setVisibility(online ? View.VISIBLE:View.INVISIBLE);
+            }
+        });
+    }
+
+    public void setVibrate(boolean vibrating) {
+        mainActivity.runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                vibrateIcon.setVisibility(vibrating ? View.VISIBLE:View.INVISIBLE);
             }
         });
     }

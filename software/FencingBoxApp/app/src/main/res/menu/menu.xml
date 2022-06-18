@@ -2,6 +2,10 @@
 <menu xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:android="http://schemas.android.com/apk/res/android">
     <item
+        android:id="@+id/menu_vibration_ctrl"
+        android:title="@string/vibration_off_label"
+        app:showAsAction="never" />
+    <item
         android:id="@+id/menu_weapon_select"
         android:title="@string/weapon_select_label"
         app:showAsAction="never" />

@@ -38,8 +38,8 @@ public class FencingBoxList {
     private FencingBoxActivity mainActivity;
 
     public FencingBoxList(FencingBoxActivity mainActivity, Box thisBox, Integer piste) {
-        this.thisBox    = thisBox;
-        this.myPiste    = piste;
+        this.thisBox      = thisBox;
+        this.myPiste      = piste;
         this.mainActivity = mainActivity;
     }
 
@@ -271,14 +271,11 @@ public class FencingBoxList {
     private void vibrateForHit() {
         Vibrator v = (Vibrator) mainActivity.getSystemService(Context.VIBRATOR_SERVICE);
 
-        if (v.hasVibrator()) {
-            /* Don't vibrate if the app is connected to the fencing scoring box */
-            if (!mainActivity.isSerialConnected()) {
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                    v.vibrate(VibrationEffect.createOneShot(C.VIBRATE_PERIOD, VibrationEffect.DEFAULT_AMPLITUDE));
-                } else {
-                    v.vibrate(C.VIBRATE_PERIOD);
-                }
+        if (mainActivity.isVibrationOn()) {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                v.vibrate(VibrationEffect.createOneShot(C.VIBRATE_PERIOD, VibrationEffect.DEFAULT_AMPLITUDE));
+            } else {
+                v.vibrate(C.VIBRATE_PERIOD);
             }
         }
     }

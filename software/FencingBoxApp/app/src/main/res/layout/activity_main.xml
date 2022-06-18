@@ -15,9 +15,9 @@
         android:background="#000000"
         android:contentDescription="@string/icon_online_desc"
         android:visibility="invisible"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintHorizontal_bias="0.695"
-        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toStartOf="@+id/battery_level"
+        app:layout_constraintHorizontal_bias="0.388"
+        app:layout_constraintStart_toEndOf="@+id/icon_vibrate"
         app:layout_constraintTop_toTopOf="parent"
         app:srcCompat="@android:drawable/ic_menu_share" />
 
@@ -188,9 +188,9 @@
         android:background="#000000"
         android:contentDescription="@string/icon_mute_desc"
         android:visibility="invisible"
-        app:layout_constraintEnd_toStartOf="@+id/icon_online"
-        app:layout_constraintHorizontal_bias="0.517"
-        app:layout_constraintStart_toStartOf="@+id/guideline"
+        app:layout_constraintEnd_toStartOf="@+id/icon_vibrate"
+        app:layout_constraintHorizontal_bias="0.553"
+        app:layout_constraintStart_toEndOf="@+id/time"
         app:layout_constraintTop_toTopOf="parent"
         app:srcCompat="@android:drawable/ic_lock_silent_mode" />
 
@@ -203,8 +203,19 @@
         android:visibility="invisible"
         app:layout_constraintBottom_toTopOf="@+id/guideline2"
         app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="0.522"
         app:layout_constraintStart_toStartOf="@+id/guideline"
         app:layout_constraintTop_toTopOf="@+id/icon_mute"
-        app:layout_constraintVertical_bias="0.94" />
+        app:layout_constraintVertical_bias="0.937" />
+
+    <ImageView
+        android:id="@+id/icon_vibrate"
+        android:layout_width="20dp"
+        android:layout_height="20dp"
+        android:visibility="invisible"
+        app:layout_constraintEnd_toStartOf="@+id/icon_online"
+        app:layout_constraintStart_toEndOf="@+id/icon_mute"
+        app:layout_constraintTop_toTopOf="parent"
+        app:srcCompat="@drawable/ic_vibrate" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>
