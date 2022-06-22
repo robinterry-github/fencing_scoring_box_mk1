@@ -85,7 +85,7 @@ public class FencingBoxActivity extends AppCompatActivity
     public static final Integer redCardColor = 0xFFFF0000;
     public FencingBoxActivity thisActivity;
     public ConstraintLayout layout;
-    private Connected serialConnected = Connected.False;
+    private static Connected serialConnected = Connected.False;
     private UsbSerialPort usbSerialPort;
     private SerialService service;
     private boolean initialStart = true;
@@ -116,8 +116,8 @@ public class FencingBoxActivity extends AppCompatActivity
     private boolean monitorStarted = false;
     private int batteryLvl = 0;
     private String currentTime;
-    private NetworkBroadcast bc;
-    private static boolean txFullStarted = false;
+    private NetworkBroadcast bc = null;
+    private boolean txFullStarted = false;
     public static WifiManager.MulticastLock wifiLock;
     public static FencingBoxList boxList;
     private GestureDetectorCompat gesture;
@@ -160,13 +160,20 @@ public class FencingBoxActivity extends AppCompatActivity
         demoBox.pCard[1] = PassivityCard.Red1;
         demoBox.priA = true;
         demoBox.priB = true;
+        demoBox.priIndicator = true;
     }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+        if (C.DEBUG) {
+            Log.d(TAG, "onCreate start " + savedInstanceState);
+        }
         super.onCreate(savedInstanceState);
+
         try {
-            bc = new NetworkBroadcast(this);
+            if (bc == null) {
+                bc = new NetworkBroadcast(this);
+            }
 
             /* Get the Wifi multicast lock to allow UDP broadcasts/multicasts to be received */
             WifiManager wifi = (WifiManager) getSystemService(Context.WIFI_SERVICE);
@@ -251,8 +258,11 @@ public class FencingBoxActivity extends AppCompatActivity
         if (uiModeMgr.getCurrentModeType() == Configuration.UI_MODE_TYPE_TELEVISION) {
             platform = Platform.TV;
 
+            /* TVs don't vibrate */
+            vibrationState = VibrationState.Off;
+
             /* The 'Select' button on the Weapon Select activity
-               is invisible when the app is run on an Android TV platform */
+            is invisible when the app is run on an Android TV platform */
             WeaponSelect.setButtonInvisible(true);
 
             /* Keypress handler when it's a TV platform */
@@ -260,12 +270,13 @@ public class FencingBoxActivity extends AppCompatActivity
                 @Override
                 public String processKey(Character c) {
                     Log.i(TAG, "TV keypress " + c.toString());
-                    if (isSerialConnected()) {
+                    if (isSerialConnected() && C.SEND_KEYS_TO_BOX) {
                         /* If the fencing scoring box is connected, send the key to that */
                         String msg = "/" + c.toString();
                         return msg;
                     } else {
-                        /* When the fencing scoring box is not connected */
+                        /* When the fencing scoring box is not connected, or when
+                           configured not to send keys to the box even when connected */
                         switch (c) {
                             case 'D': /* Down */
                             case 'U': /* Up */
@@ -323,7 +334,7 @@ public class FencingBoxActivity extends AppCompatActivity
                 @Override
                 public String processKey(Character c) {
                     Log.i(TAG, "Phone keypress " + c.toString());
-                    if (isSerialConnected()) {
+                    if (isSerialConnected() && C.SEND_KEYS_TO_BOX) {
                         /* If the fencing scoring box is connected, send the key to that */
                         String msg = "/" + c.toString();
                         return msg;
@@ -379,10 +390,16 @@ public class FencingBoxActivity extends AppCompatActivity
                 }
             };
         }
+        if (C.DEBUG) {
+            Log.d(TAG, "onCreate end");
+        }
     }
 
     @Override
     protected void onStart() {
+        if (C.DEBUG) {
+            Log.d(TAG, "onStart start");
+        }
         super.onStart();
 
         /* Start RX and TX broadcast threads */
@@ -421,13 +438,22 @@ public class FencingBoxActivity extends AppCompatActivity
             startTxFull();
             txFullStarted = true;
         }
+        if (C.DEBUG) {
+            Log.d(TAG, "onStart end");
+        }
     }
 
     @Override
     protected void onStop() {
+        if (C.DEBUG) {
+            Log.d(TAG, "onStop start");
+        }
         super.onStop();
         displayPaused = true;
         sound.soundOff(true);
+        if (C.DEBUG) {
+            Log.d(TAG, "onStop end");
+        }
     }
 
     @Override
@@ -462,6 +488,7 @@ public class FencingBoxActivity extends AppCompatActivity
         super.onNewIntent(intent);
         if ("android.hardware.usb.action.USB_DEVICE_ATTACHED".equals(intent.getAction())) {
             Log.i(TAG, "USB device attached");
+            onSerialConnect();
         }
     }
 
@@ -722,28 +749,30 @@ public class FencingBoxActivity extends AppCompatActivity
 
     @Override
     public boolean onPrepareOptionsMenu(Menu menu) {
-
         MenuItem item;
-
         item = menu.findItem(R.id.menu_demo);
         if (box.isModeDemo() || box.isModeNone()) {
             /* Change the options menu item to show "Show demo" or "Clear demo" */
-            Log.i(TAG, "onPrepareOptionsMenu visible " + menu);
             item.setVisible(true);
             item.setEnabled(true);
             item.setTitle(
                     box.isModeDemo() ? R.string.demo_off_label : R.string.demo_on_label);
         } else {
-            Log.i(TAG, "onPrepareOptionsMenu invisible " + menu);
             item.setVisible(false);
             item.setEnabled(false);
         }
 
         /* Change the options menu to show "Vibration on" or "Vibration off" */
         item = menu.findItem(R.id.menu_vibration_ctrl);
-        item.setTitle(
-                vibrationState == VibrationState.On ?
-                        R.string.vibration_off_label:R.string.vibration_on_label);
+        /* Don't show this option when vibration isn't possible */
+        if (!isVibrationPossible()) {
+            item.setVisible(false);
+            item.setEnabled(false);
+        } else {
+            item.setTitle(
+                    vibrationState == VibrationState.On ?
+                            R.string.vibration_off_label : R.string.vibration_on_label);
+        }
         return super.onPrepareOptionsMenu(menu);
     }
 
@@ -1077,7 +1106,7 @@ public class FencingBoxActivity extends AppCompatActivity
         }
     }
 
-    public boolean isSerialConnected() {
+    public static boolean isSerialConnected() {
         return serialConnected == Connected.True;
     }
 
@@ -1235,7 +1264,7 @@ public class FencingBoxActivity extends AppCompatActivity
     }
 
     public void displayPriority() {
-        box.disp.displayPriority(box.priA, box.priB);
+        box.disp.displayPriority(box.priIndicator, box.priA, box.priB);
     }
 
     public void restartPassivity(int pClock) {
@@ -1357,7 +1386,9 @@ public class FencingBoxActivity extends AppCompatActivity
         for (byte b : data) {
             str.append(String.format("%02X", b));
         }
-
+        if (C.DEBUG) {
+            Log.d(TAG, "Data: " + str);
+        }
         for (int i = 0; i < data.length; ) {
             if (data[i] == cmdMarker) {
                 i += 1;
@@ -1428,7 +1459,11 @@ public class FencingBoxActivity extends AppCompatActivity
     public synchronized void processCmd(String cmd) {
         switch (cmd) {
             case "GO":
-                Log.i(TAG, "fencing box started up");
+                serialConnected = Connected.True;
+                if (bc != null) {
+                    bc.connected(true);
+                }
+                Log.i(TAG, "fencing box started up, connected " + serialConnected);
                 box.setModeNone();
                 invalidateOptionsMenu();
                 box.disp.hideUI();
@@ -1444,16 +1479,6 @@ public class FencingBoxActivity extends AppCompatActivity
                 } catch (IOException e) {
                     Log.e(TAG, "unable to respond to GO command");
                 }
-                break;
-
-            case "PC":
-                Log.i(TAG, "choosing priority");
-                box.disp.hideUI();
-                Toast.makeText(getApplicationContext(), R.string.priority, Toast.LENGTH_SHORT).show();
-                box.disp.setProgressBarVisibility(View.VISIBLE);
-                clearPriority();
-                box.disp.clearClock(Color.GREEN);
-                setHitLights(Box.Hit.OnTarget, Box.Hit.OnTarget);
                 break;
 
             case "BS":
@@ -1484,7 +1509,19 @@ public class FencingBoxActivity extends AppCompatActivity
                 Log.i(TAG, "bout end");
                 break;
 
+            case "PC":
+                Log.i(TAG, "choosing priority");
+                box.priIndicator = true;
+                box.disp.hideUI();
+                Toast.makeText(getApplicationContext(), R.string.priority, Toast.LENGTH_SHORT).show();
+                box.disp.setProgressBarVisibility(View.VISIBLE);
+                clearPriority();
+                box.disp.clearClock(Color.GREEN);
+                setHitLights(Box.Hit.OnTarget, Box.Hit.OnTarget);
+                break;
+
             case "P0":
+                box.priIndicator = false;
                 box.disp.setProgressBarVisibility(View.INVISIBLE);
                 box.disp.hideUI();
                 setHitLights(Box.Hit.None, Box.Hit.None);
@@ -1493,6 +1530,7 @@ public class FencingBoxActivity extends AppCompatActivity
                 break;
 
             case "P1":
+                box.priIndicator = false;
                 box.disp.setProgressBarVisibility(View.INVISIBLE);
                 box.disp.hideUI();
                 setHitLights(Box.Hit.None, Box.Hit.None);
@@ -1658,11 +1696,17 @@ public class FencingBoxActivity extends AppCompatActivity
     }
 
     public synchronized void processScore(String s_A, String s_B) {
+        if (C.DEBUG) {
+            Log.d(TAG, "process score, box " + box + "/" + s_A + ":" + s_B);
+        }
         scoreHidden = false;
         setScore(s_A, s_B);
     }
 
     public synchronized void processHit(String hit) {
+        if (C.DEBUG) {
+            Log.d(TAG, "process hit, box " + box + "/" + hit);
+        }
         /* Process off-target hits first */
         if (box.weapon == Box.Weapon.Foil) {
             if (hit.equals("O0")) {
@@ -1710,7 +1754,9 @@ public class FencingBoxActivity extends AppCompatActivity
     }
 
     public synchronized void processCard(String whichFencer, String whichCard) {
-        Log.i(TAG, "process card");
+        if (C.DEBUG) {
+            Log.d(TAG, "process card, box " + box + "/" + whichFencer + ":" + whichCard);
+        }
         box.disp.hideUI();
 
         if (whichFencer.equals("0")) {
@@ -1723,6 +1769,9 @@ public class FencingBoxActivity extends AppCompatActivity
     }
 
     public synchronized void processClock(String min, String sec, String hund, boolean hundActive) {
+        if (C.DEBUG) {
+            Log.d(TAG, "process clock, box " + box + "/" + min + ":" + sec + ":" + hund);
+        }
         if (setClock(box, min, sec, hund, hundActive)) {
             if (box.isModeBout()) {
                 if (box.passivityActive && box.passivityTimer > 0) {
@@ -1790,7 +1839,6 @@ public class FencingBoxActivity extends AppCompatActivity
 
     public void setShortCircuit(String fencer, String scState) {
         Log.i(TAG, "short-circuit: fencer " + fencer + " state " + scState);
-
         // Ignore for now, as the short-circuit LED already works
     }
 
@@ -1800,50 +1848,77 @@ public class FencingBoxActivity extends AppCompatActivity
 
     public String msgScore() {
         char cHitA, cHitB;
+        String s;
 
-        switch (box.hitA) {
-            case None:
-            default:
-                cHitA = '-';
-                break;
-            case OnTarget:
-                cHitA = 'h';
-                break;
-            case OffTarget:
-                cHitA = 'o';
-                break;
+        if (box.priIndicator) {
+            cHitA = cHitB = 'p';
+        } else {
+            switch (box.hitA) {
+                case None:
+                default:
+                    cHitA = '-';
+                    break;
+                case OnTarget:
+                    cHitA = 'h';
+                    break;
+                case OffTarget:
+                    cHitA = 'o';
+                    break;
+            }
+            switch (box.hitB) {
+                case None:
+                default:
+                    cHitB = '-';
+                    break;
+                case OnTarget:
+                    cHitB = 'h';
+                    break;
+                case OffTarget:
+                    cHitB = 'o';
+                    break;
+            }
         }
-        switch (box.hitB) {
-            case None:
-            default:
-                cHitB = '-';
-                break;
-            case OnTarget:
-                cHitB = 'h';
-                break;
-            case OffTarget:
-                cHitB = 'o';
-                break;
+        if (++box.msgIndex > C.MAX_MSGINDEX) {
+            box.msgIndex = 0;
         }
-        String s = String.format("%02dS%c%c:%s:%s",
-                box.piste,
-                cHitA,
-                cHitB,
-                box.scoreA,
-                box.scoreB);
+        if (box.getBoxMode() == Box.Mode.Bout) {
+            s = String.format("%04d|%02dS%c%c:%s:%s",
+                    box.msgIndex,
+                    box.piste,
+                    cHitA,
+                    cHitB,
+                    box.scoreA,
+                    box.scoreB);
+        } else {
+            s = String.format("%04d|%02dS--:00:00",
+                    box.msgIndex,
+                    box.piste);
+        }
+        if (C.DEBUG) {
+            Log.d(TAG, "msgScore " + s);
+        }
         return s;
     }
 
     public String msgClock() {
-        String s = String.format("T%s:%s:%s",
-                box.timeMins,
-                box.timeSecs,
-                box.timeHund);
+        String s;
+        if (box.getBoxMode() == Box.Mode.Bout) {
+            s = String.format("T%s:%s:%s",
+                    box.timeMins,
+                    box.timeSecs,
+                    box.timeHund);
+        } else {
+            s = "T00:00:00";
+        }
+        if (C.DEBUG) {
+            Log.d(TAG, "msgClock " + s);
+        }
         return s;
     }
 
     public String cardStr(Integer card) {
         String cs = "";
+        /* A three-character string */
         cs += ((card & Box.yellowCardBit) != 0) ? "y" : "-";
         cs += ((card & Box.redCardBit) != 0) ? "r" : "-";
         cs += ((card & Box.shortCircuitBit) != 0) ? "s" : "-";
@@ -1851,16 +1926,32 @@ public class FencingBoxActivity extends AppCompatActivity
     }
 
     public String msgCard() {
-        String s = String.format("C%s:%s",
-                cardStr(box.cardA),
-                cardStr(box.cardB));
+        String s;
+        if (box.getBoxMode() == Box.Mode.Bout) {
+            s = String.format("C%s:%s",
+                    cardStr(box.cardA),
+                    cardStr(box.cardB));
+        } else {
+            s = "C---:---";
+        }
+        if (C.DEBUG) {
+            Log.d(TAG, "msgCard " + s);
+        }
         return s;
     }
 
     public String msgPriority() {
-        String s = String.format("P%c:%c",
-                box.priA ? 'y' : '-',
-                box.priB ? 'y' : '-');
+        String s;
+        if (box.getBoxMode() == Box.Mode.Bout) {
+            s = String.format("P%c:%c",
+                    box.priA ? 'y' : box.priIndicator ? '?' : '-',
+                    box.priB ? 'y' : box.priIndicator ? '?' : '-');
+        } else {
+            s = "P-:-";
+        }
+        if (C.DEBUG) {
+            Log.d(TAG, "msgPriority " + s);
+        }
         return s;
     }
 
@@ -1870,7 +1961,11 @@ public class FencingBoxActivity extends AppCompatActivity
     }
 
     public String msgFull() {
-        return msgScore() + msgClock() + msgPriority() + msgCard();
+        String s = msgScore() + msgClock() + msgPriority() + msgCard();
+        if (C.DEBUG) {
+            Log.d(TAG, "msgFull " + s);
+        }
+        return s;
     }
 
     public void txResetLights() {
@@ -1894,11 +1989,23 @@ public class FencingBoxActivity extends AppCompatActivity
         new Thread(new Runnable() {
             @Override
             public void run() {
-                for (; ; ) {
+                if (C.DEBUG) {
+                    Log.d(TAG, "Starting TX send thread");
+                }
+                for (;;) {
                     try {
+                        if (C.DEBUG) {
+                            Log.d(TAG, "Start full TX, bc " +
+                                    bc + ", serial connected " + serialConnected +
+                                    "box info " + box);
+                        }
                         if (bc != null) {
+                            /* Only send messages in bout mode */
                             if (serialConnected == Connected.True) {
                                 String msg = msgFull();
+                                if (C.DEBUG) {
+                                    Log.d(TAG, "TX message " + msg);
+                                }
                                 if (useBroadcast) {
                                     synchronized (bc) {
                                         bc.send(msg);
@@ -1924,24 +2031,29 @@ public class FencingBoxActivity extends AppCompatActivity
      */
     @Override
     public void onSerialConnect() {
-        Log.i(TAG, "connected to " + socket.getName());
-        serialConnected = Connected.True;
-        if (bc != null) {
-            bc.connected(true);
-        }
-        runOnUiThread(new Runnable() {
-            @Override
-            public void run() {
-                clearHitLights();
-                clearScore();
-                clearClock();
-                clearCard();
-                clearPriority();
-                clearPassivity();
-                clearPassivityCard();
-                box.disp.setProgressBarVisibility(View.INVISIBLE);
+        if (socket != null) {
+            Log.i(TAG, "connected to " + socket.getName());
+            serialConnected = Connected.True;
+            if (bc != null) {
+                bc.connected(true);
             }
-        });
+            runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                    clearHitLights();
+                    clearScore();
+                    clearClock();
+                    clearCard();
+                    clearPriority();
+                    clearPassivity();
+                    clearPassivityCard();
+                    box.disp.setProgressBarVisibility(View.INVISIBLE);
+                }
+            });
+        } else {
+            Log.i(TAG, "Connecting to serial port");
+            connect();
+        }
     }
 
     public void reconnect() {
@@ -2234,18 +2346,35 @@ public class FencingBoxActivity extends AppCompatActivity
         }
     }
 
-    public boolean isVibrationOn() {
-        try {
+    public boolean isVibrationPossible() {
+        if (platform == Platform.TV) {
+            /* Don't vibrate if this is a TV */
+            return false;
+        } else  if (isSerialConnected()) {
             /* Don't vibrate if the app is connected to the fencing scoring box */
-            if (isSerialConnected()) {
+            return false;
+        } else {
+            /* Check that the unit can vibrate */
+            Vibrator v = (Vibrator) getSystemService(Context.VIBRATOR_SERVICE);
+            if (!v.hasVibrator()) {
                 return false;
             } else {
-                Vibrator v = (Vibrator) getSystemService(Context.VIBRATOR_SERVICE);
-                if (!v.hasVibrator()) {
-                    return false;
-                } else {
-                    return vibrationState == VibrationState.On;
-                }
+                /* The unit can vibrate */
+                return true;
+            }
+        }
+    }
+
+    public boolean isVibrationOn() {
+        try {
+            if (!isVibrationPossible()) {
+                /* This unit can never vibrate */
+                return false;
+            } else if (box.isModeNone()) {
+                /* Don't vibrate if the display is not active, but this can change */
+                return false;
+            } else {
+                return vibrationState == VibrationState.On;
             }
         } catch (Exception e) {
             return false;

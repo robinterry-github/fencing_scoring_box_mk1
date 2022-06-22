@@ -4,6 +4,8 @@ import androidx.annotation.NonNull;
 
 @SuppressWarnings("ALL")
 public class Box {
+    public static int counter = 1;
+    public int msgIndex = 0;
     public enum Weapon {Foil, Epee, Sabre}
     public static enum Hit {None, OnTarget, OffTarget}
     public enum Mode {None, Display, Sparring, Bout, Stopwatch, Demo}
@@ -15,7 +17,7 @@ public class Box {
     public String host = null;
     public String scoreA = "00";
     public String scoreB = "00";
-    public String timeMins = "00";
+    public String timeMins = "03";
     public String timeSecs = "00";
     public String timeHund = "00";
     public int clock = 0;
@@ -24,6 +26,7 @@ public class Box {
     public Integer cardA = 0;
     public Integer cardB = 0;
     public boolean priA = false, priB = false;
+    public boolean priIndicator = false;
     public int passivityTimer = 0;
     public boolean passivityActive = false;
     public Weapon weapon = Weapon.Foil;
@@ -39,6 +42,7 @@ public class Box {
     }
 
     public Box(int piste) {
+        this.counter++;
         this.piste = piste;
     }
 
@@ -49,7 +53,8 @@ public class Box {
 
     @NonNull
     public String toString() {
-        return    "piste=" + piste
+        return  "count " + counter
+                + ",piste=" + piste
                 + ",hitA=" + hitA
                 + ",hitB=" + hitB
                 + ",timeMins=" + timeMins
@@ -85,6 +90,10 @@ public class Box {
 
     public boolean isModeDemo() {
         return mode == Mode.Demo;
+    }
+
+    public void setMode(Mode mode) {
+        this.mode = mode;
     }
 
     public void setModeNone() { this.mode = Mode.None; }

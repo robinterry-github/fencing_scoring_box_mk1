@@ -48,6 +48,9 @@ public class NetworkBroadcast {
         this.mainActivity = mainActivity;
         this.port = port;
         txMsgs = new ArrayBlockingQueue<String>(5);
+        if (C.DEBUG) {
+            Log.d(TAG, "Initial connection");
+        }
         tryConnect();
     }
 
@@ -59,10 +62,15 @@ public class NetworkBroadcast {
                 openMulticastSocket();
                 joinMulticastGroup();
                 conn = SocketConnection.Multicast;
+                if (C.DEBUG) {
+                    Log.d(TAG, "Network connected");
+                }
             } catch (SocketException e1) {
                 if (!e1.getMessage().contains("EADDRINUSE")) {
                     Log.e(TAG, "Unable to read multicast address, error " + e1);
                     networkOnline = false;
+                } else if (C.DEBUG) {
+                    Log.d(TAG, "EADDRINUSE returned, error " + e1);
                 }
             } catch (UnknownHostException e2) {
                 Log.e(TAG, "Unable to find host " + C.IPMCADDR + ", error " + e2);
@@ -72,20 +80,25 @@ public class NetworkBroadcast {
                 public void run() {
                     try {
                         ip4Addr = getIPAddress();
-                    } catch (SocketException e) {
+                    } catch (SocketException e1) {
                         /* Ignore */
                     }
                     try {
+                        if (C.DEBUG) {
+                            Log.d(TAG, "Network online " + networkOnline);
+                        }
                         networkOnline = true;
                         rxSocket.setSoTimeout(C.RX_TIMEOUT);
                         joinMulticastGroup();
-                    } catch (SocketException e1) {
-                        if (!e1.getMessage().contains("EADDRINUSE")) {
-                            Log.e(TAG, "Unable to get IP address, error " + e1);
+                    } catch (SocketException e2) {
+                        if (!e2.getMessage().contains("EADDRINUSE")) {
+                            Log.e(TAG, "Unable to get IP address, error " + e2);
                             networkOnline = false;
+                        } else if (C.DEBUG) {
+                            Log.d(TAG, "EADDRINUSE returned, error " + e2);
                         }
-                    } catch (IOException e2) {
-                        Log.e(TAG, "Unable to get IP address, error " + e2);
+                    } catch (IOException e3) {
+                        Log.e(TAG, "Unable to get IP address, error " + e3);
                         networkOnline = false;
                     }
                 }
@@ -95,19 +108,32 @@ public class NetworkBroadcast {
 
     private void openMulticastSocket() throws SocketException, UnknownHostException, IOException {
         bcAddr = InetAddress.getByName(C.IPMCADDR);
+
         if (txSocket == null) {
+            if (C.DEBUG) {
+                Log.d(TAG, "Opening TX multicast socket " + bcAddr);
+            }
             txSocket = new MulticastSocket(C.IPMCPORT);
         }
         if (rxSocket == null) {
+            if (C.DEBUG) {
+                Log.d(TAG, "Opening RX multicast socket " + bcAddr);
+            }
             rxSocket = new MulticastSocket(C.IPMCPORT);
         }
     }
 
     private void joinMulticastGroup() throws IOException {
         if (txSocket != null) {
+            if (C.DEBUG) {
+                Log.d(TAG, "Joining TX multicast group " + bcAddr);
+            }
             ((MulticastSocket) txSocket).joinGroup(bcAddr);
         }
         if (rxSocket != null) {
+            if (C.DEBUG) {
+                Log.d(TAG, "Joining RX multicast group " + bcAddr);
+            }
             ((MulticastSocket) rxSocket).joinGroup(bcAddr);
         }
     }
@@ -143,7 +169,6 @@ public class NetworkBroadcast {
                 Enumeration<InetAddress> ifAddrs = netIf.getInetAddresses();
                 while (ifAddrs.hasMoreElements()) {
                     InetAddress ifAddr = ifAddrs.nextElement();
-
                     /* Only look at it if it is an IPV4 address */
                     if (!ifAddr.isLoopbackAddress()) {
                         if (ifAddr instanceof Inet4Address) {
@@ -161,6 +186,9 @@ public class NetworkBroadcast {
 
     public void send(String msg) {
         try {
+            if (C.DEBUG) {
+                Log.d(TAG, "Add TX message " + msg);
+            }
             txMsgs.add(msg);
         } catch (Exception e) {
             return;
@@ -178,24 +206,34 @@ public class NetworkBroadcast {
             txThread = new Thread(new Runnable() {
                 @Override
                 public void run() {
+                    if (C.DEBUG) {
+                        Log.d(TAG, "TX thread running");
+                    }
                     while (true) {
                         /* If there's a message, fetch it */
                         while (txMsgs.peek() != null) {
-                            String str;
+                            String msg;
                             try {
-                                str = txMsgs.remove();
+                                msg = txMsgs.remove();
                             } catch (NoSuchElementException e) {
                                 break;
                             }
 
                             /* Only send the message if we are connected to a box, otherwise junk it */
-                            if (connected) {
-                                DatagramPacket p = new DatagramPacket(str.getBytes(), str.length(), bcAddr, port);
+                            if (FencingBoxActivity.isSerialConnected()) {
+                                DatagramPacket p = new DatagramPacket(msg.getBytes(), msg.length(), bcAddr, port);
                                 /* Keep sending this message if this is the only one */
+                                if (C.DEBUG) {
+                                    Log.d(TAG, "Connection state " +
+                                            FencingBoxActivity.isSerialConnected() + ", TX socket " + txSocket);
+                                }
                                 if (!txSocket.isClosed()) {
                                     do {
                                         try {
-                                            if (connected) {
+                                            if (FencingBoxActivity.isSerialConnected()) {
+                                                if (C.DEBUG) {
+                                                    Log.d(TAG, "TX message " + msg);
+                                                }
                                                 txSocket.send(p);
                                                 networkOnline = true;
                                                 if (txMsgs.peek() != null) {
@@ -208,7 +246,7 @@ public class NetworkBroadcast {
                                                 break;
                                             }
                                         } catch (Exception e) {
-                                            Log.e(TAG, "Unable to send broadcast message, error " + e);
+                                            Log.e(TAG, "Unable to TX message, error " + e);
                                             networkOnline = false;
                                             /* Wait a second before trying again */
                                             try {
@@ -229,6 +267,9 @@ public class NetworkBroadcast {
                 @Override
                 public void run() {
                     byte[] buf = new byte[100];
+                    if (C.DEBUG) {
+                        Log.d(TAG, "RX thread running");
+                    }
                     while (true) {
                         DatagramPacket p = new DatagramPacket(buf, 100);
                         while (true) {
@@ -236,6 +277,9 @@ public class NetworkBroadcast {
                                 try {
                                     rxSocket.receive(p);
                                     String msg = new String(p.getData(), p.getOffset(), p.getLength());
+                                    if (C.DEBUG) {
+                                        Log.d(TAG, "RX message " + msg);
+                                    }
                                     try {
                                         /* Add this box to the list, if it is not already there */
                                         mainActivity.boxList.updateBox(msg, p.getAddress().getHostAddress());
@@ -244,18 +288,27 @@ public class NetworkBroadcast {
                                     }
                                 } catch (SocketTimeoutException e) {
                                     /* Ignore - wait for network to be reconnected */
-                                    networkOnline = false;
+                                    if (C.DEBUG) {
+                                        Log.d(TAG, "RX socket timeout, ignored " + e);
+                                    }
+                                    //networkOnline = false;
                                 } catch (NullPointerException e) {
                                     return;
                                 } catch (IOException e) {
-                                    Log.e(TAG, "Unable to receive, error " + e);
+                                    Log.e(TAG, "Unable to RX message, error " + e);
                                     networkOnline = false;
                                 }
                             } else {
                                 try {
+                                    if (C.DEBUG) {
+                                        Log.d(TAG, "Waiting to connect RX");
+                                    }
                                     Thread.sleep(500);
                                     tryConnect();
                                 } catch (Exception e) {
+                                    if (C.DEBUG) {
+                                        Log.d(TAG, "RX connect failed, error " + e);
+                                    }
                                     /* Ignore */
                                 }
                             }
@@ -278,6 +331,9 @@ public class NetworkBroadcast {
 
             if (activeNetwork != null) {
                 if (activeNetwork.getType() == ConnectivityManager.TYPE_WIFI) {
+                    if (C.DEBUG) {
+                        Log.d(TAG, "Wifi connection valid");
+                    }
                     return true;
                 } else if (activeNetwork.getType() == ConnectivityManager.TYPE_MOBILE) {
                     /* Drop through, as this is not a valid connection */

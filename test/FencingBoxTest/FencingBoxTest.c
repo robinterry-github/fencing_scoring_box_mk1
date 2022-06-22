@@ -23,6 +23,7 @@
 #define CLKINCR    1
 #define HITTIMER   5
 #define HITBLOCK   5
+#define MAX_MSGIDX 9999
 
 enum Dir
 {
@@ -37,12 +38,14 @@ int  noBCast = 1;
 int  noMCast = 0;
 int  verbose = 0;
 char ipAddr[IASIZE];
-int  pistes = PISTES;
+int  txPistes = PISTES;
 int  cards = 0;
 int  allTx = 0;
+int  rxPiste = 1;
 
 struct Box
 {
+   int                  msgIndex;
    char                 host[IASIZE];
    int                  port, idx;
    enum Dir             dir;
@@ -63,7 +66,7 @@ struct Box
 };
 
 struct Box boxList[PISTES+1];
-struct Box *me, *meTx[3], *meRx;
+struct Box *me, *meTx[PISTES], *meRx;
 int boxListIdx;
 pthread_t bcThread;
 int threadIdx = 0;
@@ -147,7 +150,7 @@ int openConnection(struct Box *b)
                }
                else
                {
-                  listen(b->sock, pistes);
+                  listen(b->sock, txPistes);
                   b->rx = accept(b->sock, NULL, NULL);
                }
                return 0;
@@ -266,7 +269,7 @@ int addBox(char *msg, int port)
    {
       return -1;
    }
-   else if (i <= pistes)
+   else if (i <= txPistes)
    {
       b.idx = i;
       strcpy(b.host, &msg[3]);
@@ -468,7 +471,12 @@ void *txrxCommsThread(void *arg)
             /* Transmitting to a receiver */
             if (!b->localHost)
             {
-               sprintf(txrxString, "%02dS%c%c:%02d:%02dT%02d:%02d:00P-:-C%s:%s",
+               if (++b->msgIndex > MAX_MSGIDX)
+               {
+                  b->msgIndex = 0;
+               }
+               sprintf(txrxString, "%04d|%02dS%c%c:%02d:%02dT%02d:%02d:00P-:-C%s:%s",
+                  b->msgIndex,
                   b->piste, 
                   b->hitA ? 'h':'-',
                   b->hitB ? 'h':'-',
@@ -638,15 +646,8 @@ void *txrxCommsThread(void *arg)
             }
             else if (txrxStringLen > 0)
             {
-               int piste = atoi(txrxString);
-               for (i = 0; i < pistes; i++)
-               {
-                  if (meTx[i]->piste == piste)
-                  {
-                     break;
-                  }
-               }
-               if (i >= pistes)
+               int piste = atoi(&txrxString[5]);
+               if (piste == rxPiste)
                {
                   time(&b->tm);
                   gmtime_r(&b->tm, &b->gmt);
@@ -678,21 +679,22 @@ void *txrxCommsThread(void *arg)
 
 void printUsage(void)
 {
-   printf("FencingBoxTest [-port P] [-tx] [-bc] [-nomc] [-verbose] [-pistes P]\n");
-   printf("-port P    set IP network port to P\n");
-   printf("-tx        enable TX testing\n");
-   printf("-bc        enable broadcast of IP messages\n");
-   printf("-nomc      disable IP multicast\n");
-   printf("-verbose   verbose operation\n");
-   printf("-pistes    number of pistes (between 1 and %d)\n", PISTES);
-   printf("-cards     display a random setting for penalty cards and short-circuit indication\n");
-   printf("-alltx     all pistes are transmit only - there is no receiving piste\n");
+   printf("FencingBoxTest [-port P] [-tx] [-bc] [-nomc] [-verbose] [-txPistes P] [-cards] [-alltx] [-rxpiste P]\n");
+   printf("-port P      set IP network port to P\n");
+   printf("-tx          enable TX testing\n");
+   printf("-bc          enable broadcast of IP messages\n");
+   printf("-nomc        disable IP multicast\n");
+   printf("-verbose     verbose operation\n");
+   printf("-txPistes    number of transmitting txPistes (between 1 and %d)\n", PISTES);
+   printf("-cards       display a random setting for penalty cards and short-circuit indication\n");
+   printf("-alltx       all txPistes are transmit only - there is no receiving piste\n");
+   printf("-rxpiste P   set the piste number that we expect to receive from (between 1 and %d)\n", PISTES);
    printf("\n");
 }
 
 int main(int argc, char *argv[])
 {
-   int i;
+   int i, j;
    struct sockaddr_in broadcastAddr; /* Broadcast Address */
    int broadcastLen;                 /* Length of broadcast structure */
    int broadcastPermission;          /* Socket opt to set permission to broadcast */
@@ -702,7 +704,6 @@ int main(int argc, char *argv[])
    struct in_addr ip, bc;
    struct ip_mreq mc;
    time_t tm;
-   int offset = 0;
 
    broadcastPort = DEFPORT;
 
@@ -750,17 +751,32 @@ int main(int argc, char *argv[])
       {
          allTx = 1;
       } 
-      else if (!strcmp(argv[i], "-pistes"))
+      else if (!strcmp(argv[i], "-txpistes"))
       {
          if (++i >= argc)
 	      {
-	         printf("ERROR: missing argument to '-pistes'\n");
+	         printf("ERROR: missing argument to '-txPistes'\n");
 	         printUsage();
 	         return 1;
 	      }
-	      else if ((pistes = atoi(argv[i])) < 1 || pistes > PISTES)
+	      else if ((txPistes = atoi(argv[i])) < 1 || txPistes > PISTES)
 	      {
-	         printf("ERROR: invalid argument to '-pistes'\n");
+	         printf("ERROR: invalid argument to '-txPistes'\n");
+	         printUsage();
+	         return 1;
+	      }
+      }
+      else if (!strcmp(argv[i], "-rxpiste"))
+      {
+         if (++i >= argc)
+	      {
+	         printf("ERROR: missing argument to '-rxpiste'\n");
+	         printUsage();
+	         return 1;
+	      }
+	      else if ((rxPiste = atoi(argv[i])) < 1 || rxPiste > PISTES)
+	      {
+	         printf("ERROR: invalid argument to '-rxpiste'\n");
 	         printUsage();
 	         return 1;
 	      }
@@ -826,22 +842,24 @@ int main(int argc, char *argv[])
       if (allTx)
       {
          meRx = NULL;
-         offset = 0;
       }
       else
       {
          meRx = &boxList[0];
-         offset = 1;
       }
-      for (i = 0; i < pistes; i++)
+      for (i = 0; i < txPistes; i++)
       {
-         meTx[i] = &boxList[offset+i];
+         meTx[i] = &boxList[i+(allTx ? 0:1)];
       }
-      boxListIdx = pistes+1;
-      for (i = 0; i < pistes; i++)
+      boxListIdx = txPistes+1;
+      for (i = 0, j = 1; i < txPistes; i++, j++)
       {
+         if (j == rxPiste)
+         {
+            j++;
+         }
          meTx[i]->dir    = DIR_TX;
-         meTx[i]->piste  = 1+offset+i;
+         meTx[i]->piste  = j;
          meTx[i]->port   = DEFPORT;
          meTx[i]->clock  = 0;
          meTx[i]->secs   = (random()%(60/CLKINCR))*CLKINCR;
@@ -870,7 +888,7 @@ int main(int argc, char *argv[])
       {
          meRx->dir = DIR_RX;
          meRx->port = DEFPORT;
-         meRx->piste = 20;
+         meRx->piste = rxPiste;
          pthread_create(&meRx->thread, NULL, txrxCommsThread, meRx);
       }
    }

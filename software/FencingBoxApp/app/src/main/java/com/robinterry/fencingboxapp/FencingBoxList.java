@@ -7,6 +7,7 @@ import android.content.Context;
 import android.os.Build;
 import android.os.VibrationEffect;
 import android.os.Vibrator;
+import android.util.Log;
 
 import com.robinterry.constants.C;
 
@@ -51,9 +52,11 @@ public class FencingBoxList {
         /* Updates box data to the box list:
 
            the message format is as follows:
-           <piste>S<hitA><hitB><scoreA>:<scoreB>T<mins>:<secs>:<hund>C<cardA>:<cardB>P<priA>:<priB>
+           <index>|<piste>S<hitA><hitB><scoreA>:<scoreB>T<mins>:<secs>:<hund>C<cardA>:<cardB>P<priA>:<priB>
 
-           where <piste> is 2 digits, >= 1
+           where:
+           <index> is 4 digits, 0-9999 inclusive, and incremented for each new message
+           <piste> is 2 digits, >= 1
            <hitA>, <hitB> are '-', 'h' for hit, 'o' for off-target
            <scoreA>, <scoreB> are 2 digits
            <mins> is 2-digit minutes
@@ -61,135 +64,174 @@ public class FencingBoxList {
            <hund> is 2-digit hundredths
            <cardA>, <cardB> are three-character strings, one each for yellow, red and s/c:
               '-' or 'y', '-' or 'r', '-' or 's'
-           <priA>, <priB> are '-' or 'y'
+           <priA>, <priB> are '-', '?' or 'y' ('?' means that priority selection is active)
 
            an example is:
-           01Sh-02:01T02:25:00P-:-Cy--:-r-
+           2345|01Sh-:02:01T02:25:00P-:-Cy--:-r-
 
-         */
+        */
+        int offset = 0;
+
         Box newBox = new Box();
+        if (C.DEBUG) {
+            Log.d(TAG, "Creating (" + myPiste + ") a new box " + newBox);
+        }
         try {
-            newBox.piste = Integer.valueOf(msg.substring(0, 2));
+            newBox.msgIndex = Integer.valueOf(msg.substring(offset, offset+4));
+            offset += 4;
+        } catch (NumberFormatException e) {
+            return;
+        }
+        if (msg.charAt(offset) != '|') {
+            return;
+        }
+        offset++;
+        try {
+            newBox.piste = Integer.valueOf(msg.substring(offset, offset+2));
+            offset += 2;
         } catch (NumberFormatException e) {
             return;
         }
 
         /* Don't process this message if this is us, and we're connected to the box */
-        if (newBox.piste == myPiste && mainActivity.isSerialConnected()) {
+        if (newBox.piste == myPiste && FencingBoxActivity.isSerialConnected()) {
+            if (C.DEBUG) {
+                Log.d(TAG, "Piste " + myPiste + " message received - ignore");
+            }
             return;
         }
         newBox.host = host;
-
         try {
             /* Read hits */
-            if (msg.charAt(2) != 'S') {
+            if (msg.charAt(offset) != 'S') {
                 return;
-            } else {
-                String hA = msg.substring(3, 4);
-                String hB = msg.substring(4, 5);
-                switch (hA) {
-                    case "h":
-                        newBox.hitA = Box.Hit.OnTarget;
-                        break;
-                    case "o":
-                        newBox.hitA = Box.Hit.OffTarget;
-                        break;
-                    default:
-                        newBox.hitA = Box.Hit.None;
-                        break;
-                }
-                switch (hB) {
-                    case "h":
-                        newBox.hitB = Box.Hit.OnTarget;
-                        break;
-                    case "o":
-                        newBox.hitB = Box.Hit.OffTarget;
-                        break;
-                    default:
-                        newBox.hitB = Box.Hit.None;
-                        break;
-                }
-
-                /* Read score */
-                newBox.scoreA = msg.substring(6, 8);
-                newBox.scoreB = msg.substring(9, 11);
             }
+            offset++;
+            String hA = msg.substring(offset, offset+1);
+            offset++;
+            String hB = msg.substring(offset, offset+1);
+            offset += 2;
+            switch (hA) {
+                case "h":
+                case "p":
+                    newBox.hitA = Box.Hit.OnTarget;
+                    break;
+                case "o":
+                    newBox.hitA = Box.Hit.OffTarget;
+                    break;
+                default:
+                    newBox.hitA = Box.Hit.None;
+                    break;
+            }
+            switch (hB) {
+                case "h":
+                case "p":
+                    newBox.hitB = Box.Hit.OnTarget;
+                    break;
+                case "o":
+                    newBox.hitB = Box.Hit.OffTarget;
+                    break;
+                default:
+                    newBox.hitB = Box.Hit.None;
+                    break;
+            }
+
+            /* Read score */
+            newBox.scoreA = msg.substring(offset, offset+2);
+            offset += 3;
+            newBox.scoreB = msg.substring(offset, offset+2);
+            offset += 2;
 
             /* Read clock */
-            if (msg.charAt(11) != 'T') {
+            if (msg.charAt(offset) != 'T') {
                 return;
-            } else {
-                if (C.QUANTISE_CLOCK) {
-                    int mins = Integer.parseInt(msg.substring(12, 14));
-                    int secs = Integer.parseInt(msg.substring(15, 17));
-                    /* Round the seconds to the next highest multiple of the factor -
-                       if this is 60, then increment the minutes, and set seconds to 0 */
-
-                    /* Example (quantisation factor is 5):
-                       03:00 -> 03:00
-                       02:59 -> 03:00
-                       02:58 -> 03:00
-                       02:55 -> 02:55
-                       02:54 -> 02:55
-                       01:59 -> 02:00 */
-
-                    /* The reason for quantising is due to the message loss rate for
-                       multicast over Wifi - if we count down every second, the clock
-                       count as displayed looks very irregular due to lost messages.
-                       If we quantise the clock to more than one second (say 5) then the
-                       clock count looks less irregular, which is visually more acceptable */
-                    if (secs % C.QUANTISE_FACTOR_SECS != 0) {
-                        if (secs > (60-C.QUANTISE_FACTOR_SECS)) {
-                            secs = 0;
-                            mins++;
-                        } else {
-                            secs = ((secs + C.QUANTISE_FACTOR_SECS) /
-                                    C.QUANTISE_FACTOR_SECS) * C.QUANTISE_FACTOR_SECS;
-                        }
-                    }
-                    newBox.timeMins = String.format("%02d", mins);
-                    newBox.timeSecs = String.format("%02d", secs);
-                } else {
-                    newBox.timeMins = msg.substring(14, 14);
-                    newBox.timeSecs = msg.substring(15, 17);
-                }
-                newBox.timeHund = msg.substring(18, 20);
             }
+            offset++;
+            if (C.QUANTISE_CLOCK) {
+                int mins = Integer.parseInt(msg.substring(offset, offset+2));
+                offset += 3;
+                int secs = Integer.parseInt(msg.substring(offset, offset+2));
+                offset += 3;
+                /* Round the seconds to the next highest multiple of the factor -
+                   if this is 60, then increment the minutes, and set seconds to 0 */
+
+                /* Example (quantisation factor is 5):
+                   03:00 -> 03:00
+                   02:59 -> 03:00
+                   02:58 -> 03:00
+                   02:55 -> 02:55
+                   02:54 -> 02:55
+                   01:59 -> 02:00 */
+
+                /* The reason for quantising is due to the message loss rate for
+                   multicast over Wifi - if we count down every second, the clock
+                   count as displayed looks very irregular due to lost messages.
+                   If we quantise the clock to more than one second (say 5) then the
+                   clock count looks less irregular, which is visually more acceptable */
+                if (secs % C.QUANTISE_FACTOR_SECS != 0) {
+                    if (secs > (60-C.QUANTISE_FACTOR_SECS)) {
+                        secs = 0;
+                        mins++;
+                    } else {
+                        secs = ((secs + C.QUANTISE_FACTOR_SECS) /
+                                C.QUANTISE_FACTOR_SECS) * C.QUANTISE_FACTOR_SECS;
+                    }
+                }
+                newBox.timeMins = String.format("%02d", mins);
+                newBox.timeSecs = String.format("%02d", secs);
+            } else {
+                /* Non-quantised clock */
+                newBox.timeMins = msg.substring(offset, offset+2);
+                offset += 3;
+                newBox.timeSecs = msg.substring(offset, offset+2);
+                offset += 3;
+            }
+            newBox.timeHund = msg.substring(offset, offset+2);
+            offset += 2;
 
             /* Read priority */
-            if (msg.charAt(20) != 'P') {
+            if (msg.charAt(offset) != 'P') {
                 return;
+            }
+            offset++;
+            String pA = msg.substring(offset, offset+1);
+            offset += 2;
+            String pB = msg.substring(offset, offset+1);
+            offset++;
+            if (pA.contains("?") && pB.contains("?")) {
+                newBox.priIndicator = true;
             } else {
-                String pA = msg.substring(21, 22);
-                String pB = msg.substring(23, 24);
+                newBox.priIndicator = false;
                 newBox.priA = pA.contains("y");
                 newBox.priB = pB.contains("y");
             }
 
             /* Read cards */
-            if (msg.charAt(24) != 'C') {
+            if (msg.charAt(offset) != 'C') {
                 return;
-            } else {
-                newBox.sCardA = msg.substring(25, 28);
-                newBox.sCardB = msg.substring(29, 32);
-                if (newBox.sCardA.contains("y")) {
-                    newBox.cardA |= Box.yellowCardBit;
-                }
-                if (newBox.sCardA.contains("r")) {
-                    newBox.cardA |= Box.redCardBit;
-                }
-                if (newBox.sCardA.contains("s")) {
-                    newBox.cardA |= Box.shortCircuitBit;
-                }
-                if (newBox.sCardB.contains("y")) {
-                    newBox.cardB |= Box.yellowCardBit;
-                }
-                if (newBox.sCardB.contains("r")) {
-                    newBox.cardB |= Box.redCardBit;
-                }
-                if (newBox.sCardB.contains("s")) {
-                    newBox.cardB |= Box.shortCircuitBit;
-                }
+            }
+            offset++;
+            newBox.sCardA = msg.substring(offset, offset+3);
+            offset += 4;
+            newBox.sCardB = msg.substring(offset, offset+3);
+            offset += 3;
+            if (newBox.sCardA.contains("y")) {
+                newBox.cardA |= Box.yellowCardBit;
+            }
+            if (newBox.sCardA.contains("r")) {
+                newBox.cardA |= Box.redCardBit;
+            }
+            if (newBox.sCardA.contains("s")) {
+                newBox.cardA |= Box.shortCircuitBit;
+            }
+            if (newBox.sCardB.contains("y")) {
+                newBox.cardB |= Box.yellowCardBit;
+            }
+            if (newBox.sCardB.contains("r")) {
+                newBox.cardB |= Box.redCardBit;
+            }
+            if (newBox.sCardB.contains("s")) {
+                newBox.cardB |= Box.shortCircuitBit;
             }
         } catch (StringIndexOutOfBoundsException e) {
             return;
@@ -214,15 +256,21 @@ public class FencingBoxList {
             for (Box b : boxList) {
                 if (b.piste.equals(newBox.piste)) {
                     int i = boxList.indexOf(b);
+                    if (C.DEBUG) {
+                        Log.d(TAG, "Found box " + newBox + " at index " + i);
+                    }
                     if (i >= 0) {
-                        if (!b.equals(newBox)) {
+                        if (!b.equals(newBox) && b.msgIndex != newBox.msgIndex) {
                             newBox.changed = true;
 
                             /* Check for a new hit on the currently-displayed box */
                             if (isNewHit(b, newBox)) {
                                 if (i == currentBoxIndex) {
-                                    vibrateForHit();
+                                    vibrateForHit(b);
                                 }
+                            }
+                            if (C.DEBUG) {
+                                Log.d(TAG, "Storing (" + myPiste + ") new box " + newBox);
                             }
                             boxList.set(i, newBox);
                         }
@@ -262,13 +310,20 @@ public class FencingBoxList {
         return boxList.get(currentBoxIndex);
     }
 
+    public void saveCurrentMode(Box.Mode mode) {
+        Box b = boxList.get(currentBoxIndex);
+        b.setMode(mode);
+        boxList.set(currentBoxIndex, b);
+    }
+
     private boolean isNewHit(Box oldBox, Box newBox) {
         return ((oldBox.hitA == Box.Hit.None && newBox.hitA != Box.Hit.None)
                 ||
                 (oldBox.hitB == Box.Hit.None && newBox.hitB != Box.Hit.None)) ? true:false;
     }
 
-    private void vibrateForHit() {
+    private void vibrateForHit(Box b) {
+        /* Don't vibrate if there is no display */
         Vibrator v = (Vibrator) mainActivity.getSystemService(Context.VIBRATOR_SERVICE);
 
         if (mainActivity.isVibrationOn()) {

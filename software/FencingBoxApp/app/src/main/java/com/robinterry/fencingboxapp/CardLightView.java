@@ -131,7 +131,7 @@ public class CardLightView extends View {
             this.layout = layout;
             this.layout.addView(this);
         } catch (Exception e) {
-            Log.e(TAG, "Cannot remove view " + this + " exception " + e);
+            Log.e(TAG, "Cannot remove view " + this + " error " + e);
         }
         showYellow(this.yellowCardOn);
         showRed(this.redCardOn);

@@ -670,16 +670,22 @@ void sendRepeater(String msg)
 {
    if (repeaterPresent)
    {
-      Serial.print(msg);
-#ifdef ENABLE_REPEATER_TEST
-      Serial.println(" ");
-#endif
+      sendRepeaterRaw(msg);
+   
       // Delay the polling
       if (repeaterPollTime <= REPEATERPOLL)
       {
          repeaterPollTime += REPEATERPOLL;
       }
    }
+}
+
+void sendRepeaterRaw(String msg)
+{
+   Serial.print(msg);
+#ifdef ENABLE_REPEATER_TEST
+   Serial.println(" ");
+#endif
 }
 #endif
 
@@ -1488,6 +1494,17 @@ bool waitSerial(int response[], int rxData[], long waitUs)
    }
    return false;
 }
+
+bool sendRepeaterGo()
+{
+   sendRepeaterRaw("!GO");
+
+   /* Wait one second for initial "OK" response from repeater */
+   int  response[] = { 'O', 'K', '\0' };
+   int  rxData[]   = { 0, 0 };
+
+   return waitSerial(response, rxData, ONESEC_US);
+}
 #endif
 
 void setup() 
@@ -1572,21 +1589,20 @@ void setup()
 #ifdef ENABLE_REPEATER
    Serial.begin(BAUDRATE);
    Serial.println("");
-   sendRepeater("!GO");
 
-   /* Wait one second for initial "OK" response from repeater */
-   int  response[] = { 'O', 'K', '\0' };
-   int  rxData[] = { 0, 0 };
-
-   if (waitSerial(response, rxData, ONESEC_US))
+   /* Send the "!GO" message to search for a repeater */
+   if (sendRepeaterGo())
    {
       repeaterPresent = true;
-      // Initial poll delayed for one second
+
+      /* Initial poll delayed for one second */
       repeaterPollTime = millis()+ONESEC;
    }
+
+   /* Repeater is not present */
    else
    {
-      repeaterPresent = false;
+      repeaterPresent  = false;
    }
 #ifdef ENABLE_REPEATER_TEST
    repeaterPresent = true;
@@ -3986,9 +4002,7 @@ void loop()
 #endif
       // Do processing for a given weapon
       doWeapon();
-#ifdef REPEATER_POLLING
       repeaterPollForKey();
-#endif      
 
       // Check for hits and signal
       if (isHit())
@@ -4233,9 +4247,7 @@ void loop()
 #endif
       // Do processing for a given weapon
       doWeapon();
-#ifdef REPEATER_POLLING
       repeaterPollForKey();
-#endif
 
       // Flash the display when a hit is active?
       if (hitDisplay)
@@ -4363,9 +4375,8 @@ void loop()
 #endif
       // Do processing for a given weapon
       doWeapon();
-#ifdef REPEATER_POLLING
       repeaterPollForKey();
-#endif
+
       // Alternate priority display
       if (priorityChoose())
       {
@@ -4519,9 +4530,7 @@ void loop()
 #endif
       // Do processing for a given weapon
       doWeapon();
-#ifdef REPEATER_POLLING
       repeaterPollForKey();
-#endif 
 
       // Handle main timer
       if (timeState != TIM_STOPPED)
@@ -4613,9 +4622,7 @@ void loop()
          checkPassivity();
       }
 #endif
-#ifdef REPEATER_POLLING
-      repeaterPollForKey();
-#endif      
+      repeaterPollForKey();      
    }
 }
 
@@ -5297,13 +5304,13 @@ BoutState readState()
 }
 #endif
 
-#ifdef REPEATER_POLLING
-bool repeaterPollForKey()
+void repeaterPollForKey()
 {
-   if (repeaterPresent)
+   /* Poll the repeater after a period of time */
+   if (millis() >= repeaterPollTime)
    {
-      /* Poll the repeater after a period of time */
-      if (millis() >= repeaterPollTime)
+#ifdef REPEATER_POLLING
+      if (repeaterPresent)
       {
          /* Only write if there are enough spaces in the write buffer */
          if (Serial.availableForWrite() > 10)
@@ -5355,6 +5362,6 @@ bool repeaterPollForKey()
             }
          }
       }
+#endif
    }
 }
-#endif

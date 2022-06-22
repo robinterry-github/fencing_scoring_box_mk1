@@ -21,9 +21,9 @@ public class HitLightView extends View {
     private int leftPos;
     public enum HitLight { HitA, HitB }
     private HitLight hitLight = HitLight.HitA;
-    private int onTargetColor = Color.BLACK;
+    private int onTargetColor = Color.BLACK; // either red or green in practice
     private final int offTargetColor = Color.WHITE;
-    private final int offColor = Color.BLACK;
+    private final int offColor = Color.TRANSPARENT;
     public static final int LED_SIZE_X_DIV_PORT = 3;
     public static final int LED_SIZE_Y_DIV_PORT = 4;
     public static final int LED_SIZE_X_DIV_LAND = 3;
@@ -124,7 +124,7 @@ public class HitLightView extends View {
             this.layout = layout;
             this.layout.addView(this);
         } catch (Exception e) {
-            Log.e(TAG, "Cannot remove view " + this + " exception " + e);
+            Log.e(TAG, "Cannot remove view " + this + " error " + e);
         }
         showLights(this.hit);
     }

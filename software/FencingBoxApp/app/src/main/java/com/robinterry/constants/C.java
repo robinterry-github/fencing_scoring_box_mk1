@@ -3,6 +3,8 @@ package com.robinterry.constants;
 /* Class of configuration constants */
 
 public final class C {
+    /* Debug enable flag */
+    public static final boolean DEBUG = false;
     /* If true, then when the serial is lost, the app switches to display mode */
     public static final boolean DISPLAY_AFTER_CONNECT_ERROR = false;
     /* USB port number */
@@ -33,5 +35,9 @@ public final class C {
     public static final int BOOST_RXMESSAGES = (MAX_RXMESSAGES/2);
     /* Vibrate period in milliseconds when a hit is detected */
     public static final int VIBRATE_PERIOD = 500;
+    /* Maximum value of the network message index */
+    public static final int MAX_MSGINDEX = 9999;
+    /* Send Bluetooth keys to fencing scoring box when connected, otherwise process locally */
+    public static final boolean SEND_KEYS_TO_BOX = false;
 }
 

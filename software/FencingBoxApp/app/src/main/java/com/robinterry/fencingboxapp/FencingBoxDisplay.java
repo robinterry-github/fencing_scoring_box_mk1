@@ -17,6 +17,8 @@ import com.robinterry.fencingboxapp.FencingBoxActivity.*;
 import com.robinterry.fencingboxapp.databinding.ActivityMainBinding;
 import com.robinterry.fencingboxapp.databinding.ActivityMainLandBinding;
 
+import com.robinterry.constants.C;
+
 @SuppressWarnings("ALL")
 public class FencingBoxDisplay {
     private Box box;
@@ -327,10 +329,15 @@ public class FencingBoxDisplay {
         });
     }
 
-    public void displayPriority(boolean priA, boolean priB) {
+    public void displayPriority(boolean priIndicator, boolean priA, boolean priB) {
         mainActivity.runOnUiThread(new Runnable() {
             @Override
             public void run() {
+                if (C.DEBUG) {
+                    Log.d(TAG, "priority indicator " + priIndicator
+                            + ", fencer A " + priA + ", fencer B " + priB);
+                }
+                setProgressBarVisibility(priIndicator ? View.VISIBLE:View.INVISIBLE);
                 priorityA.setTextColor(priA ? Color.RED : Color.BLACK);
                 priorityB.setTextColor(priB ? Color.RED : Color.BLACK);
             }
@@ -508,7 +515,7 @@ public class FencingBoxDisplay {
             displayClock(box.timeMins, box.timeSecs, box.timeHund, false);
             displayScore(box.scoreA, box.scoreB);
             displayHitLights(box.hitA, box.hitB);
-            displayPriority(box.priA, box.priB);
+            displayPriority(box.priIndicator, box.priA, box.priB);
             displayCard("0", box.cardA);
             displayCard("1", box.cardB);
             if (box.passivityActive) {
@@ -534,8 +541,10 @@ public class FencingBoxDisplay {
             if (oldBox.hitA != newBox.hitA || oldBox.hitB != newBox.hitB) {
                 displayHitLights(newBox.hitA, newBox.hitB);
             }
-            if (oldBox.priA != newBox.priA || oldBox.priB != newBox.priB) {
-                displayPriority(newBox.priA, newBox.priB);
+            if (oldBox.priA != newBox.priA ||
+                    oldBox.priB != newBox.priB ||
+                    oldBox.priIndicator != newBox.priIndicator) {
+                displayPriority(newBox.priIndicator, newBox.priA, newBox.priB);
             }
             if (oldBox.cardA != newBox.cardA) {
                 displayCard("0", newBox.cardA);
