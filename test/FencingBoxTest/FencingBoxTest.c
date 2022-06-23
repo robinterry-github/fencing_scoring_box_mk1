@@ -39,6 +39,7 @@ char ipAddr[IASIZE];
 int  txPistes = PISTES;
 int  cards = 0;
 int  allTx = 0;
+int  allRx = 0;
 int  rxPiste = 1;
 
 struct Box
@@ -68,7 +69,6 @@ struct Box *me, *meTx[PISTES], *meRx;
 int boxListIdx;
 pthread_t bcThread;
 int threadIdx = 0;
-int txEnable = 0;
 unsigned short broadcastPort;
 void *txrxCommsThread(void *arg);
 
@@ -583,7 +583,7 @@ void *txrxCommsThread(void *arg)
             else if (txrxStringLen > 0)
             {
                int piste = atoi(&txrxString[5]);
-               if (piste == rxPiste)
+               if (piste == rxPiste || allRx)
                {
                   time(&b->tm);
                   gmtime_r(&b->tm, &b->gmt);
@@ -615,13 +615,13 @@ void *txrxCommsThread(void *arg)
 
 void printUsage(void)
 {
-   printf("FencingBoxTest [-port P] [-tx] [-verbose] [-txpistes P] [-cards] [-alltx] [-rxpiste P]\n");
+   printf("FencingBoxTest [-port P] [-verbose] [-txpistes P] [-cards] [-alltx] [-allrx] [-rxpiste P]\n");
    printf("-port P      set IP network port to P\n");
-   printf("-tx          enable TX testing\n");
    printf("-verbose     verbose operation\n");
    printf("-txpistes    number of transmitting pistes (between 1 and %d)\n", PISTES);
    printf("-cards       display a random setting for penalty cards and short-circuit indication\n");
    printf("-alltx       all pistes are transmit only - there is no receiving piste\n");
+   printf("-allrx       all pistes are receive only - there is no transmitting piste\n");
    printf("-rxpiste P   set the piste number that we expect to receive from (between 1 and %d)\n", PISTES);
    printf("             the test application will only support one receiving piste\n");
    printf("\n");
@@ -662,10 +662,6 @@ int main(int argc, char *argv[])
             broadcastPort = atoi(argv[i]);
 	      }
       }
-      else if (!strcmp(argv[i], "-tx"))
-      {
-         txEnable = 1;
-      }
       else if (!strcmp(argv[i], "-verbose"))
       {
          verbose = 1;
@@ -676,7 +672,11 @@ int main(int argc, char *argv[])
       }
       else if (!strcmp(argv[i], "-alltx"))
       {
-         allTx = 1, rxPiste = 0;
+         allTx = 1, rxPiste = 1;
+      } 
+      else if (!strcmp(argv[i], "-allrx"))
+      {
+         allRx = 1, allTx = 0, txPistes = 0;
       } 
       else if (!strcmp(argv[i], "-txpistes"))
       {
@@ -745,11 +745,18 @@ int main(int argc, char *argv[])
    {
       meRx = &boxList[0];
    }
-   for (i = 0; i < txPistes; i++)
+   if (!allRx)
    {
-      meTx[i] = &boxList[i+(allTx ? 0:1)];
+      for (i = 0; i < txPistes; i++)
+      {
+         meTx[i] = &boxList[i+(allTx ? 0:1)];
+      }
+      boxListIdx = txPistes+1;
    }
-   boxListIdx = txPistes+1;
+   else
+   {
+      boxListIdx = 0;
+   }
    for (i = 0, j = 1; i < txPistes; i++, j++)
    {
       if (j == rxPiste)
@@ -784,8 +791,8 @@ int main(int argc, char *argv[])
    }
    if (!allTx)
    {
-      meRx->dir = DIR_RX;
-      meRx->port = DEFPORT;
+      meRx->dir   = DIR_RX;
+      meRx->port  = DEFPORT;
       meRx->piste = rxPiste;
       pthread_create(&meRx->thread, NULL, txrxCommsThread, meRx);
    }
