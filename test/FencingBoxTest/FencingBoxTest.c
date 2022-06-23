@@ -34,8 +34,6 @@ enum Dir
 
 int  sock = 0;
 int  quitThread = 0;
-int  noBCast = 1;
-int  noMCast = 0;
 int  verbose = 0;
 char ipAddr[IASIZE];
 int  txPistes = PISTES;
@@ -101,14 +99,7 @@ int openConnection(struct Box *b)
       switch (b->dir)
       {
          case DIR_RX:
-            if (!noMCast)
-            {
-               b->sock = socket(AF_INET, SOCK_DGRAM, IPPROTO_IP);
-            }
-            else
-            {
-               b->sock = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP);
-            }
+            b->sock = socket(AF_INET, SOCK_DGRAM, IPPROTO_IP);
             if (b->sock < 0)
             {
                Error(b, b->host, "socket() failed");
@@ -128,8 +119,47 @@ int openConnection(struct Box *b)
                b->addr.sin_addr.s_addr  = htonl(INADDR_ANY);
                b->addr.sin_port         = htons(b->port);
                bind(b->sock, (struct sockaddr *) &b->addr, sizeof(b->addr));
-               if (!noMCast)
+               strcpy(b->host, IPMC_ADDR);
+               b->mc.imr_multiaddr.s_addr = inet_addr(IPMC_ADDR);         
+               b->mc.imr_interface.s_addr = htonl(INADDR_ANY);         
+               if (setsockopt(b->sock, 
+                  IPPROTO_IP, IP_ADD_MEMBERSHIP, &b->mc, sizeof(b->mc)) < 0)
                {
+                  Error(NULL, "localhost", "setsockopt() IP multicast failed");
+                  return -1;
+               }
+               else
+               {
+                  b->rx = b->sock;
+               }
+               time(&b->tm);
+               gmtime_r(&b->tm, &b->gmt);
+               strftime(timeBuf, 30, "%H:%M:%S", &b->gmt);
+               printf("%s: socket %02d joined RX multicast group %s:%d\n", timeBuf, b->rx, IPMC_ADDR, b->port);
+               return 0;
+            }
+
+         case DIR_TX:
+            /* Don't try to transmit to yourself */
+            if (!b->localHost)
+            {
+               b->sock = socket(AF_INET, SOCK_DGRAM, IPPROTO_IP);
+               if (b->sock < 0)
+               {
+                  Error(b, b->host, "socket failed");
+                  return -1;
+               }
+               else if (setsockopt(b->sock, SOL_SOCKET, SO_REUSEADDR, (void *) &reuseAddr,
+                  sizeof(reuseAddr)) < 0)
+               {
+                  Error(b, b->host, "setsockopt() failed");
+                  return -1;
+               }
+               else
+               {
+                  b->addr.sin_family = AF_INET;
+                  b->addr.sin_port = htons(b->port);
+                  b->addr.sin_addr.s_addr = inet_addr(IPMC_ADDR); 
                   strcpy(b->host, IPMC_ADDR);
                   b->mc.imr_multiaddr.s_addr = inet_addr(IPMC_ADDR);         
                   b->mc.imr_interface.s_addr = htonl(INADDR_ANY);         
@@ -139,79 +169,12 @@ int openConnection(struct Box *b)
                      Error(NULL, "localhost", "setsockopt() IP multicast failed");
                      return -1;
                   }
-                  else
-                  {
-                     b->rx = b->sock;
-                  }
                   time(&b->tm);
                   gmtime_r(&b->tm, &b->gmt);
                   strftime(timeBuf, 30, "%H:%M:%S", &b->gmt);
-                  printf("%s: socket %02d joined RX multicast group %s:%d\n", timeBuf, b->rx, IPMC_ADDR, b->port);
-               }
-               else
-               {
-                  listen(b->sock, txPistes);
-                  b->rx = accept(b->sock, NULL, NULL);
-               }
-               return 0;
-            }
-
-         case DIR_TX:
-            if (txEnable | !noMCast)
-            {
-               /* Don't try to transmit to yourself */
-               if (!b->localHost)
-               {
-                  if (!noMCast) 
-                  {
-                     b->sock = socket(AF_INET, SOCK_DGRAM, IPPROTO_IP);
-                  }
-                  else
-                  {
-                     b->sock = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP);
-                  }
-                  if (b->sock < 0)
-                  {
-                     Error(b, b->host, "socket failed");
-                     return -1;
-                  }
-                  else if (setsockopt(b->sock, SOL_SOCKET, SO_REUSEADDR, (void *) &reuseAddr,
-                     sizeof(reuseAddr)) < 0)
-                  {
-                     Error(b, b->host, "setsockopt() failed");
-                     return -1;
-                  }
-                  else
-                  {
-                     b->addr.sin_family = AF_INET;
-                     b->addr.sin_port = htons(b->port);
-                     b->addr.sin_addr.s_addr = inet_addr(IPMC_ADDR); 
-                     if (!noMCast)
-                     {
-                        strcpy(b->host, IPMC_ADDR);
-                        b->mc.imr_multiaddr.s_addr = inet_addr(IPMC_ADDR);         
-                        b->mc.imr_interface.s_addr = htonl(INADDR_ANY);         
-                        if (setsockopt(b->sock, 
-                           IPPROTO_IP, IP_ADD_MEMBERSHIP, &b->mc, sizeof(b->mc)) < 0)
-                        {
-                           Error(NULL, "localhost", "setsockopt() IP multicast failed");
-                           return -1;
-                        }
-                        time(&b->tm);
-                        gmtime_r(&b->tm, &b->gmt);
-                        strftime(timeBuf, 30, "%H:%M:%S", &b->gmt);
-                        printf("%s: socket %02d, piste %02d joined TX multicast group %s:%d\n", 
-                           timeBuf, b->sock, b->piste, IPMC_ADDR, b->port);
-                     }
-                     else
-                     {
-                        if (connect(b->sock, (struct sockaddr *) &b->addr, sizeof(b->addr)) < 0)
-                        {
-                           Error(b, b->host, "connect failed");
-                           return -1;
-                        }
-                     }
-                  }
+                  printf("%s: socket %02d, piste %02d joined TX multicast group %s:%d\n", 
+                     timeBuf, b->sock, b->piste, IPMC_ADDR, b->port);
+                  
                }
                return 0;
             }
@@ -388,33 +351,6 @@ void processRx(struct Box *b)
       }
    }
 }            
-
-void *rxBroadcastThread(void *arg)
-{
-   char bcString[MAXSTRING+1];     /* Buffer for received string */
-   int bcStringLen;                /* Length of received string */
-
-   /* Child process - receive broadcast messages */
-   while (!quitThread)
-   {
-      /* Receive a single datagram from the server */
-      if ((bcStringLen = recvfrom(sock, bcString, MAXSTRING, 0, NULL, 0)) < 0)
-      {
-          if (errno != EBADF)
-          {
-             Error(NULL, "localhost", "recvfrom failed");
-          }
-          quitThread = 1;
-      }
-      else
-      {
-         bcString[bcStringLen] = '\0';
-         printf("%16s RX: %s\n", noMCast ? "BROADCAST":"MULTICAST", bcString);    /* Print the received string */
-         addBox(bcString, broadcastPort+1);
-      }
-  }
-  return NULL;
-}
 
 char *getCard(int card)
 {
@@ -679,16 +615,15 @@ void *txrxCommsThread(void *arg)
 
 void printUsage(void)
 {
-   printf("FencingBoxTest [-port P] [-tx] [-bc] [-nomc] [-verbose] [-txPistes P] [-cards] [-alltx] [-rxpiste P]\n");
+   printf("FencingBoxTest [-port P] [-tx] [-verbose] [-txpistes P] [-cards] [-alltx] [-rxpiste P]\n");
    printf("-port P      set IP network port to P\n");
    printf("-tx          enable TX testing\n");
-   printf("-bc          enable broadcast of IP messages\n");
-   printf("-nomc        disable IP multicast\n");
    printf("-verbose     verbose operation\n");
-   printf("-txPistes    number of transmitting txPistes (between 1 and %d)\n", PISTES);
+   printf("-txpistes    number of transmitting pistes (between 1 and %d)\n", PISTES);
    printf("-cards       display a random setting for penalty cards and short-circuit indication\n");
-   printf("-alltx       all txPistes are transmit only - there is no receiving piste\n");
+   printf("-alltx       all pistes are transmit only - there is no receiving piste\n");
    printf("-rxpiste P   set the piste number that we expect to receive from (between 1 and %d)\n", PISTES);
+   printf("             the test application will only support one receiving piste\n");
    printf("\n");
 }
 
@@ -731,14 +666,6 @@ int main(int argc, char *argv[])
       {
          txEnable = 1;
       }
-      else if (!strcmp(argv[i], "-bc"))
-      {
-         noBCast = 0;
-      }
-      else if (!strcmp(argv[i], "-nomc"))
-      {
-         noMCast = 1;
-      }
       else if (!strcmp(argv[i], "-verbose"))
       {
          verbose = 1;
@@ -749,7 +676,7 @@ int main(int argc, char *argv[])
       }
       else if (!strcmp(argv[i], "-alltx"))
       {
-         allTx = 1;
+         allTx = 1, rxPiste = 0;
       } 
       else if (!strcmp(argv[i], "-txpistes"))
       {
@@ -780,6 +707,11 @@ int main(int argc, char *argv[])
 	         printUsage();
 	         return 1;
 	      }
+         else if (allTx)
+         {
+            printf("You cannot have '-alltx' with '-rxpiste' - cancelling '-alltx'\n");
+            allTx = 0;
+         }
       }
       else
       {
@@ -801,155 +733,67 @@ int main(int argc, char *argv[])
    }
 
    memset(&broadcastAddr, 0, sizeof(broadcastAddr));   /* Zero out structure */
-   if (noMCast)
+
+   time(&tm);
+   srandom((unsigned int) tm);
+
+   if (allTx)
    {
-      /* Get IP address and broadcast address of the interface */
-      getIPAddr(sock, &ip, &bc, ipAddr, "en1");
-
-      /* Construct bind structure */
-      broadcastAddr.sin_family = AF_INET;                 /* Internet address family */
-      broadcastAddr.sin_addr.s_addr = INADDR_ANY;         /* Any incoming interface */
-      broadcastAddr.sin_port = htons(broadcastPort);      /* Broadcast port */
-
-      /* Set socket to allow broadcast */
-      broadcastPermission = reuseAddr = 1;
-      if (setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, (void *) &reuseAddr, sizeof(reuseAddr)) < 0)
-      {
-         Error(NULL, "localhost", "setsockopt() failed 1");
-         exit(1);
-      }
-
-      /* Bind to the broadcast port */
-      bind(sock, (struct sockaddr *) &broadcastAddr, sizeof(broadcastAddr));
-    
-      if (setsockopt(sock, SOL_SOCKET, SO_BROADCAST, (void *) &broadcastPermission, 
-                sizeof(broadcastPermission)) < 0)
-      {
-         Error(NULL, "localhost", "setsockopt() failed 2");
-         exit(1);
-      }
-      else
-      {
-         printf("Joined multicast group %s on port %d\n", IPMC_ADDR, IPMC_PORT);
-      }
-   }
-
-   if (!noMCast)
-   {
-      time(&tm);
-      srandom((unsigned int) tm);
-
-      if (allTx)
-      {
-         meRx = NULL;
-      }
-      else
-      {
-         meRx = &boxList[0];
-      }
-      for (i = 0; i < txPistes; i++)
-      {
-         meTx[i] = &boxList[i+(allTx ? 0:1)];
-      }
-      boxListIdx = txPistes+1;
-      for (i = 0, j = 1; i < txPistes; i++, j++)
-      {
-         if (j == rxPiste)
-         {
-            j++;
-         }
-         meTx[i]->dir    = DIR_TX;
-         meTx[i]->piste  = j;
-         meTx[i]->port   = DEFPORT;
-         meTx[i]->clock  = 0;
-         meTx[i]->secs   = (random()%(60/CLKINCR))*CLKINCR;
-         if (meTx[i]->secs == 0)
-         {
-            meTx[i]->mins = 1+(random()%3);
-         }
-         else
-         {
-            meTx[i]->mins = random()%3;
-         }
-         meTx[i]->hitA     = 0;
-         meTx[i]->hitB     = 0;
-         meTx[i]->hitTimer = 0;
-         meTx[i]->hitBlock = 0;
-         meTx[i]->scoreA   = 0; 
-         meTx[i]->scoreB   = 0;
-         if (cards)
-         {
-            meTx[i]->cardA    = random()%8;
-            meTx[i]->cardB    = random()%8;
-         }
-         pthread_create(&meTx[i]->thread, NULL, txrxCommsThread, meTx[i]);
-      }
-      if (!allTx)
-      {
-         meRx->dir = DIR_RX;
-         meRx->port = DEFPORT;
-         meRx->piste = rxPiste;
-         pthread_create(&meRx->thread, NULL, txrxCommsThread, meRx);
-      }
+      meRx = NULL;
    }
    else
    {
-      /* Start receive broadcast thread */
-      if (pthread_create(&bcThread, NULL, rxBroadcastThread, NULL))
+      meRx = &boxList[0];
+   }
+   for (i = 0; i < txPistes; i++)
+   {
+      meTx[i] = &boxList[i+(allTx ? 0:1)];
+   }
+   boxListIdx = txPistes+1;
+   for (i = 0, j = 1; i < txPistes; i++, j++)
+   {
+      if (j == rxPiste)
       {
-         printf("Unable to create receive broadcast thread\n");
-         exit(1);
+         j++;
       }
-      me = &boxList[0];
-      boxListIdx = 1;
-
-      /* Parent process - send regular broadcast */
-      if (txEnable)
+      meTx[i]->dir    = DIR_TX;
+      meTx[i]->piste  = j;
+      meTx[i]->port   = DEFPORT;
+      meTx[i]->clock  = 0;
+      meTx[i]->secs   = (random()%(60/CLKINCR))*CLKINCR;
+      if (meTx[i]->secs == 0)
       {
-         /* Pretend to be a transmitter on piste 8 */
-         sprintf(sendString, "08:%s", ipAddr);
-         me->dir = DIR_TX;
+         meTx[i]->mins = 1+(random()%3);
       }
       else
       {
-         /* Be a receiver */
-         sprintf(sendString, "00:%s", ipAddr);
-         me->dir = DIR_RX;
+         meTx[i]->mins = random()%3;
       }
-      strcpy(me->host, ipAddr);
-      me->localHost = 1;
-      me->port = broadcastPort+1; 
-      me->idx = 0;
-
-      pthread_create(&me->thread, NULL, txrxCommsThread, me);
-      sendStringLen = strlen(sendString);
-      broadcastAddr.sin_addr.s_addr = bc.s_addr;
+      meTx[i]->hitA     = 0;
+      meTx[i]->hitB     = 0;
+      meTx[i]->hitTimer = 0;
+      meTx[i]->hitBlock = 0;
+      meTx[i]->scoreA   = 0; 
+      meTx[i]->scoreB   = 0;
+      if (cards)
+      {
+         meTx[i]->cardA    = random()%8;
+         meTx[i]->cardB    = random()%8;
+      }
+      pthread_create(&meTx[i]->thread, NULL, txrxCommsThread, meTx[i]);
+   }
+   if (!allTx)
+   {
+      meRx->dir = DIR_RX;
+      meRx->port = DEFPORT;
+      meRx->piste = rxPiste;
+      pthread_create(&meRx->thread, NULL, txrxCommsThread, meRx);
    }
 
-   /* Transmit broadcast thread */
    while (!quitThread)
    {
-       if (noBCast)
-       {
-          sleep(1);
-       }
-       else
-       {
-          /* Broadcast sendString in datagram to clients every second */
-          if (sendto(sock, sendString, sendStringLen, 0, 
-               (struct sockaddr *) &broadcastAddr, sizeof(broadcastAddr)) != sendStringLen)
-          {
-             Error(NULL, "localhost", "sendto() sent a different number of bytes than expected");
-             quitThread = 1;
-          }
-          else
-          {
-             printf("%16s TX: %s, length %d\n", noMCast ? "BROADCAST":"MULTICAST", sendString, sendStringLen);
-             sleep(1);   /* Avoids flooding the network */
-          }
-      }
+       sleep(1);
    }
-   printf("Transmit broadcast thread ending\n");
    close(sock);
 
    return 0;

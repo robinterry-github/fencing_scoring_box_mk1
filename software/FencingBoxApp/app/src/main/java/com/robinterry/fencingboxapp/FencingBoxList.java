@@ -102,11 +102,12 @@ public class FencingBoxList {
         }
         newBox.host = host;
         try {
-            /* Read hits */
             if (msg.charAt(offset) != 'S') {
                 return;
             }
             offset++;
+
+            /* Read the hit part of the message */
             String hA = msg.substring(offset, offset+1);
             offset++;
             String hB = msg.substring(offset, offset+1);
@@ -136,7 +137,7 @@ public class FencingBoxList {
                     break;
             }
 
-            /* Read score */
+            /* Read the score part of the message */
             newBox.scoreA = msg.substring(offset, offset+2);
             offset += 3;
             newBox.scoreB = msg.substring(offset, offset+2);
@@ -147,49 +148,61 @@ public class FencingBoxList {
                 return;
             }
             offset++;
-            if (C.QUANTISE_CLOCK) {
-                int mins = Integer.parseInt(msg.substring(offset, offset+2));
-                offset += 3;
-                int secs = Integer.parseInt(msg.substring(offset, offset+2));
-                offset += 3;
-                /* Round the seconds to the next highest multiple of the factor -
-                   if this is 60, then increment the minutes, and set seconds to 0 */
 
-                /* Example (quantisation factor is 5):
-                   03:00 -> 03:00
-                   02:59 -> 03:00
-                   02:58 -> 03:00
-                   02:55 -> 02:55
-                   02:54 -> 02:55
-                   01:59 -> 02:00 */
-
-                /* The reason for quantising is due to the message loss rate for
-                   multicast over Wifi - if we count down every second, the clock
-                   count as displayed looks very irregular due to lost messages.
-                   If we quantise the clock to more than one second (say 5) then the
-                   clock count looks less irregular, which is visually more acceptable */
-                if (secs % C.QUANTISE_FACTOR_SECS != 0) {
-                    if (secs > (60-C.QUANTISE_FACTOR_SECS)) {
-                        secs = 0;
-                        mins++;
-                    } else {
-                        secs = ((secs + C.QUANTISE_FACTOR_SECS) /
-                                C.QUANTISE_FACTOR_SECS) * C.QUANTISE_FACTOR_SECS;
-                    }
-                }
-                newBox.timeMins = String.format("%02d", mins);
-                newBox.timeSecs = String.format("%02d", secs);
-            } else {
-                /* Non-quantised clock */
-                newBox.timeMins = msg.substring(offset, offset+2);
-                offset += 3;
-                newBox.timeSecs = msg.substring(offset, offset+2);
-                offset += 3;
-            }
-            newBox.timeHund = msg.substring(offset, offset+2);
+            /* Read the clock part of the message */
+            String minStr = msg.substring(offset, offset+2);
+            offset += 3;
+            String secStr = msg.substring(offset, offset+2);
+            offset += 3;
+            String hundStr = msg.substring(offset, offset+2);
             offset += 2;
+            if (C.QUANTISE_CLOCK) {
+                try {
+                    int mins = Integer.parseInt(minStr);
+                    int secs = Integer.parseInt(secStr);
 
-            /* Read priority */
+                    /* Round the seconds to the next highest multiple of the factor -
+                       if this is 60, then increment the minutes, and set seconds to 0 */
+
+                    /* Example (quantisation factor is 5):
+                       03:00 -> 03:00
+                       02:59 -> 03:00
+                       02:58 -> 03:00
+                       02:55 -> 02:55
+                       02:54 -> 02:55
+                       01:59 -> 02:00 */
+
+                    /* The reason for quantising is due to the message loss rate for
+                       multicast over Wifi - if we count down every second, the clock
+                       count as displayed looks very irregular due to lost messages.
+                       If we quantise the clock to more than one second (say 5) then the
+                       clock count looks less irregular, which is visually more acceptable */
+                    if (secs % C.QUANTISE_FACTOR_SECS != 0) {
+                        if (secs > (60 - C.QUANTISE_FACTOR_SECS)) {
+                            secs = 0;
+                            mins++;
+                        } else {
+                            secs = ((secs + C.QUANTISE_FACTOR_SECS) /
+                                    C.QUANTISE_FACTOR_SECS) * C.QUANTISE_FACTOR_SECS;
+                        }
+                    }
+                    newBox.timeMins = String.format("%02d", mins);
+                    newBox.timeSecs = String.format("%02d", secs);
+                } catch (NumberFormatException e) {
+                    /* Non-numeric clock - just use as is */
+                    newBox.timeMins = minStr;
+                    newBox.timeSecs = secStr;
+                }
+            } else {
+                /* Non-quantised clock - just use as is */
+                newBox.timeMins = minStr;
+                newBox.timeSecs = secStr;
+            }
+
+            /* Don't quantise the hundredths */
+            newBox.timeHund = hundStr;
+
+            /* Read the priority part of the message */
             if (msg.charAt(offset) != 'P') {
                 return;
             }
@@ -206,7 +219,7 @@ public class FencingBoxList {
                 newBox.priB = pB.contains("y");
             }
 
-            /* Read cards */
+            /* Read the card part of the message */
             if (msg.charAt(offset) != 'C') {
                 return;
             }
@@ -244,7 +257,7 @@ public class FencingBoxList {
             /* If a message is received and the app was previously
                not receiving messages, then boost the message counter */
             if (!newBox.rxOk) {
-                newBox.rxMessages = C.BOOST_RXMESSAGES;
+                newBox.rxMessages = C.MAX_RXMESSAGES;
             } else {
                 newBox.rxMessages++;
             }

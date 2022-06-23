@@ -272,7 +272,7 @@ public class FencingBoxActivity extends AppCompatActivity
                     Log.i(TAG, "TV keypress " + c.toString());
                     if (isSerialConnected() && C.SEND_KEYS_TO_BOX) {
                         /* If the fencing scoring box is connected, send the key to that */
-                        String msg = "/" + c.toString();
+                        String msg = "/" + c.toString() + "--";
                         return msg;
                     } else {
                         /* When the fencing scoring box is not connected, or when
@@ -336,7 +336,7 @@ public class FencingBoxActivity extends AppCompatActivity
                     Log.i(TAG, "Phone keypress " + c.toString());
                     if (isSerialConnected() && C.SEND_KEYS_TO_BOX) {
                         /* If the fencing scoring box is connected, send the key to that */
-                        String msg = "/" + c.toString();
+                        String msg = "/" + c.toString() + "--";
                         return msg;
                     } else {
                         /* When the fencing scoring box is not connected */
@@ -844,11 +844,16 @@ public class FencingBoxActivity extends AppCompatActivity
         if (requestCode == PisteSelect.ACTIVITY_CODE) {
             if (resultCode == Activity.RESULT_OK) {
                 synchronized (bc) {
-                    box.piste = Integer.valueOf(i.getIntExtra("piste", 1));
+                    box.changePiste = Integer.valueOf(i.getIntExtra("piste", 1));
+                    if (!isSerialConnected()) {
+                        box.piste = box.changePiste;
+                    }
                 }
                 synchronized (boxList) {
-                    boxList.setMyPiste(box.piste);
+                    boxList.setMyPiste(box.changePiste);
                 }
+                String pisteString = getResources().getString(R.string.piste) + String.format(" %02d", box.changePiste);
+                Toast.makeText(getApplicationContext(), pisteString, Toast.LENGTH_SHORT).show();
             }
         }
         if (requestCode == WeaponSelect.ACTIVITY_CODE) {
@@ -857,13 +862,13 @@ public class FencingBoxActivity extends AppCompatActivity
                 synchronized (bc) {
                     switch (wp) {
                         case "FOIL":
-                            box.weapon = box.changeWeapon = Box.Weapon.Foil;
+                            box.changeWeapon = Box.Weapon.Foil;
                             break;
                         case "EPEE":
-                            box.weapon = box.changeWeapon = Box.Weapon.Epee;
+                            box.changeWeapon = Box.Weapon.Epee;
                             break;
                         case "SABRE":
-                            box.weapon = box.changeWeapon = Box.Weapon.Sabre;
+                            box.changeWeapon = Box.Weapon.Sabre;
                             break;
                     }
                 }
@@ -1394,6 +1399,10 @@ public class FencingBoxActivity extends AppCompatActivity
                 i += 1;
                 String cmd = new String(data, i, 2, StandardCharsets.UTF_8);
                 i += 2;
+                if (cmd.equals("GO")) {
+                    cmd += new String(data, i, 2, StandardCharsets.UTF_8);
+                    i += 2;
+                }
                 processCmd(cmd);
             } else if (data[i] == scoreMarker) {
                 i += 1;
@@ -1457,30 +1466,40 @@ public class FencingBoxActivity extends AppCompatActivity
     }
 
     public synchronized void processCmd(String cmd) {
-        switch (cmd) {
-            case "GO":
-                serialConnected = Connected.True;
-                if (bc != null) {
-                    bc.connected(true);
-                }
-                Log.i(TAG, "fencing box started up, connected " + serialConnected);
-                box.setModeNone();
-                invalidateOptionsMenu();
-                box.disp.hideUI();
-                clearHitLights();
-                clearScore();
-                clearClock();
-                clearCard();
-                clearPriority();
-                clearPassivity();
-                clearPassivityCard();
-                try {
-                    socket.write("OK".getBytes(StandardCharsets.UTF_8));
-                } catch (IOException e) {
-                    Log.e(TAG, "unable to respond to GO command");
-                }
-                break;
+        int newPiste;
+        String weaponString;
 
+        /* The "GO" command contains a two-digit piste number sent by the box */
+        if (cmd.substring(0, 2).equals("GO")) {
+            try {
+                newPiste = Integer.parseInt(cmd.substring(2));
+            } catch (NumberFormatException e) {
+                newPiste = 1;
+            }
+            box.changePiste = box.piste = newPiste;
+            serialConnected = Connected.True;
+            if (bc != null) {
+                bc.connected(true);
+            }
+            Log.i(TAG, "fencing box started up, piste " + box.piste);
+            box.setModeNone();
+            invalidateOptionsMenu();
+            box.disp.hideUI();
+            clearHitLights();
+            clearScore();
+            clearClock();
+            clearCard();
+            clearPriority();
+            clearPassivity();
+            clearPassivityCard();
+            try {
+                socket.write("OK".getBytes(StandardCharsets.UTF_8));
+            } catch (IOException e) {
+                Log.e(TAG, "unable to respond to GO command");
+            }
+
+        /* These other commands do not have parameters */
+        } else switch (cmd) {
             case "BS":
                 Log.i(TAG, "bout start");
                 box.disp.hideUI();
@@ -1627,7 +1646,8 @@ public class FencingBoxActivity extends AppCompatActivity
                 setScore();
                 setClock();
                 setCard();
-                Toast.makeText(getApplicationContext(), R.string.weapon_foil, Toast.LENGTH_SHORT).show();
+                weaponString = getResources().getString(R.string.weapon_foil) + String.format(" %02d", box.piste);
+                Toast.makeText(getApplicationContext(), weaponString, Toast.LENGTH_SHORT).show();
                 break;
 
             case "TE":
@@ -1636,7 +1656,8 @@ public class FencingBoxActivity extends AppCompatActivity
                 setScore();
                 setClock();
                 setCard();
-                Toast.makeText(getApplicationContext(), R.string.weapon_epee, Toast.LENGTH_SHORT).show();
+                weaponString = getResources().getString(R.string.weapon_epee) + String.format(" %02d", box.piste);
+                Toast.makeText(getApplicationContext(), weaponString, Toast.LENGTH_SHORT).show();
                 break;
 
             case "TS":
@@ -1645,7 +1666,8 @@ public class FencingBoxActivity extends AppCompatActivity
                 setScore();
                 setClock();
                 setCard();
-                Toast.makeText(getApplicationContext(), R.string.weapon_sabre, Toast.LENGTH_SHORT).show();
+                weaponString = getResources().getString(R.string.weapon_sabre) + String.format(" %02d", box.piste);
+                Toast.makeText(getApplicationContext(), weaponString, Toast.LENGTH_SHORT).show();
                 break;
 
             case "VS":
@@ -1802,22 +1824,31 @@ public class FencingBoxActivity extends AppCompatActivity
 
         /* Has the weapon changed? */
         if (box.changeWeapon != box.weapon) {
+            box.weapon = box.changeWeapon;
+
             switch (box.changeWeapon) {
                 case Foil:
-                    msg = "/f";
+                    msg = "/f--";
                     break;
 
                 case Epee:
-                    msg = "/e";
+                    msg = "/e--";
                     break;
 
                 case Sabre:
-                    msg = "/s";
+                    msg = "/s--";
                     break;
 
                 default:
                     break;
             }
+        } else if (box.changePiste != box.piste) {
+            Log.i(TAG, "New piste " + box.changePiste);
+            box.piste = box.changePiste;
+            synchronized (boxList) {
+                boxList.setMyPiste(box.piste);
+            }
+            msg = "/p" + String.format("%02d", box.changePiste);
         } else {
             synchronized (keyHandler) {
                 while (keyHandler.keyPresent()) {
@@ -1890,7 +1921,7 @@ public class FencingBoxActivity extends AppCompatActivity
                     box.scoreA,
                     box.scoreB);
         } else {
-            s = String.format("%04d|%02dS--:00:00",
+            s = String.format("%04d|%02dS--:--:--",
                     box.msgIndex,
                     box.piste);
         }
@@ -1908,7 +1939,7 @@ public class FencingBoxActivity extends AppCompatActivity
                     box.timeSecs,
                     box.timeHund);
         } else {
-            s = "T00:00:00";
+            s = "T--:--:--";
         }
         if (C.DEBUG) {
             Log.d(TAG, "msgClock " + s);

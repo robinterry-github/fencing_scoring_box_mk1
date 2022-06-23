@@ -29,10 +29,8 @@ public final class C {
     public static final String IPMCADDR = "224.0.0.1";
     /* Multicast IP port */
     public static final int IPMCPORT = 28888;
-    /* Limit on count of received messages */
+    /* Limit on count of received messages before a disconnection is reported */
     public static final int MAX_RXMESSAGES = 20;
-    /* The boost to the received message count when one first comes in */
-    public static final int BOOST_RXMESSAGES = (MAX_RXMESSAGES/2);
     /* Vibrate period in milliseconds when a hit is detected */
     public static final int VIBRATE_PERIOD = 500;
     /* Maximum value of the network message index */

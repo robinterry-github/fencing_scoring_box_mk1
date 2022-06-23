@@ -512,12 +512,17 @@ public class FencingBoxDisplay {
 
     public void displayBox(Box box) {
         synchronized (this) {
-            displayClock(box.timeMins, box.timeSecs, box.timeHund, false);
-            displayScore(box.scoreA, box.scoreB);
-            displayHitLights(box.hitA, box.hitB);
-            displayPriority(box.priIndicator, box.priA, box.priB);
-            displayCard("0", box.cardA);
-            displayCard("1", box.cardB);
+            if (box.rxOk) {
+                displayClock(box.timeMins, box.timeSecs, box.timeHund, false);
+                displayScore(box.scoreA, box.scoreB);
+                displayHitLights(box.hitA, box.hitB);
+                displayPriority(box.priIndicator, box.priA, box.priB);
+                displayCard("0", box.cardA);
+                displayCard("1", box.cardB);
+            } else {
+                displayClock("--", "--", "--", false);
+                displayScore("--", "--");
+            }
             if (box.passivityActive) {
                 setPassivityClockColor(Color.GREEN);
                 displayPassivityAsClock(box.passivityTimer);
@@ -527,46 +532,6 @@ public class FencingBoxDisplay {
             }
             displayPassivityCard(box, 0, box.pCard[0]);
             displayPassivityCard(box, 1, box.pCard[1]);
-        }
-    }
-
-    public void displayBoxIfChanged(Box oldBox, Box newBox) {
-        synchronized (this) {
-            if (newBox.compareTime(oldBox)) {
-                displayClock(newBox.timeMins, newBox.timeSecs, newBox.timeHund, false);
-            }
-            if (newBox.compareScore(oldBox)) {
-                displayScore(newBox.scoreA, newBox.scoreB);
-            }
-            if (oldBox.hitA != newBox.hitA || oldBox.hitB != newBox.hitB) {
-                displayHitLights(newBox.hitA, newBox.hitB);
-            }
-            if (oldBox.priA != newBox.priA ||
-                    oldBox.priB != newBox.priB ||
-                    oldBox.priIndicator != newBox.priIndicator) {
-                displayPriority(newBox.priIndicator, newBox.priA, newBox.priB);
-            }
-            if (oldBox.cardA != newBox.cardA) {
-                displayCard("0", newBox.cardA);
-            }
-            if (oldBox.cardB != newBox.cardB) {
-                displayCard("1", newBox.cardB);
-            }
-            if (box.passivityActive) {
-                if (oldBox.passivityTimer != newBox.passivityTimer) {
-                    setPassivityClockColor(Color.GREEN);
-                    displayPassivityAsClock(newBox.passivityTimer);
-                }
-            } else {
-                setPassivityClockColor(Color.WHITE);
-                displayPassivityAsPiste(newBox);
-            }
-            if (oldBox.pCard[0] != newBox.pCard[0]) {
-                displayPassivityCard(box, 0, newBox.pCard[0]);
-            }
-            if (oldBox.pCard[1] != newBox.pCard[1]) {
-                displayPassivityCard(box, 1, newBox.pCard[1]);
-            }
         }
     }
 }

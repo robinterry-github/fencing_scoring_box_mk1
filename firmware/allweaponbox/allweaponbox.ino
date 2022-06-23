@@ -118,6 +118,7 @@
 #define DIMINTERVAL    (500)              // Interval between LED display dimming cycle steps (ms)
 #define MAX_ENABLE_STOPWATCH  ((60UL*60UL)-1)    // Maximum stopwatch time (59:59)
 #define REPEATERPOLL   (100)
+#define MAXPISTE       30        // Maximum piste (1-MAXPISTE inclusive)
 
 #ifdef PASSIVITY
 #define MAX_PASSIVITY  (60UL)             // Passivity timer (seconds)
@@ -127,6 +128,7 @@
 #ifdef EEPROM_STORAGE
 #define NV_WEAPON      (16)
 #define NV_MODE        (17)
+#define NV_PISTE       (18)
 #endif
 
 #ifdef PRITIMER_RANDOM
@@ -279,6 +281,8 @@ long buttonScan      = 0;
 bool buttonPressed   = false;
 long buttonDebounce  = 0;
 bool weaponChange    = false;
+bool pisteChange     = false;
+int  newPiste        = 1;
 bool scoreFlash      = false;
 long scoreFlashTimer = 0;
 bool maxSabreHits[2] = { false, false };
@@ -1497,8 +1501,15 @@ bool waitSerial(int response[], int rxData[], long waitUs)
 
 bool sendRepeaterGo()
 {
-   sendRepeaterRaw("!GO");
+#ifdef EEPROM_STORAGE
+   char msg[6];
 
+   sprintf(msg, "!GO%02d", readPiste());
+   sendRepeaterRaw(msg);
+#else
+   sendRepeaterRaw("!GO01");
+#endif
+   
    /* Wait one second for initial "OK" response from repeater */
    int  response[] = { 'O', 'K', '\0' };
    int  rxData[]   = { 0, 0 };
@@ -4138,6 +4149,16 @@ void loop()
          weaponChange = false;
       }
 
+      /* Is the box changing piste? */
+      if (pisteChange)
+      {
+          /* The box only stores the piste - it doesn't need to know it otherwise */
+#ifdef EEPROM_STORAGE
+          writePiste(newPiste);
+#endif
+          pisteChange = false;
+      }
+
 #ifdef ENABLE_IR
       // Poll the IR to see if a key has been pressed
 #ifdef FREQUENT_IRPOLL
@@ -5261,6 +5282,21 @@ Weapon readWeapon()
    }
 }
 
+void writePiste(int p)
+{
+   EEPROM.update(NV_PISTE, p);
+}
+
+int readPiste()
+{
+   int p = EEPROM.read(NV_PISTE);
+   if (p <= 0 || p > MAXPISTE)
+   {
+      p = 1;
+   }
+   return p;
+}
+
 void writeState(BoutState state)
 {
    switch (state)
@@ -5321,8 +5357,8 @@ void repeaterPollForKey()
 #ifdef ENABLE_REPEATER_TEST
             Serial.println(" ");
 #endif
-            int response[] = { '/', '*', '\0' };
-            int rxData[] = { 0, 0 };
+            int response[] = { '/', '*', '*', '*', '\0' };
+            int rxData[] = { 0, 0, 0, 0 };
 
             /* Wait for 1ms for a key back from the repeater, if any */
             if (waitSerial(response, rxData, 1000))
@@ -5352,6 +5388,16 @@ void repeaterPollForKey()
                          newWeaponType = SABRE;
                          weaponChange  = true;
                          break;
+
+                      case 'p':
+                        /* Change piste */
+                        if (rxData[2] >= '0' && rxData[2] <= '9'
+                            &&
+                            rxData[3] >= '0' && rxData[3] <= '9')
+                        {
+                           newPiste = (rxData[2]-'0')*10 + (rxData[3]-'0');
+                           pisteChange = true;
+                        }
 
                       default:
                          /* Keypress from repeater */

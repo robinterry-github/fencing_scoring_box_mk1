@@ -2,6 +2,8 @@ package com.robinterry.fencingboxapp;
 
 import androidx.annotation.NonNull;
 
+import com.robinterry.constants.C;
+
 @SuppressWarnings("ALL")
 public class Box {
     public static int counter = 1;
@@ -12,6 +14,7 @@ public class Box {
     public Mode mode = Mode.None;
     private Mode oldMode = Mode.None;
     public Integer piste = 1;
+    public Integer changePiste = piste;
     public Hit hitA = Hit.None;
     public Hit hitB = Hit.None;
     public String host = null;
@@ -48,8 +51,8 @@ public class Box {
 
     public FencingBoxDisplay disp;
     public boolean changed = false;
-    public int rxMessages = 5;
-    public boolean rxOk = false;
+    public int rxMessages = C.MAX_RXMESSAGES;
+    public boolean rxOk = true;
 
     @NonNull
     public String toString() {
