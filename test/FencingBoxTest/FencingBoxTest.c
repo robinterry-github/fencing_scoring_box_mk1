@@ -411,7 +411,7 @@ void *txrxCommsThread(void *arg)
                {
                   b->msgIndex = 0;
                }
-               sprintf(txrxString, "%04d|%02dS%c%c:%02d:%02dT%02d:%02d:00P-:-C%s:%s",
+               sprintf(txrxString, "%04d|%02dS%c%c:%02d:%02dT%02d:%02d:00P-:-C%s:%sV0:1",
                   b->msgIndex,
                   b->piste, 
                   b->hitA ? 'h':'-',
@@ -618,12 +618,13 @@ void printUsage(void)
    printf("FencingBoxTest [-port P] [-verbose] [-txpistes P] [-cards] [-alltx] [-allrx] [-rxpiste P]\n");
    printf("-port P      set IP network port to P\n");
    printf("-verbose     verbose operation\n");
-   printf("-txpistes    number of transmitting pistes (between 1 and %d)\n", PISTES);
+   printf("-txpistes P  number of transmitting pistes (between 1 and %d)\n", PISTES);
    printf("-cards       display a random setting for penalty cards and short-circuit indication\n");
    printf("-alltx       all pistes are transmit only - there is no receiving piste\n");
    printf("-allrx       all pistes are receive only - there is no transmitting piste\n");
    printf("-rxpiste P   set the piste number that we expect to receive from (between 1 and %d)\n", PISTES);
-   printf("             the test application will only support one receiving piste\n");
+   printf("             - the default piste number is 1\n");
+   printf("             - the test application will only support one receiving piste\n");
    printf("\n");
 }
 

@@ -25,6 +25,8 @@ public final class C {
     public static final int QUANTISE_FACTOR_SECS = 5;
     /* Network receive timeout in milliseconds */
     public static final int RX_TIMEOUT = 2000;
+    /* IP multicast message transmit interval in milliseconds */
+    public static final int TX_INTERVAL = 250;
     /* Multicast IP address */
     public static final String IPMCADDR = "224.0.0.1";
     /* Multicast IP port */
@@ -37,5 +39,13 @@ public final class C {
     public static final int MAX_MSGINDEX = 9999;
     /* Send Bluetooth keys to fencing scoring box when connected, otherwise process locally */
     public static final boolean SEND_KEYS_TO_BOX = false;
+    /* Documentation display (should only be enabled for screenshots) */
+    public static final boolean DOC_DISPLAY = false;
+    /* Box monitor thread interval in milliseconds */
+    public static final int BOX_MONITOR_INTERVAL = 250;
+    /* System monitor thread interval in milliseconds */
+    public static final int SYSTEM_MONITOR_INTERVAL = 500;
+    /* USB reconnect delay in milliseconds */
+    public static final int USB_RECONNECT_DELAY = 1000;
 }
 

@@ -48,11 +48,25 @@ public class FencingBoxList {
         myPiste = piste;
     }
 
+    public FencingBoxActivity.PassivityCard getPassivity(String c) {
+        if (c.contains("-")) {
+            return FencingBoxActivity.PassivityCard.None;
+        } else if (c.contains("0")) {
+            return FencingBoxActivity.PassivityCard.Yellow;
+        } else if (c.contains("1")) {
+            return FencingBoxActivity.PassivityCard.Red1;
+        } else if (c.contains("2")) {
+            return FencingBoxActivity.PassivityCard.Red2;
+        } else {
+            return FencingBoxActivity.PassivityCard.None;
+        }
+    }
+
     public void updateBox(String msg, String host) {
         /* Updates box data to the box list:
 
            the message format is as follows:
-           <index>|<piste>S<hitA><hitB><scoreA>:<scoreB>T<mins>:<secs>:<hund>C<cardA>:<cardB>P<priA>:<priB>
+           <index>|<piste>S<hitA><hitB><scoreA>:<scoreB>T<mins>:<secs>:<hund>C<cardA>:<cardB>P<priA>:<priB>V<pasvA>:<pasvB>
 
            where:
            <index> is 4 digits, 0-9999 inclusive, and incremented for each new message
@@ -64,10 +78,12 @@ public class FencingBoxList {
            <hund> is 2-digit hundredths
            <cardA>, <cardB> are three-character strings, one each for yellow, red and s/c:
               '-' or 'y', '-' or 'r', '-' or 's'
-           <priA>, <priB> are '-', '?' or 'y' ('?' means that priority selection is active)
+              <priA>, <priB> are '-', '?' or 'y' ('?' means that priority selection is active)
+           <pasvA>, <pasvB> are passivity card settings:
+              ('-', '0' (yellow), '1', (red-1), '2' (red-2))
 
            an example is:
-           2345|01Sh-:02:01T02:25:00P-:-Cy--:-r-
+           2345|01Sh-:02:01T02:25:00P-:-Cy--:-r-V1:-
 
         */
         int offset = 0;
@@ -219,7 +235,7 @@ public class FencingBoxList {
                 newBox.priB = pB.contains("y");
             }
 
-            /* Read the card part of the message */
+            /* Read the penalty card part of the message */
             if (msg.charAt(offset) != 'C') {
                 return;
             }
@@ -246,6 +262,18 @@ public class FencingBoxList {
             if (newBox.sCardB.contains("s")) {
                 newBox.cardB |= Box.shortCircuitBit;
             }
+            /* Read the passivity card part of the message */
+            if (msg.charAt(offset) != 'V') {
+                return;
+            }
+            offset++;
+            String cA = msg.substring(offset, offset+1);
+            offset += 2;
+            String cB = msg.substring(offset, offset+1);
+            offset++;
+            newBox.pCard[0] = getPassivity(cA);
+            newBox.pCard[1] = getPassivity(cB);
+
         } catch (StringIndexOutOfBoundsException e) {
             return;
         }

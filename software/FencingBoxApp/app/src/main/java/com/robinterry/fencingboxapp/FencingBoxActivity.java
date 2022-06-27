@@ -62,7 +62,8 @@ public class FencingBoxActivity extends AppCompatActivity
         GestureDetector.OnGestureListener, GestureDetector.OnDoubleTapListener {
     private static final String TAG = FencingBoxActivity.class.getSimpleName();
     private Box box;
-    private Box demoBox;
+    private Box[] demoBox;
+    private int whichDemo = 0;
     private FencingBoxKeys keyHandler;
     private enum Connected {False, Pending, True};
     public enum PassivityCard {None, Yellow, Red1, Red2};
@@ -91,7 +92,6 @@ public class FencingBoxActivity extends AppCompatActivity
     private boolean initialStart = true;
     private boolean isResumed = false;
     private SerialSocket socket;
-    private final int ledSize = 200;
     private boolean soundMute = false;
     private boolean displayPaused = false;
     private FencingBoxSound sound, click;
@@ -143,24 +143,83 @@ public class FencingBoxActivity extends AppCompatActivity
         box = new Box(1);
 
         /* Set up the demo display */
-        demoBox = new Box(2);
-        demoBox.hitA = Box.Hit.OnTarget;
-        demoBox.hitB = Box.Hit.OnTarget;
-        demoBox.timeMins = "01";
-        demoBox.timeSecs = "24";
-        demoBox.timeHund = "00";
-        demoBox.scoreA = "02";
-        demoBox.scoreB = "10";
-        demoBox.mode = Box.Mode.Demo;
-        demoBox.cardA = Box.redCardBit | Box.yellowCardBit | Box.shortCircuitBit;
-        demoBox.cardB = Box.redCardBit | Box.yellowCardBit | Box.shortCircuitBit;
-        demoBox.passivityTimer = 55;
-        demoBox.passivityActive = true;
-        demoBox.pCard[0] = PassivityCard.Yellow;
-        demoBox.pCard[1] = PassivityCard.Red1;
-        demoBox.priA = true;
-        demoBox.priB = true;
-        demoBox.priIndicator = true;
+        demoBox = new Box[] {
+            new Box(),
+            new Box()
+        };
+        demoBox[0].piste = 1;
+        demoBox[1].piste = 2;
+        if (C.DOC_DISPLAY) {
+            demoBox[0].hitA = Box.Hit.OnTarget;
+            demoBox[0].hitB = Box.Hit.OnTarget;
+            demoBox[0].timeMins = "00";
+            demoBox[0].timeSecs = "00";
+            demoBox[0].timeHund = "00";
+            demoBox[0].scoreA = "00";
+            demoBox[0].scoreB = "00";
+            demoBox[0].mode = Box.Mode.Demo;
+            demoBox[0].cardA = Box.redCardBit | Box.yellowCardBit | Box.shortCircuitBit;
+            demoBox[0].cardB = Box.redCardBit | Box.yellowCardBit | Box.shortCircuitBit;
+            demoBox[0].passivityTimer = 60;
+            demoBox[0].passivityActive = true;
+            demoBox[0].pCard[0] = PassivityCard.Red2;
+            demoBox[0].pCard[1] = PassivityCard.Yellow;
+            demoBox[0].priA = true;
+            demoBox[0].priB = true;
+            demoBox[0].priIndicator = false;
+
+            demoBox[1].hitA = demoBox[0].hitA;
+            demoBox[1].hitB = demoBox[0].hitB;
+            demoBox[1].timeMins = demoBox[0].timeMins;
+            demoBox[1].timeSecs = demoBox[0].timeSecs;
+            demoBox[1].timeHund = demoBox[0].timeHund;
+            demoBox[1].scoreA = demoBox[0].scoreA;
+            demoBox[1].scoreB = demoBox[0].scoreB;
+            demoBox[1].mode = Box.Mode.Demo;
+            demoBox[1].cardA = demoBox[0].cardA;
+            demoBox[1].cardB = demoBox[0].cardB;
+            demoBox[1].passivityTimer = 0;
+            demoBox[1].passivityActive = false;
+            demoBox[1].pCard[0] = demoBox[0].pCard[0];
+            demoBox[1].pCard[1] = demoBox[0].pCard[1];
+            demoBox[1].priA = demoBox[0].priA;
+            demoBox[1].priB = demoBox[0].priB;
+            demoBox[1].priIndicator = demoBox[0].priIndicator;
+        } else {
+            demoBox[0].hitA = Box.Hit.OnTarget;
+            demoBox[0].hitB = Box.Hit.OnTarget;
+            demoBox[0].timeMins = "01";
+            demoBox[0].timeSecs = "24";
+            demoBox[0].timeHund = "00";
+            demoBox[0].scoreA = "02";
+            demoBox[0].scoreB = "10";
+            demoBox[0].mode = Box.Mode.Demo;
+            demoBox[0].cardA = Box.redCardBit | Box.yellowCardBit | Box.shortCircuitBit;
+            demoBox[0].cardB = Box.redCardBit | Box.yellowCardBit | Box.shortCircuitBit;
+            demoBox[0].passivityTimer = 55;
+            demoBox[0].passivityActive = true;
+            demoBox[0].pCard[0] = PassivityCard.Yellow;
+            demoBox[0].pCard[1] = PassivityCard.Red1;
+            demoBox[0].priA = true;
+            demoBox[0].priB = true;
+            demoBox[0].priIndicator = true;
+
+
+            demoBox[1].hitA = Box.Hit.OnTarget;
+            demoBox[1].hitB = Box.Hit.None;
+            demoBox[1].timeMins = "02";
+            demoBox[1].timeSecs = "37";
+            demoBox[1].scoreA = "14";
+            demoBox[1].scoreB = "11";
+            demoBox[1].mode = Box.Mode.Demo;
+            demoBox[1].cardA = 0;
+            demoBox[1].cardB = 0;
+            demoBox[1].pCard[0] = PassivityCard.None;
+            demoBox[1].pCard[1] = PassivityCard.None;
+            demoBox[1].priA = false;
+            demoBox[1].priB = false;
+            demoBox[1].priIndicator = false;
+        }
     }
 
     @Override
@@ -558,7 +617,7 @@ public class FencingBoxActivity extends AppCompatActivity
         }
         box.disp.setupText(box, layout, orientation);
         if (box.isModeDemo()) {
-            showDemo();
+            showDemo(whichDemo);
         } else if (box.isModeDisplay()) {
             try {
                 Box b = boxList.currentBox();
@@ -751,7 +810,7 @@ public class FencingBoxActivity extends AppCompatActivity
     public boolean onPrepareOptionsMenu(Menu menu) {
         MenuItem item;
         item = menu.findItem(R.id.menu_demo);
-        if (box.isModeDemo() || box.isModeNone()) {
+        if (box.isModeDemo() || box.isModeNone() || C.DOC_DISPLAY) {
             /* Change the options menu item to show "Show demo" or "Clear demo" */
             item.setVisible(true);
             item.setEnabled(true);
@@ -764,8 +823,12 @@ public class FencingBoxActivity extends AppCompatActivity
 
         /* Change the options menu to show "Vibration on" or "Vibration off" */
         item = menu.findItem(R.id.menu_vibration_ctrl);
-        /* Don't show this option when vibration isn't possible */
-        if (!isVibrationPossible()) {
+        if (box.isModeDemo() || C.DOC_DISPLAY) {
+            /* Show menu options when demo mode is active */
+            item.setVisible(true);
+            item.setEnabled(true);
+        } else if (!isVibrationPossible()) {
+            /* Don't show this option when vibration isn't possible */
             item.setVisible(false);
             item.setEnabled(false);
         } else {
@@ -897,8 +960,8 @@ public class FencingBoxActivity extends AppCompatActivity
     }
 
     public void showDemo() {
-        Log.i(TAG, "Show demo");
-        box.disp.displayBox(demoBox);
+        whichDemo = 0;
+        showDemo(whichDemo);
         box.disp.setVolumeMuted(true);
         box.disp.setOnline(true);
         box.disp.setVibrate(true);
@@ -907,8 +970,13 @@ public class FencingBoxActivity extends AppCompatActivity
         }
     }
 
+    public void showDemo(int which) {
+        Log.i(TAG, "Show demo " + which + ", piste " + demoBox[which].piste);
+        box.disp.displayBox(demoBox[which]);
+    }
+
     public void startSystemMonitor() {
-        final int delayMillis = 500;
+        final int delayMillis = C.SYSTEM_MONITOR_INTERVAL;
 
         HandlerThread handlerThread = new HandlerThread("systemMonitor");
         handlerThread.start();
@@ -990,7 +1058,7 @@ public class FencingBoxActivity extends AppCompatActivity
     }
 
     public void startBoxMonitor() {
-        final int delayMillis = 250;
+        final int delayMillis = C.BOX_MONITOR_INTERVAL;
 
         HandlerThread handlerThread = new HandlerThread("boxMonitor");
         handlerThread.start();
@@ -1399,6 +1467,7 @@ public class FencingBoxActivity extends AppCompatActivity
                 i += 1;
                 String cmd = new String(data, i, 2, StandardCharsets.UTF_8);
                 i += 2;
+                /* The "GO" command takes the current piste as an argument */
                 if (cmd.equals("GO")) {
                     cmd += new String(data, i, 2, StandardCharsets.UTF_8);
                     i += 2;
@@ -1991,8 +2060,36 @@ public class FencingBoxActivity extends AppCompatActivity
         return s;
     }
 
+    public String msgPassivity() {
+        Character[] c = new Character[2];
+        String s;
+        if (box.getBoxMode() == Box.Mode.Bout) {
+            for (int i = 0; i < 2; i++) {
+                switch (box.pCard[i]) {
+                    case None:
+                    default:
+                        c[i] = '-';
+                        break;
+                    case Yellow:
+                        c[i] = '0';
+                        break;
+                    case Red1:
+                        c[i] = '1';
+                        break;
+                    case Red2:
+                        c[i] = '2';
+                        break;
+                }
+            }
+            s = String.format("V%c:%c", c[0], c[1]);
+        } else {
+            s = "V-:-";
+        }
+        return s;
+    }
+
     public String msgFull() {
-        String s = msgScore() + msgClock() + msgPriority() + msgCard();
+        String s = msgScore() + msgClock() + msgPriority() + msgCard() + msgPassivity();
         if (C.DEBUG) {
             Log.d(TAG, "msgFull " + s);
         }
@@ -2048,7 +2145,7 @@ public class FencingBoxActivity extends AppCompatActivity
                                 }
                             }
                         }
-                        Thread.sleep(250);
+                        Thread.sleep(C.TX_INTERVAL);
                     } catch (Exception e) {
                         Log.e(TAG, "Unable to send full broadcast message");
                     }
@@ -2095,7 +2192,7 @@ public class FencingBoxActivity extends AppCompatActivity
                 while (serialConnected != Connected.True) {
                     Log.i(TAG, "reconnecting USB device");
                     try {
-                        Thread.sleep(1000);
+                        Thread.sleep(C.USB_RECONNECT_DELAY);
                     } catch (InterruptedException e) {
                         break;
                     }
@@ -2314,8 +2411,11 @@ public class FencingBoxActivity extends AppCompatActivity
     private void processGesture(Motion motion) {
         Box b = null;
 
-        /* If this is the first time, ignore the motion and just display */
-        if (box.isModeNone() && !boxList.empty()) {
+        if (box.isModeDemo()) {
+            whichDemo ^= 1;
+            showDemo(whichDemo);
+        } else if (box.isModeNone() && !boxList.empty()) {
+            /* If this is the first time, ignore the motion and just display */
             try {
                 b = boxList.currentBox();
                 if (b != null) {
@@ -2383,6 +2483,9 @@ public class FencingBoxActivity extends AppCompatActivity
             return false;
         } else  if (isSerialConnected()) {
             /* Don't vibrate if the app is connected to the fencing scoring box */
+            return false;
+        } else if (box.isModeDemo()) {
+            /* Don't vibrate in demo mode */
             return false;
         } else {
             /* Check that the unit can vibrate */

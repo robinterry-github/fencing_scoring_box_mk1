@@ -519,19 +519,23 @@ public class FencingBoxDisplay {
                 displayPriority(box.priIndicator, box.priA, box.priB);
                 displayCard("0", box.cardA);
                 displayCard("1", box.cardB);
+                displayPassivityCard(box, 0, box.pCard[0]);
+                displayPassivityCard(box, 1, box.pCard[1]);
+                if (box.passivityActive) {
+                    setPassivityClockColor(Color.GREEN);
+                    displayPassivityAsClock(box.passivityTimer);
+                } else {
+                    setPassivityClockColor(Color.WHITE);
+                    displayPassivityAsPiste(box);
+                }
             } else {
                 displayClock("--", "--", "--", false);
                 displayScore("--", "--");
+                displayCard("0", 0);
+                displayCard("1", 0);
+                displayPassivityCard(box, 0, PassivityCard.None);
+                displayPassivityCard(box, 1, PassivityCard.None);
             }
-            if (box.passivityActive) {
-                setPassivityClockColor(Color.GREEN);
-                displayPassivityAsClock(box.passivityTimer);
-            } else {
-                setPassivityClockColor(Color.WHITE);
-                displayPassivityAsPiste(box);
-            }
-            displayPassivityCard(box, 0, box.pCard[0]);
-            displayPassivityCard(box, 1, box.pCard[1]);
         }
     }
 }
