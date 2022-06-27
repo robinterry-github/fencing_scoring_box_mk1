@@ -531,10 +531,13 @@ public class FencingBoxDisplay {
             } else {
                 displayClock("--", "--", "--", false);
                 displayScore("--", "--");
+                displayHitLights(Box.Hit.None, Box.Hit.None);
                 displayCard("0", 0);
                 displayCard("1", 0);
                 displayPassivityCard(box, 0, PassivityCard.None);
                 displayPassivityCard(box, 1, PassivityCard.None);
+                setPassivityClockColor(Color.RED);
+                displayPassivityAsPiste(box);
             }
         }
     }
