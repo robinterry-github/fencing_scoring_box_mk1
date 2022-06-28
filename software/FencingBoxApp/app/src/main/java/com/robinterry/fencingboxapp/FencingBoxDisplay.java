@@ -4,6 +4,7 @@ import android.graphics.Color;
 import android.graphics.Typeface;
 import android.os.Build;
 import android.util.Log;
+import android.util.TypedValue;
 import android.view.Gravity;
 import android.view.View;
 import android.view.WindowInsets;
@@ -131,9 +132,9 @@ public class FencingBoxDisplay {
                     textClock.setTextColor(Color.GREEN);
                     textClock.setGravity(Gravity.CENTER);
 
-                    /* Check if the box is connected or not */
                     setPassivityClockColor(Color.GREEN);
-                    passivityClock.setGravity(Gravity.CENTER);
+                    passivityClock.setGravity(Gravity.TOP);
+                    
                     batteryLevel.setTextColor(Color.WHITE);
                     batteryLevel.setGravity(Gravity.CENTER);
                     priorityA.setTextColor(Color.BLACK);
@@ -349,6 +350,7 @@ public class FencingBoxDisplay {
             @Override
             public void run() {
                 passivityClock.setTypeface(face, Typeface.NORMAL);
+                passivityClock.setTextSize(TypedValue.COMPLEX_UNIT_SP, 24);
                 passivityClock.setText(String.format("%02d", pClock));
             }
         });
@@ -359,6 +361,7 @@ public class FencingBoxDisplay {
             @Override
             public void run() {
                 passivityClock.setTypeface(null, Typeface.BOLD_ITALIC);
+                passivityClock.setTextSize(TypedValue.COMPLEX_UNIT_SP, 32);
                 passivityClock.setTextColor(b.rxOk ? Color.WHITE:Color.RED);
                 passivityClock.setText(b.piste.toString());
             }

@@ -28,8 +28,8 @@
 
     <TextView
         android:id="@+id/textScoreB_l"
-        android:layout_width="140dp"
-        android:layout_height="96dp"
+        android:layout_width="139dp"
+        android:layout_height="80dp"
         android:layout_marginEnd="28dp"
         android:layout_marginBottom="32dp"
         android:background="#000000"
@@ -38,12 +38,13 @@
         android:textStyle="bold"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintTop_toTopOf="@+id/guideline5" />
+        app:layout_constraintTop_toTopOf="@+id/guideline5"
+        app:layout_constraintVertical_bias="0.169" />
 
     <TextView
         android:id="@+id/textScoreA_l"
-        android:layout_width="140dp"
-        android:layout_height="96dp"
+        android:layout_width="141dp"
+        android:layout_height="84dp"
         android:layout_marginStart="28dp"
         android:layout_marginBottom="32dp"
         android:background="#000000"
@@ -52,12 +53,13 @@
         android:textStyle="bold"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintStart_toStartOf="@+id/guideline"
-        app:layout_constraintTop_toTopOf="@+id/guideline5" />
+        app:layout_constraintTop_toTopOf="@+id/guideline5"
+        app:layout_constraintVertical_bias="0.169" />
 
     <TextView
         android:id="@+id/textClock_l"
         android:layout_width="280dp"
-        android:layout_height="96dp"
+        android:layout_height="83dp"
         android:layout_marginBottom="32dp"
         android:background="#000000"
         android:textAlignment="center"
@@ -67,12 +69,14 @@
         app:layout_constraintEnd_toStartOf="@+id/textScoreB_l"
         app:layout_constraintHorizontal_bias="0.515"
         app:layout_constraintStart_toEndOf="@+id/textScoreA_l"
-        app:layout_constraintTop_toTopOf="@+id/guideline5" />
+        app:layout_constraintTop_toTopOf="@+id/guideline5"
+        app:layout_constraintVertical_bias="0.169" />
 
     <TextView
         android:id="@+id/priorityA_l"
         android:layout_width="33dp"
         android:layout_height="33dp"
+        android:layout_marginStart="44dp"
         android:layout_marginTop="8dp"
         android:background="#000000"
         android:text="P"
@@ -81,15 +85,16 @@
         android:textSize="24sp"
         android:textStyle="bold"
         app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintStart_toStartOf="@+id/textScoreA_l"
+        app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@+id/textScoreA_l"
-        app:layout_constraintVertical_bias="0.0" />
+        app:layout_constraintVertical_bias="0.355" />
 
     <TextView
         android:id="@+id/priorityB_l"
         android:layout_width="33dp"
         android:layout_height="33dp"
         android:layout_marginTop="8dp"
+        android:layout_marginEnd="28dp"
         android:background="#000000"
         android:text="P"
         android:textAlignment="center"
@@ -97,22 +102,25 @@
         android:textSize="24sp"
         android:textStyle="bold"
         app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintEnd_toEndOf="@+id/textScoreB_l"
+        app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintTop_toBottomOf="@+id/textScoreB_l"
-        app:layout_constraintVertical_bias="0.0" />
+        app:layout_constraintVertical_bias="0.355" />
 
     <TextView
         android:id="@+id/passivityClock_l"
-        android:layout_width="66dp"
-        android:layout_height="32dp"
+        android:layout_width="67dp"
+        android:layout_height="51dp"
         android:layout_marginTop="8dp"
         android:background="#000000"
         android:textAlignment="center"
         android:textColor="#FF0000"
         android:textSize="24sp"
+        app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toStartOf="@+id/pCardB_l"
+        app:layout_constraintHorizontal_bias="0.531"
         app:layout_constraintStart_toEndOf="@+id/pCardA_l"
-        app:layout_constraintTop_toBottomOf="@+id/textClock_l" />
+        app:layout_constraintTop_toBottomOf="@+id/textClock_l"
+        app:layout_constraintVertical_bias="0.0" />
 
     <TextView
         android:id="@+id/battery_level_l"
@@ -169,8 +177,10 @@
         android:layout_marginTop="8dp"
         android:background="#000000"
         android:textSize="24sp"
+        app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintStart_toEndOf="@+id/priorityA_l"
-        app:layout_constraintTop_toBottomOf="@+id/textScoreA_l" />
+        app:layout_constraintTop_toBottomOf="@+id/textScoreA_l"
+        app:layout_constraintVertical_bias="0.355" />
 
     <TextView
         android:id="@+id/pCardB_l"
@@ -183,7 +193,7 @@
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toStartOf="@+id/priorityB_l"
         app:layout_constraintTop_toBottomOf="@+id/textScoreB_l"
-        app:layout_constraintVertical_bias="0.0" />
+        app:layout_constraintVertical_bias="0.355" />
 
     <ImageView
         android:id="@+id/icon_online_l"

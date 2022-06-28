@@ -1666,6 +1666,7 @@ void restartBox(BoutState state)
    resetValues();
    resetLights();
    resetCards();
+   resetPassivity();
 
    hitDisplay               = HIT_IDLE;
    resetState               = RES_IDLE;
@@ -1845,36 +1846,49 @@ void checkPassivity()
 #endif
 }
 
+void awardPCard(int fencer, PassivityCard pass)
+{
+   pCard[fencer] = pass;
+#ifdef ENABLE_REPEATER
+   switch (pass)
+   {
+      case P_CARD_NONE:
+         sendRepeater("+" + String(fencer) + "0");
+         break;
+
+      case P_CARD_YELLOW:
+         sendRepeater("+" + String(fencer) + "1");
+         break;
+
+      case P_CARD_RED_1:
+         sendRepeater("+" + String(fencer) + "2");
+         break;
+
+      case P_CARD_RED_2:
+         sendRepeater("+" + String(fencer) + "3");
+         break;
+   }
+#endif
+}
+
 void awardPCard(int fencer)
 {
    switch (pCard[fencer])
    {
       case P_CARD_NONE:
-         pCard[fencer] = P_CARD_YELLOW;
-#ifdef ENABLE_REPEATER
-         sendRepeater("+" + String(fencer) + "1");
-#endif
+         awardPCard(fencer, P_CARD_YELLOW);
          break;
 
        case P_CARD_YELLOW:
-          pCard[fencer] = P_CARD_RED_1;
-#ifdef ENABLE_REPEATER
-          sendRepeater("+" + String(fencer) + "2");
-#endif
+          awardPCard(fencer, P_CARD_RED_1);
           break;
 
        case P_CARD_RED_1:
-          pCard[fencer] = P_CARD_RED_2;
-#ifdef ENABLE_REPEATER
-          sendRepeater("+" + String(fencer) + "3");
-#endif
+          awardPCard(fencer, P_CARD_RED_2);
           break;
 
        case P_CARD_RED_2:
-          pCard[fencer] = P_CARD_NONE;
-#ifdef ENABLE_REPEATER
-          sendRepeater("+" + String(fencer) + "0");
-#endif
+          awardPCard(fencer, P_CARD_NONE);
           break;
 
        default:
@@ -1885,7 +1899,7 @@ void awardPCard(int fencer)
 void awardPassivity()
 {
 #ifdef PASSIVITY
-   if (inBout() && passivitySignalled)
+   if (inBout() /* && passivitySignalled */)
    {
       if (score[FENCER_A] < score[FENCER_B])
       {
@@ -2419,6 +2433,7 @@ void transIR(unsigned long key)
               default:
                  // In the middle of a bout - restart the bout
                  keyClick();
+                 resetPassivity();
                  startBout();
                  break;
            }
@@ -2709,6 +2724,7 @@ void transIR(unsigned long key)
                  case STA_TP_CONTINUE:
                     setTimer(BOUTTIME);
                     boutState = STA_STARTBOUT;
+                    resetCards();
                     displayTime();
 #ifdef DEBUG_L1
                     Serial.println("bout continuing");
@@ -3435,6 +3451,7 @@ void startBout()
 
 void continueBout()
 {
+   /* Don't reset passivity */
 #ifdef ENABLE_REPEATER
    sendRepeater("!BC");
 #endif
@@ -3443,6 +3460,7 @@ void continueBout()
    displayScore();
    boutState = STA_TP_CONTINUE; 
    scoreThisBout[FENCER_A] = scoreThisBout[FENCER_B] = 0;
+   resetCards();
 #ifdef DEBUG_L1
    Serial.println("continue bout");
 #endif
@@ -3554,6 +3572,7 @@ void startSpar()
 #endif
    resetValues();
    resetCards();
+   resetPassivity();
    resetLights();
    clearPassivity();
    updateCardLeds(0);
@@ -5169,7 +5188,9 @@ void resetValues()
 
 void resetCards()
 {
-   cardLeds = 0;
+   cardLeds      = 0;
+   cardLedUpdate = true;
+
 #ifdef DEBUG_L1
    Serial.println("reset cards");
 #endif
@@ -5177,6 +5198,13 @@ void resetCards()
    sendRepeater("?C0");
    sendRepeater("?D0");
 #endif
+}
+
+void resetPassivity()
+{
+   /* Reset the passivity cards */
+   awardPCard(FENCER_A, P_CARD_NONE);
+   awardPCard(FENCER_B, P_CARD_NONE);
 }
 
 void resetHits()
