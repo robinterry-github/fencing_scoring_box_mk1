@@ -348,7 +348,7 @@ public class FencingBoxDisplay {
         mainActivity.runOnUiThread(new Runnable() {
             @Override
             public void run() {
-                passivityClock.setTypeface(face);
+                passivityClock.setTypeface(face, Typeface.NORMAL);
                 passivityClock.setText(String.format("%02d", pClock));
             }
         });
@@ -358,7 +358,7 @@ public class FencingBoxDisplay {
         mainActivity.runOnUiThread(new Runnable() {
             @Override
             public void run() {
-                passivityClock.setTypeface(null);
+                passivityClock.setTypeface(null, Typeface.BOLD_ITALIC);
                 passivityClock.setTextColor(b.rxOk ? Color.WHITE:Color.RED);
                 passivityClock.setText(b.piste.toString());
             }

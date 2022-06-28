@@ -60,6 +60,7 @@ struct Box
    int                  hitA, hitB;
    int                  scoreA, scoreB;
    int                  cardA, cardB;
+   int                  pCardA, pCardB;
    time_t               tm;
    struct tm            gmt;
 };
@@ -350,7 +351,7 @@ void processRx(struct Box *b)
          }
       }
    }
-}            
+}
 
 char *getCard(int card)
 {
@@ -383,6 +384,25 @@ char *getCard(int card)
    }
 }
 
+char getPCard(int pCard)
+{
+   switch (pCard)
+   {
+      case 0:
+      default:
+         return '-'; /* None */
+
+      case 1:
+         return '0'; /* P-Yellow */
+
+      case 2:
+         return '1'; /* P-Red 1 */
+
+      case 3:
+         return '2'; /* P-Red 2 */
+   }
+}
+
 void *txrxCommsThread(void *arg)
 {
    char txrxString[MAXSTRING+1]; /* Buffer for transmitted string */
@@ -411,7 +431,7 @@ void *txrxCommsThread(void *arg)
                {
                   b->msgIndex = 0;
                }
-               sprintf(txrxString, "%04d|%02dS%c%c:%02d:%02dT%02d:%02d:00P-:-C%s:%sV0:1",
+               sprintf(txrxString, "%04d|%02dS%c%c:%02d:%02dT%02d:%02d:00P-:-C%s:%sV%c:%c",
                   b->msgIndex,
                   b->piste, 
                   b->hitA ? 'h':'-',
@@ -420,7 +440,9 @@ void *txrxCommsThread(void *arg)
                   b->scoreB,
                   b->mins, b->secs,
                   getCard(b->cardA),
-                  getCard(b->cardB));
+                  getCard(b->cardB),
+                  getPCard(b->pCardA),
+                  getPCard(b->pCardB));
 
                tm2 = time(NULL);
                if (tm2 > tm1)
@@ -619,7 +641,7 @@ void printUsage(void)
    printf("-port P      set IP network port to P\n");
    printf("-verbose     verbose operation\n");
    printf("-txpistes P  number of transmitting pistes (between 1 and %d)\n", PISTES);
-   printf("-cards       display a random setting for penalty cards and short-circuit indication\n");
+   printf("-cards       display a random setting for penalty and passivity cards and short-circuit indication\n");
    printf("-alltx       all pistes are transmit only - there is no receiving piste\n");
    printf("-allrx       all pistes are receive only - there is no transmitting piste\n");
    printf("-rxpiste P   set the piste number that we expect to receive from (between 1 and %d)\n", PISTES);
@@ -787,6 +809,15 @@ int main(int argc, char *argv[])
       {
          meTx[i]->cardA    = random()%8;
          meTx[i]->cardB    = random()%8;
+         meTx[i]->pCardA   = random()%4;
+         meTx[i]->pCardB   = random()%4;
+      }
+      else
+      {
+         meTx[i]->cardA    = 0; 
+         meTx[i]->cardB    = 0; 
+         meTx[i]->pCardA   = 0; 
+         meTx[i]->pCardB   = 0;
       }
       pthread_create(&meTx[i]->thread, NULL, txrxCommsThread, meTx[i]);
    }
