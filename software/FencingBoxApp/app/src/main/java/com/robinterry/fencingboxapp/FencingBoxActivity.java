@@ -2507,6 +2507,9 @@ public class FencingBoxActivity extends AppCompatActivity
             } else if (box.isModeNone()) {
                 /* Don't vibrate if the display is not active, but this can change */
                 return false;
+            } else if (displayPaused) {
+                /* Don't vibrate if the activity is not visible to the user */
+                return false;
             } else {
                 return vibrationState == VibrationState.On;
             }
