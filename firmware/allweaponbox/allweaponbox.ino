@@ -2362,7 +2362,7 @@ void transIR(unsigned long key)
      
   case 0xFF6897: // *
   case '*':
-  case 'u': // Repeater only
+  case 'u': case 'd': // Repeater only
      if (priorityInactive())
      {
         // In SPARRING mode? Go into BOUT mode
@@ -2370,6 +2370,8 @@ void transIR(unsigned long key)
         {
            // Go into BOUT mode
            keyClick();
+
+           // Go backwards for the 'd' key
            if (key == 'd')
            {
               startStopWatch();
@@ -2993,7 +2995,7 @@ void transIR(unsigned long key)
 #endif
      break;
   case 0xFF9867: // 0
-  case '0': case 'G': // Repeater only
+  case '0': case 'G': case 'W': // Repeater only
      if (priorityInactive())
      {
         if (inBoutOrBreak())
@@ -3112,7 +3114,7 @@ void transIR(unsigned long key)
 #endif
      break;
   case 0xFFB04F: // #
-  case '#': case 'F': case 'd':
+  case '#': case 'F':
 #ifdef ENABLE_STOPWATCH
      if (inStopWatch())
      {
