@@ -26,4 +26,5 @@
     <string name="icon_online_desc">Icon to show online status</string>
     <string name="icon_mute_desc">Icon to show sound mute status</string>
     <string name="piste">Piste</string>
+    <string name="copyright">(C) Robin Terry 2022</string>
 </resources>

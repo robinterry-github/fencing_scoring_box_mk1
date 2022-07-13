@@ -12,7 +12,7 @@
         android:layout_width="124dp"
         android:layout_height="59dp"
         android:layout_marginBottom="120dp"
-        android:backgroundTint="@color/ColorPrimary"
+        android:backgroundTint="@color/primary"
         android:gravity="center_horizontal|center_vertical"
         android:text="@string/select_button"
         android:textAllCaps="false"
@@ -55,7 +55,7 @@
             android:id="@+id/weapon_select_foil"
             android:layout_width="match_parent"
             android:layout_height="61dp"
-            android:buttonTint="@color/ColorPrimary"
+            android:buttonTint="@color/primary"
             android:text="@string/weapon_foil"
             android:textColor="@color/white" />
 
@@ -63,7 +63,7 @@
             android:id="@+id/weapon_select_epee"
             android:layout_width="match_parent"
             android:layout_height="61dp"
-            android:buttonTint="@color/ColorPrimary"
+            android:buttonTint="@color/primary"
             android:text="@string/weapon_epee"
             android:textColor="@color/white" />
 
@@ -71,7 +71,7 @@
             android:id="@+id/weapon_select_sabre"
             android:layout_width="match_parent"
             android:layout_height="61dp"
-            android:buttonTint="@color/ColorPrimary"
+            android:buttonTint="@color/primary"
             android:text="@string/weapon_sabre"
             android:textColor="@color/white" />
     </RadioGroup>

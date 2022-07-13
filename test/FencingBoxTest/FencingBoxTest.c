@@ -695,7 +695,7 @@ int main(int argc, char *argv[])
       }
       else if (!strcmp(argv[i], "-alltx"))
       {
-         allTx = 1, rxPiste = 1;
+         allTx = 1, rxPiste = 0;
       } 
       else if (!strcmp(argv[i], "-allrx"))
       {

@@ -12,7 +12,7 @@
         android:layout_width="124dp"
         android:layout_height="59dp"
         android:layout_marginBottom="120dp"
-        android:backgroundTint="@color/ColorPrimary"
+        android:backgroundTint="@color/primary"
         android:gravity="center_horizontal|center_vertical"
         android:text="@string/select_button"
         android:textAllCaps="false"

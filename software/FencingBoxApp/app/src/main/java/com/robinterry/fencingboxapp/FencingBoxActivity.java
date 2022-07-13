@@ -207,8 +207,8 @@ public class FencingBoxActivity extends AppCompatActivity
 
             demoBox[1].hitA = Box.Hit.OnTarget;
             demoBox[1].hitB = Box.Hit.None;
-            demoBox[1].timeMins = "02";
-            demoBox[1].timeSecs = "37";
+            demoBox[1].timeMins = "00";
+            demoBox[1].timeSecs = "27";
             demoBox[1].scoreA = "14";
             demoBox[1].scoreB = "11";
             demoBox[1].mode = Box.Mode.Demo;
