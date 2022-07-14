@@ -4,7 +4,7 @@ package com.robinterry.constants;
 
 public final class C {
     /* Debug enable flag */
-    public static final boolean DEBUG = true;
+    public static final boolean DEBUG = false;
     /* If true, then when the serial is lost, the app switches to display mode */
     public static final boolean DISPLAY_AFTER_CONNECT_ERROR = false;
     /* USB port number */
@@ -47,5 +47,7 @@ public final class C {
     public static final int SYSTEM_MONITOR_INTERVAL = 500;
     /* USB reconnect delay in milliseconds */
     public static final int USB_RECONNECT_DELAY = 1000;
+    /* Opening screen delay in milliseconds */
+    public static final int LAUNCH_SCREEN_DELAY = 5000;
 }
 

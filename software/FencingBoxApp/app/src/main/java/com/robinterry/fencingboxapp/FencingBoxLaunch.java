@@ -54,6 +54,6 @@ public class FencingBoxLaunch extends AppCompatActivity {
                 finish();
 
             }
-        }, 5000);
+        }, C.LAUNCH_SCREEN_DELAY);
     }
 }
