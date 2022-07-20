@@ -22,6 +22,8 @@
     <string name="demo_off_label">Clear demo</string>
     <string name="vibration_off_label">Vibration off</string>
     <string name="vibration_on_label">Vibration on</string>
+    <string name="font_normal_label">Normal font</string>
+    <string name="font_digital_label">Digital font</string>
     <string name="select_button">Select</string>
     <string name="icon_online_desc">Icon to show online status</string>
     <string name="icon_mute_desc">Icon to show sound mute status</string>

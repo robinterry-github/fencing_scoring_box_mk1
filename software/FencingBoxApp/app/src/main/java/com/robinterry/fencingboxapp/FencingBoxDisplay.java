@@ -37,7 +37,10 @@ public class FencingBoxDisplay {
     private Orientation orientation = Orientation.Portrait;
     private final boolean controlUI = true;
     private boolean visibleUI = true;
-    private Typeface face;
+    private Typeface digitalTypeFace;
+    private Typeface face = null;
+    public enum FaceType { Digital, Normal };
+    private FaceType faceType = FaceType.Digital;
 
     /* View bindings */
     private ActivityMainBinding portBinding = null;
@@ -59,7 +62,7 @@ public class FencingBoxDisplay {
         this.orientation = orientation;
         this.portBinding = portBinding;
         this.landBinding = landBinding;
-        this.face = Typeface.createFromAsset(mainActivity.getAssets(), "font/DSEG7Classic-Bold.ttf");
+        this.digitalTypeFace = Typeface.createFromAsset(mainActivity.getAssets(), "font/DSEG7Classic-Bold.ttf");
 
         // Set up the display
         setupText(this.box, this.orientation);
@@ -82,57 +85,88 @@ public class FencingBoxDisplay {
 
     public void setupText(Box box, FencingBoxActivity.Orientation orient) {
         orientation = orient;
+        switch (faceType) {
+            case Normal:
+            default:
+                if (C.DEBUG) {
+                    Log.d(TAG, "Setting up normal text");
+                }
+                face = null;
+                break;
+
+            case Digital:
+                if (C.DEBUG) {
+                    Log.d(TAG, "Setting up digital text");
+                }
+                face = digitalTypeFace;
+                break;
+        }
         mainActivity.runOnUiThread(new Runnable() {
             @Override
             public void run() {
-                if (orientation == FencingBoxActivity.Orientation.Landscape) {
-                    textScoreA = landBinding.textScoreAL;
-                    textScoreB = landBinding.textScoreBL;
-                    textScoreA.setGravity(Gravity.CENTER);
-                    textScoreB.setGravity(Gravity.CENTER);
-                    textClock = landBinding.textClockL;
-                    priorityA = landBinding.priorityAL;
-                    priorityB = landBinding.priorityBL;
-                    passivityClock = landBinding.passivityClockL;
-                    batteryLevel = landBinding.batteryLevelL;
-                    time = landBinding.timeL;
-                    passCard[0] = landBinding.pCardAL;
-                    passCard[1] = landBinding.pCardBL;
-                    muteIcon = (ImageView) landBinding.iconMuteL;
-                    onlineIcon = (ImageView) landBinding.iconOnlineL;
-                    vibrateIcon = (ImageView) landBinding.iconVibrateL;
-                    progress = landBinding.priorityChooseL;
-                } else {
-                    textScore = portBinding.textScore;
-                    textScore.setGravity(Gravity.CENTER);
-                    textClock = portBinding.textClock;
-                    priorityA = portBinding.priorityA;
-                    priorityB = portBinding.priorityB;
-                    passivityClock = portBinding.passivityClock;
-                    batteryLevel = portBinding.batteryLevel;
-                    time = portBinding.time;
-                    passCard[0] = portBinding.pCardA;
-                    passCard[1] = portBinding.pCardB;
-                    muteIcon = (ImageView) portBinding.iconMute;
-                    onlineIcon = (ImageView) portBinding.iconOnline;
-                    vibrateIcon = (ImageView) portBinding.iconVibrate;
-                    progress = portBinding.priorityChoose;
+                switch (orientation) {
+                    case Landscape:
+                        textScoreA = landBinding.textScoreAL;
+                        textScoreB = landBinding.textScoreBL;
+                        textScoreA.setGravity(Gravity.CENTER);
+                        textScoreB.setGravity(Gravity.CENTER);
+                        textClock = landBinding.textClockL;
+                        priorityA = landBinding.priorityAL;
+                        priorityB = landBinding.priorityBL;
+                        passivityClock = landBinding.passivityClockL;
+                        batteryLevel = landBinding.batteryLevelL;
+                        time = landBinding.timeL;
+                        passCard[0] = landBinding.pCardAL;
+                        passCard[1] = landBinding.pCardBL;
+                        muteIcon = (ImageView) landBinding.iconMuteL;
+                        onlineIcon = (ImageView) landBinding.iconOnlineL;
+                        vibrateIcon = (ImageView) landBinding.iconVibrateL;
+                        progress = landBinding.priorityChooseL;
+                        break;
+
+                    case Portrait:
+                        textScore = portBinding.textScore;
+                        textScore.setGravity(Gravity.CENTER);
+                        textClock = portBinding.textClock;
+                        priorityA = portBinding.priorityA;
+                        priorityB = portBinding.priorityB;
+                        passivityClock = portBinding.passivityClock;
+                        batteryLevel = portBinding.batteryLevel;
+                        time = portBinding.time;
+                        passCard[0] = portBinding.pCardA;
+                        passCard[1] = portBinding.pCardB;
+                        muteIcon = (ImageView) portBinding.iconMute;
+                        onlineIcon = (ImageView) portBinding.iconOnline;
+                        vibrateIcon = (ImageView) portBinding.iconVibrate;
+                        progress = portBinding.priorityChoose;
+                        break;
+
+                    default:
+                        break;
                 }
                 try {
-                    if (orientation == FencingBoxActivity.Orientation.Landscape) {
-                        textScoreA.setTypeface(face);
-                        textScoreA.setTextColor(Color.RED);
-                        textScoreB.setTypeface(face);
-                        textScoreB.setTextColor(Color.RED);
-                    } else {
-                        textScore.setTypeface(face);
-                        textScore.setTextColor(Color.RED);
+                    switch (orientation) {
+                        case Landscape:
+                            textScoreA.setTypeface(face);
+                            textScoreA.setTextColor(Color.RED);
+                            textScoreB.setTypeface(face);
+                            textScoreB.setTextColor(Color.RED);
+                            break;
+
+                        case Portrait:
+                            textScore.setTypeface(face);
+                            textScore.setTextColor(Color.RED);
+                            break;
+
+                        default:
+                            break;
                     }
                     textClock.setTypeface(face);
                     textClock.setTextColor(Color.GREEN);
                     textClock.setGravity(Gravity.CENTER);
 
                     setPassivityClockColor(Color.GREEN);
+                    passivityClock.setTypeface(face);
                     passivityClock.setGravity(Gravity.TOP);
                     
                     batteryLevel.setTextColor(Color.WHITE);
@@ -543,5 +577,25 @@ public class FencingBoxDisplay {
                 displayPassivityAsPiste(box);
             }
         }
+    }
+
+    public void setTypeface(Box box, FaceType type) {
+        faceType = type;
+        switch (orientation) {
+            case Landscape:
+                setupText(box, orientation);
+                break;
+
+            case Portrait:
+                setupText(box, orientation);
+                break;
+
+            default:
+                break;
+        }
+    }
+
+    public FaceType getTypeface() {
+        return faceType;
     }
 }

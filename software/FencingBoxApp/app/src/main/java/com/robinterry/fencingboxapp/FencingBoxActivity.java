@@ -48,6 +48,7 @@ import java.text.SimpleDateFormat;
 import java.util.Calendar;
 import java.util.Date;
 import java.io.IOException;
+import com.robinterry.fencingboxapp.FencingBoxDisplay.FaceType;
 
 import android.util.Log;
 import com.robinterry.fencingboxapp.databinding.ActivityMainBinding;
@@ -836,6 +837,21 @@ public class FencingBoxActivity extends AppCompatActivity
                     vibrationState == VibrationState.On ?
                             R.string.vibration_off_label : R.string.vibration_on_label);
         }
+
+        /* Select the font item */
+        item = menu.findItem(R.id.menu_font_select);
+        switch (box.disp.getTypeface()) {
+            case Digital:
+                item.setTitle(R.string.font_normal_label);
+                break;
+
+            case Normal:
+                item.setTitle(R.string.font_digital_label);
+                break;
+
+            default:
+                break;
+        }
         return super.onPrepareOptionsMenu(menu);
     }
 
@@ -895,6 +911,39 @@ public class FencingBoxActivity extends AppCompatActivity
                 }
                 break;
 
+            case R.id.menu_font_select:
+                Box b;
+                if (box.isModeDisplay()) {
+                    b = boxList.currentBox();
+                } else {
+                    b = box;
+                }
+                switch (box.disp.getTypeface()) {
+                    case Digital:
+                        box.disp.setTypeface(b, FaceType.Normal);
+                        if (box.isModeDisplay()) {
+                            box.disp.displayBox(b);
+                        } else {
+                            setScore();
+                            setClock();
+                            setPassivity();
+                        }
+                        break;
+
+                    case Normal:
+                        box.disp.setTypeface(b, FaceType.Digital);
+                        if (box.isModeDisplay()) {
+                            box.disp.displayBox(b);
+                        } else {
+                            setScore();
+                            setClock();
+                            setPassivity();
+                        }
+                        break;
+
+                    default:
+                        break;
+                }
             default:
                 break;
         }
@@ -2354,7 +2403,7 @@ public class FencingBoxActivity extends AppCompatActivity
 
     @Override
     public boolean onSingleTapUp(MotionEvent e1) {
-        //box.disp.hideUI();
+        box.disp.hideUI();
         return false;
     }
 
@@ -2366,7 +2415,7 @@ public class FencingBoxActivity extends AppCompatActivity
                     Box b = boxList.currentBox();
                     if (b != null) {
                         box.setModeDisplay();
-                        //box.disp.hideUI();
+                        box.disp.hideUI();
                         box.disp.displayBox(b);
                         return true;
                     }
@@ -2404,7 +2453,7 @@ public class FencingBoxActivity extends AppCompatActivity
 
     @Override
     public boolean onDoubleTapEvent(MotionEvent e1) {
-        //box.disp.hideUI();
+        box.disp.hideUI();
         return false;
     }
 

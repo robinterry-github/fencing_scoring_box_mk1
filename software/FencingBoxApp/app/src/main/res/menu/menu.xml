@@ -14,6 +14,10 @@
         android:title="@string/piste_select_label"
         app:showAsAction="never" />
     <item
+        android:id="@+id/menu_font_select"
+        android:title="@string/font_digital_label"
+        app:showAsAction="never" />
+    <item
         android:id="@+id/menu_demo"
         android:title="@string/demo_on_label"
         app:showAsAction="never" />
