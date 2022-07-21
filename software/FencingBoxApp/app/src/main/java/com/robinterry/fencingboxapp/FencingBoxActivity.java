@@ -358,8 +358,8 @@ public class FencingBoxActivity extends AppCompatActivity
                                 if (optionsMenuActive) {
                                     /* Hide the menu */
                                     getSupportActionBar().closeOptionsMenu();
-                                    optionsMenuActive = false;
                                 }
+                                optionsMenuActive = false;
                                 break;
                             case 'L': /* Left */
                             case 'R': /* Right */
@@ -921,7 +921,9 @@ public class FencingBoxActivity extends AppCompatActivity
                 switch (box.disp.getTypeface()) {
                     case Digital:
                         box.disp.setTypeface(b, FaceType.Normal);
-                        if (box.isModeDisplay()) {
+                        if (box.isModeDemo()) {
+                            showDemo(whichDemo);
+                        } else if (box.isModeDisplay()) {
                             box.disp.displayBox(b);
                         } else {
                             setScore();
@@ -932,7 +934,9 @@ public class FencingBoxActivity extends AppCompatActivity
 
                     case Normal:
                         box.disp.setTypeface(b, FaceType.Digital);
-                        if (box.isModeDisplay()) {
+                        if (box.isModeDemo()) {
+                            showDemo(whichDemo);
+                        } else if (box.isModeDisplay()) {
                             box.disp.displayBox(b);
                         } else {
                             setScore();
@@ -944,6 +948,8 @@ public class FencingBoxActivity extends AppCompatActivity
                     default:
                         break;
                 }
+                break;
+
             default:
                 break;
         }
@@ -1004,8 +1010,8 @@ public class FencingBoxActivity extends AppCompatActivity
         if (view instanceof Toolbar) {
             final Toolbar toolbar = (Toolbar) view;
             toolbar.hideOverflowMenu();
-            optionsMenuActive = false;
         }
+        optionsMenuActive = false;
     }
 
     public void showDemo() {

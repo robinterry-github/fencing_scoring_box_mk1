@@ -1,8 +1,10 @@
 package com.robinterry.fencingboxapp;
 
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.constraintlayout.widget.ConstraintLayout;
 
 import android.content.Intent;
+import android.graphics.Color;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
@@ -15,11 +17,14 @@ import com.robinterry.constants.C;
 
 public class FencingBoxLaunch extends AppCompatActivity {
     public static final String TAG = "FencingBoxLaunch";
+    private ConstraintLayout layout;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_fencing_box_launch);
+        layout = (ConstraintLayout) findViewById(R.id.activity_launch);
+        layout.setBackgroundColor(Color.BLACK);
         getSupportActionBar().hide();
 
         if (C.DEBUG) {
