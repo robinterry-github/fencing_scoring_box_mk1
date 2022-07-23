@@ -14,6 +14,7 @@ import com.hoho.android.usbserial.driver.UsbSerialProber;
 
 import android.app.PendingIntent;
 import android.app.UiModeManager;
+import android.content.SharedPreferences;
 import android.net.wifi.WifiManager;
 import android.content.BroadcastReceiver;
 import android.content.ComponentName;
@@ -125,8 +126,6 @@ public class FencingBoxActivity extends AppCompatActivity
     private Menu optionsMenu = null;
     private static boolean optionsMenuActive = false;
 
-    /* Settings flags */
-
     public FencingBoxActivity() {
         thisActivity = this;
         final BroadcastReceiver broadcastReceiver = new BroadcastReceiver() {
@@ -204,7 +203,6 @@ public class FencingBoxActivity extends AppCompatActivity
             demoBox[0].priA = true;
             demoBox[0].priB = true;
             demoBox[0].priIndicator = true;
-
 
             demoBox[1].hitA = Box.Hit.OnTarget;
             demoBox[1].hitB = Box.Hit.None;
