@@ -28,12 +28,13 @@
 
     <TextView
         android:id="@+id/textScoreB_l"
-        android:layout_width="139dp"
-        android:layout_height="80dp"
+        android:layout_width="140dp"
+        android:layout_height="100dp"
         android:layout_marginEnd="28dp"
         android:layout_marginBottom="32dp"
         android:background="#000000"
-        android:textAlignment="center"
+        android:gravity="center"
+        android:textAlignment="gravity"
         android:textSize="64sp"
         android:textStyle="bold"
         app:layout_constraintBottom_toBottomOf="parent"
@@ -43,11 +44,12 @@
 
     <TextView
         android:id="@+id/textScoreA_l"
-        android:layout_width="141dp"
-        android:layout_height="84dp"
+        android:layout_width="140dp"
+        android:layout_height="100dp"
         android:layout_marginStart="28dp"
         android:layout_marginBottom="32dp"
         android:background="#000000"
+        android:gravity="center"
         android:textAlignment="center"
         android:textSize="64sp"
         android:textStyle="bold"
@@ -58,11 +60,12 @@
 
     <TextView
         android:id="@+id/textClock_l"
-        android:layout_width="280dp"
-        android:layout_height="83dp"
+        android:layout_width="277dp"
+        android:layout_height="100dp"
         android:layout_marginBottom="32dp"
         android:background="#000000"
-        android:textAlignment="center"
+        android:gravity="center"
+        android:textAlignment="gravity"
         android:textSize="64sp"
         android:textStyle="bold"
         app:layout_constraintBottom_toBottomOf="parent"
@@ -120,7 +123,7 @@
         app:layout_constraintHorizontal_bias="0.531"
         app:layout_constraintStart_toEndOf="@+id/pCardA_l"
         app:layout_constraintTop_toBottomOf="@+id/textClock_l"
-        app:layout_constraintVertical_bias="0.0" />
+        app:layout_constraintVertical_bias="0.277" />
 
     <TextView
         android:id="@+id/battery_level_l"

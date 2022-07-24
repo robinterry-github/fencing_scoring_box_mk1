@@ -43,6 +43,7 @@ public class FencingBoxDisplay {
     private Typeface face = null;
     public enum FaceType { Digital, Normal };
     private FaceType faceType = FaceType.Digital;
+    private float faceSize = 64;
 
     /* Shared preferences */
     private SharedPreferences pref;
@@ -114,6 +115,7 @@ public class FencingBoxDisplay {
                     Log.d(TAG, "Setting up normal text");
                 }
                 face = null;
+                faceSize = 80;
                 break;
 
             case Digital:
@@ -121,6 +123,7 @@ public class FencingBoxDisplay {
                     Log.d(TAG, "Setting up digital text");
                 }
                 face = digitalTypeFace;
+                faceSize = 64;
                 break;
         }
         mainActivity.runOnUiThread(new Runnable() {
@@ -170,13 +173,16 @@ public class FencingBoxDisplay {
                     switch (orientation) {
                         case Landscape:
                             textScoreA.setTypeface(face);
+                            textScoreA.setTextSize(TypedValue.COMPLEX_UNIT_SP, faceSize);
                             textScoreA.setTextColor(Color.RED);
                             textScoreB.setTypeface(face);
+                            textScoreB.setTextSize(TypedValue.COMPLEX_UNIT_SP, faceSize);
                             textScoreB.setTextColor(Color.RED);
                             break;
 
                         case Portrait:
                             textScore.setTypeface(face);
+                            textScore.setTextSize(TypedValue.COMPLEX_UNIT_SP, faceSize);
                             textScore.setTextColor(Color.RED);
                             break;
 
@@ -184,6 +190,7 @@ public class FencingBoxDisplay {
                             break;
                     }
                     textClock.setTypeface(face);
+                    textClock.setTextSize(TypedValue.COMPLEX_UNIT_SP, faceSize);
                     textClock.setTextColor(Color.GREEN);
                     textClock.setGravity(Gravity.CENTER);
 

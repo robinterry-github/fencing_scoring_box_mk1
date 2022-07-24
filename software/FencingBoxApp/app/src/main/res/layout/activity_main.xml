@@ -24,7 +24,7 @@
     <TextView
         android:id="@+id/textScore"
         android:layout_width="280dp"
-        android:layout_height="96dp"
+        android:layout_height="100dp"
         android:layout_marginBottom="104dp"
         android:background="#000000"
         android:textAlignment="center"
@@ -36,7 +36,7 @@
     <TextView
         android:id="@+id/textClock"
         android:layout_width="280dp"
-        android:layout_height="94dp"
+        android:layout_height="100dp"
         android:layout_marginBottom="52dp"
         android:background="#000000"
         android:textAlignment="center"
