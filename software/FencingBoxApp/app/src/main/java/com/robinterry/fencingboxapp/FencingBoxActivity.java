@@ -126,6 +126,10 @@ public class FencingBoxActivity extends AppCompatActivity
     private Menu optionsMenu = null;
     private static boolean optionsMenuActive = false;
 
+    /* Shared preferences */
+    public SharedPreferences pref;
+    public SharedPreferences.Editor editor;
+
     public FencingBoxActivity() {
         thisActivity = this;
         final BroadcastReceiver broadcastReceiver = new BroadcastReceiver() {
@@ -258,6 +262,26 @@ public class FencingBoxActivity extends AppCompatActivity
             Log.i(TAG, "initial orientation is portrait");
             mainBinding = portBinding.getRoot();
             layout = (ConstraintLayout) mainBinding;
+        }
+
+        // Set up shared preferences
+        pref = getSharedPreferences("fencing_box", Context.MODE_PRIVATE);
+        editor = pref.edit();
+
+        // Find out what vibration state was stored previously - if anything
+        synchronized (pref) {
+            String vibState = pref.getString("fencing_box_vibration_state", null);
+            if (vibState == null) {
+                vibrationState = VibrationState.On;
+                synchronized (editor) {
+                    editor.putString("fencing_box_vibration_state", "on");
+                    editor.apply();
+                }
+            } else if (vibState.equals("off")) {
+                vibrationState = VibrationState.Off;
+            } else {
+                vibrationState = VibrationState.On;
+            }
         }
 
         /* Display handler */
@@ -861,9 +885,17 @@ public class FencingBoxActivity extends AppCompatActivity
                 switch (vibrationState) {
                     case Off:
                         vibrationState = VibrationState.On;
+                        synchronized (editor) {
+                            editor.putString("fencing_box_vibration_state", "on");
+                            editor.apply();
+                        }
                         break;
                     case On:
                         vibrationState = VibrationState.Off;
+                        synchronized (editor) {
+                            editor.putString("fencing_box_vibration_state", "off");
+                            editor.apply();
+                        }
                         break;
                 }
                 break;

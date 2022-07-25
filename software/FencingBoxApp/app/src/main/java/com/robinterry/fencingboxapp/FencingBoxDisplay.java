@@ -1,7 +1,5 @@
 package com.robinterry.fencingboxapp;
 
-import android.content.Context;
-import android.content.SharedPreferences;
 import android.graphics.Color;
 import android.graphics.Typeface;
 import android.os.Build;
@@ -45,10 +43,6 @@ public class FencingBoxDisplay {
     private FaceType faceType = FaceType.Digital;
     private float faceSize = 64;
 
-    /* Shared preferences */
-    private SharedPreferences pref;
-    private SharedPreferences.Editor editor;
-
     /* View bindings */
     private ActivityMainBinding portBinding = null;
     private ActivityMainLandBinding landBinding = null;
@@ -78,20 +72,20 @@ public class FencingBoxDisplay {
         progress.setIndeterminate(true);
         progress.setVisibility(View.INVISIBLE);
 
-        // Set up shared preferences
-        pref = mainActivity.getApplicationContext().getSharedPreferences("fencing_box", Context.MODE_PRIVATE);
-        editor = pref.edit();
-
-        // Find out what was stored previously - if anything
-        String font = pref.getString("fencing_box_font", null);
-        if (font == null) {
-            editor.putString("fencing_box_font", "digital");
-            faceType = FaceType.Digital;
-            editor.apply();
-        } else if (font.equals("normal")) {
-            faceType = FaceType.Normal;
-        } else {
-            faceType = FaceType.Digital;
+        // Find out what font was stored previously - if anything
+        synchronized (mainActivity.pref) {
+            String font = mainActivity.pref.getString("fencing_box_font", null);
+            if (font == null) {
+                mainActivity.editor.putString("fencing_box_font", "digital");
+                faceType = FaceType.Digital;
+                synchronized (mainActivity.editor) {
+                    mainActivity.editor.apply();
+                }
+            } else if (font.equals("normal")) {
+                faceType = FaceType.Normal;
+            } else {
+                faceType = FaceType.Digital;
+            }
         }
     }
 
@@ -614,13 +608,17 @@ public class FencingBoxDisplay {
         // Write the font type to the shared preferences
         switch (faceType) {
             case Normal:
-                editor.putString("fencing_box_font", "normal");
-                editor.apply();
+                synchronized (mainActivity.editor) {
+                    mainActivity.editor.putString("fencing_box_font", "normal");
+                    mainActivity.editor.apply();
+                }
                 break;
 
             case Digital:
-                editor.putString("fencing_box_font", "digital");
-                editor.apply();
+                synchronized (mainActivity.editor) {
+                    mainActivity.editor.putString("fencing_box_font", "digital");
+                    mainActivity.editor.apply();
+                }
                 break;
 
             default:
