@@ -25,7 +25,7 @@
         android:id="@+id/textScore"
         android:layout_width="280dp"
         android:layout_height="100dp"
-        android:layout_marginBottom="128dp"
+        android:layout_marginBottom="140dp"
         android:background="#000000"
         android:textAlignment="center"
         android:textSize="64sp"
@@ -47,7 +47,7 @@
         app:layout_constraintHorizontal_bias="0.492"
         app:layout_constraintStart_toStartOf="@+id/guideline"
         app:layout_constraintTop_toTopOf="@+id/guideline2"
-        app:layout_constraintVertical_bias="1.0"
+        app:layout_constraintVertical_bias="0.0"
         tools:ignore="MissingPrefix" />
 
     <TextView
