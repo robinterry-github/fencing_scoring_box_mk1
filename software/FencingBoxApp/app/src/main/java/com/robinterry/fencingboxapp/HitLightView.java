@@ -1,14 +1,20 @@
 package com.robinterry.fencingboxapp;
 
 import androidx.constraintlayout.widget.ConstraintLayout;
+
+import android.content.Context;
+import android.util.DisplayMetrics;
+import android.view.Display;
 import android.view.View;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
 import java.lang.String;
 import com.robinterry.fencingboxapp.FencingBoxActivity.*;
+import com.robinterry.constants.C;
 
 import android.util.Log;
+import android.view.WindowManager;
 
 @SuppressWarnings("ALL")
 public class HitLightView extends View {
@@ -67,20 +73,19 @@ public class HitLightView extends View {
     @Override
     protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
         super.onMeasure(widthMeasureSpec, heightMeasureSpec);
-        int screenWidth, screenHeight;
-        int desiredWidth = coords.ledSizeX;
+        int desiredWidth  = coords.ledSizeX;
         int desiredHeight = coords.ledSizeY;
-        int width, height;
+        int width, height, screenWidth, screenHeight;
         final int LEFT_MARGIN_DIV = 10;
-        final int TOP_MARGIN_DIV = 12;
+        final int TOP_MARGIN_DIV  = 12;
 
-        int widthMode = MeasureSpec.getMode(widthMeasureSpec);
-        int widthSize = MeasureSpec.getSize(widthMeasureSpec);
-        int heightMode = MeasureSpec.getMode(heightMeasureSpec);
+        int widthSize  = MeasureSpec.getSize(widthMeasureSpec);
         int heightSize = MeasureSpec.getSize(heightMeasureSpec);
+        int widthMode  = MeasureSpec.getMode(widthMeasureSpec);
+        int heightMode = MeasureSpec.getMode(heightMeasureSpec);
 
-        screenWidth  = widthSize;
-        screenHeight = heightSize;
+        screenWidth    = widthSize;
+        screenHeight   = heightSize;
 
         if (widthMode == MeasureSpec.EXACTLY) {
             width = widthSize;
@@ -89,7 +94,6 @@ public class HitLightView extends View {
         } else {
             width = desiredWidth;
         }
-
         if (heightMode == MeasureSpec.EXACTLY) {
             height = heightSize;
         } else if (heightMode == MeasureSpec.AT_MOST) {
@@ -97,8 +101,11 @@ public class HitLightView extends View {
         } else {
             height = desiredHeight;
         }
-
         setMeasuredDimension(width, height);
+
+        if (C.DEBUG) {
+            Log.d(TAG, "screen width " + screenWidth + ", screen height " + screenHeight);
+        }
 
         coords.topPos = screenHeight/TOP_MARGIN_DIV;
         if (mainActivity.getOrientation() == Orientation.Portrait) {

@@ -1,14 +1,21 @@
 package com.robinterry.fencingboxapp;
 
 import androidx.constraintlayout.widget.ConstraintLayout;
+
+import android.content.Context;
+import android.util.DisplayMetrics;
+import android.view.Display;
 import android.view.View;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
 import java.lang.String;
+
+import com.robinterry.constants.C;
 import com.robinterry.fencingboxapp.FencingBoxActivity.*;
 
 import android.util.Log;
+import android.view.WindowManager;
 
 @SuppressWarnings("ALL")
 public class CardLightView extends View {
@@ -80,8 +87,8 @@ public class CardLightView extends View {
         int heightMode = MeasureSpec.getMode(heightMeasureSpec);
         int heightSize = MeasureSpec.getSize(heightMeasureSpec);
 
-        screenWidth  = widthSize;
-        screenHeight = heightSize;
+        screenWidth    = widthSize;
+        screenHeight   = heightSize;
 
         if (widthMode == MeasureSpec.EXACTLY) {
             width = widthSize;

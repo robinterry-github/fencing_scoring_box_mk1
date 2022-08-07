@@ -5,6 +5,10 @@ plugins {
 android {
     compileSdkVersion 30
 
+    dataBinding {
+        enabled=true
+    }
+
     defaultConfig {
         applicationId "com.robinterry.fencingboxapp"
         minSdkVersion 23

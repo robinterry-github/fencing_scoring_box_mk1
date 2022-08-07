@@ -7,6 +7,7 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
 import androidx.constraintlayout.widget.ConstraintLayout;
 import androidx.core.view.GestureDetectorCompat;
+import androidx.core.view.WindowCompat;
 
 import com.hoho.android.usbserial.driver.UsbSerialDriver;
 import com.hoho.android.usbserial.driver.UsbSerialPort;
@@ -27,6 +28,7 @@ import android.graphics.drawable.ColorDrawable;
 import android.hardware.usb.UsbDevice;
 import android.hardware.usb.UsbDeviceConnection;
 import android.hardware.usb.UsbManager;
+import android.os.Build;
 import android.os.IBinder;
 import android.os.Vibrator;
 import android.view.GestureDetector;
@@ -301,13 +303,16 @@ public class FencingBoxActivity extends AppCompatActivity
             @Override
             public void run() {
                 try {
-                    // Set status bar to entirely black
+                    /* Set status bar to entirely black */
                     Window window = thisActivity.getWindow();
                     window.clearFlags(WindowManager.LayoutParams.FLAG_TRANSLUCENT_STATUS);
                     window.addFlags(WindowManager.LayoutParams.FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS);
                     window.setStatusBarColor(Color.BLACK);
 
-                    // Set action bar (title bar/app bar) to entirely black
+                    /* Make layout take up entire area of screen, including under the navigation bar */
+                    WindowCompat.setDecorFitsSystemWindows(window, false);
+
+                    /* Set action bar (title bar/app bar) to entirely black */
                     ActionBar bar = getSupportActionBar();
                     bar.setBackgroundDrawable(new ColorDrawable(Color.BLACK));
                 } catch (Exception e) {
@@ -585,7 +590,7 @@ public class FencingBoxActivity extends AppCompatActivity
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
         if (box.isModeNone()) {
             box.disp.showUI();
-        } else {
+        } else if (!box.isModeDemo()) {
             box.disp.hideUI();
         }
         sound.soundOff();
@@ -635,7 +640,7 @@ public class FencingBoxActivity extends AppCompatActivity
         // Display the screen in the new orientation
         if (box.isModeNone()) {
             box.disp.showUI();
-        } else {
+        } else if (!box.isModeDemo()) {
             box.disp.hideUI();
         }
         box.disp.setupText(box, layout, orientation);

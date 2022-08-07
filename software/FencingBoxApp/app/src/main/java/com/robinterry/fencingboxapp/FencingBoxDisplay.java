@@ -9,6 +9,7 @@ import android.view.Gravity;
 import android.view.View;
 import android.view.WindowInsets;
 import android.view.WindowInsetsController;
+import android.view.WindowManager;
 import android.widget.ImageView;
 import android.widget.ProgressBar;
 import android.widget.TextView;
@@ -97,6 +98,7 @@ public class FencingBoxDisplay {
         cardLightA.setLayout(layout);
         cardLightB.setLayout(layout);
         layout.setBackgroundColor(Color.BLACK);
+        layout.setSystemUiVisibility(View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN | View.SYSTEM_UI_FLAG_LAYOUT_STABLE);
         setupText(box, orient);
     }
 
