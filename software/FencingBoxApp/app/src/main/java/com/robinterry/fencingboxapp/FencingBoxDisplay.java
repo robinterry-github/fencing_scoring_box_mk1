@@ -9,7 +9,6 @@ import android.view.Gravity;
 import android.view.View;
 import android.view.WindowInsets;
 import android.view.WindowInsetsController;
-import android.view.WindowManager;
 import android.widget.ImageView;
 import android.widget.ProgressBar;
 import android.widget.TextView;
@@ -28,6 +27,7 @@ public class FencingBoxDisplay {
     public TextView textScore, textScoreA, textScoreB, textClock;
     public TextView priorityA, priorityB;
     public TextView passivityClock, batteryLevel, time;
+    public TextView period;
     public TextView[] passCard = new TextView[]{null, null};
     private ImageView muteIcon;
     private ImageView onlineIcon;
@@ -132,6 +132,9 @@ public class FencingBoxDisplay {
                         textScoreA.setGravity(Gravity.CENTER);
                         textScoreB.setGravity(Gravity.CENTER);
                         textClock = landBinding.textClockL;
+                        textClock.setGravity(Gravity.CENTER);
+                        period = landBinding.periodL;
+                        period.setGravity(Gravity.CENTER);
                         priorityA = landBinding.priorityAL;
                         priorityB = landBinding.priorityBL;
                         passivityClock = landBinding.passivityClockL;
@@ -149,6 +152,9 @@ public class FencingBoxDisplay {
                         textScore = portBinding.textScore;
                         textScore.setGravity(Gravity.CENTER);
                         textClock = portBinding.textClock;
+                        textClock.setGravity(Gravity.CENTER);
+                        period = portBinding.period;
+                        period.setGravity(Gravity.CENTER);
                         priorityA = portBinding.priorityA;
                         priorityB = portBinding.priorityB;
                         passivityClock = portBinding.passivityClock;
@@ -180,6 +186,7 @@ public class FencingBoxDisplay {
                             textScore.setTypeface(face);
                             textScore.setTextSize(TypedValue.COMPLEX_UNIT_SP, faceSize);
                             textScore.setTextColor(Color.RED);
+                            textScore.setBackgroundColor(Color.BLACK);
                             break;
 
                         default:
@@ -188,7 +195,12 @@ public class FencingBoxDisplay {
                     textClock.setTypeface(face);
                     textClock.setTextSize(TypedValue.COMPLEX_UNIT_SP, faceSize);
                     textClock.setTextColor(Color.GREEN);
-                    textClock.setGravity(Gravity.CENTER);
+                    textClock.setBackgroundColor(Color.BLACK);
+
+                    period.setTypeface(face);
+                    period.setTextColor(Color.BLACK);
+                    period.setBackgroundColor(Color.BLACK);
+                    period.setTextSize(TypedValue.COMPLEX_UNIT_SP, 32);
 
                     setPassivityClockColor(Color.GREEN);
                     passivityClock.setTypeface(face);
@@ -339,6 +351,16 @@ public class FencingBoxDisplay {
                 textClock.setText(clock);
             }
         });
+    }
+
+    public void displayPeriod(int per) {
+        period.setTextColor(Color.YELLOW);
+        period.setText(String.format("%d", per));
+    }
+
+    public void blankPeriod() {
+        period.setTextColor(Color.BLACK);
+        period.setText("-");
     }
 
     public void clearClock(int color) {
@@ -590,6 +612,7 @@ public class FencingBoxDisplay {
                     setPassivityClockColor(Color.WHITE);
                     displayPassivityAsPiste(box);
                 }
+                displayPeriod(box.period);
             } else {
                 displayClock("--", "--", "--", false);
                 displayScore("--", "--");
@@ -600,6 +623,7 @@ public class FencingBoxDisplay {
                 displayPassivityCard(box, 1, PassivityCard.None);
                 setPassivityClockColor(Color.RED);
                 displayPassivityAsPiste(box);
+                blankPeriod();
             }
         }
     }

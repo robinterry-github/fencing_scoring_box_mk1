@@ -24,6 +24,7 @@ public class Box {
     public String timeSecs = "00";
     public String timeHund = "00";
     public int clock = 0;
+    public int period = 1;
     public String sCardA = "---";
     public String sCardB = "---";
     public Integer cardA = 0;

@@ -1,5 +1,6 @@
 package com.robinterry.fencingboxapp;
 
+import java.text.NumberFormat;
 import java.util.List;
 import java.util.ArrayList;
 
@@ -66,11 +67,12 @@ public class FencingBoxList {
         /* Updates box data to the box list:
 
            the message format is as follows:
-           <index>|<piste>S<hitA><hitB><scoreA>:<scoreB>T<mins>:<secs>:<hund>C<cardA>:<cardB>P<priA>:<priB>V<pasvA>:<pasvB>
+           <index>|<piste>|<period>|S<hitA><hitB><scoreA>:<scoreB>T<mins>:<secs>:<hund>C<cardA>:<cardB>P<priA>:<priB>V<pasvA>:<pasvB>
 
            where:
            <index> is 4 digits, 0-9999 inclusive, and incremented for each new message
            <piste> is 2 digits, >= 1
+           <period> is 1 digit, 1-9
            <hitA>, <hitB> are '-', 'h' for hit, 'o' for off-target
            <scoreA>, <scoreB> are 2 digits
            <mins> is 2-digit minutes
@@ -83,7 +85,7 @@ public class FencingBoxList {
               ('-', '0' (yellow), '1', (red-1), '2' (red-2))
 
            an example is:
-           2345|01Sh-:02:01T02:25:00P-:-Cy--:-r-V1:-
+           2345|01|1|Sh-:02:01T02:25:00P-:-Cy--:-r-V1:-
 
         */
         int offset = 0;
@@ -117,6 +119,22 @@ public class FencingBoxList {
             return;
         }
         newBox.host = host;
+        if (msg.charAt(offset) != '|') {
+            return;
+        }
+        offset++;
+
+        /* Read the period (1-9) */
+        try {
+            newBox.period = Integer.valueOf(msg.substring(offset, offset+1));
+            offset++;
+        } catch (NumberFormatException e) {
+            return;
+        }
+        if (msg.charAt(offset) != '|') {
+            return;
+        }
+        offset++;
         try {
             if (msg.charAt(offset) != 'S') {
                 return;

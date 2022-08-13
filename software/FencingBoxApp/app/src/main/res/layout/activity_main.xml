@@ -24,10 +24,11 @@
 
     <TextView
         android:id="@+id/textScore"
-        android:layout_width="280dp"
-        android:layout_height="100dp"
-        android:layout_marginBottom="140dp"
+        android:layout_width="277dp"
+        android:layout_height="90dp"
+        android:layout_marginBottom="124dp"
         android:background="#000000"
+        android:gravity="center"
         android:textAlignment="center"
         android:textSize="64sp"
         android:textStyle="bold"
@@ -36,10 +37,11 @@
 
     <TextView
         android:id="@+id/textClock"
-        android:layout_width="280dp"
-        android:layout_height="100dp"
+        android:layout_width="275dp"
+        android:layout_height="92dp"
         android:layout_marginBottom="52dp"
         android:background="#000000"
+        android:gravity="center"
         android:textAlignment="center"
         android:textSize="64sp"
         android:textStyle="bold"
@@ -54,8 +56,8 @@
     <TextView
         android:id="@+id/priorityA"
         android:layout_width="33dp"
-        android:layout_height="33dp"
-        android:layout_marginTop="52dp"
+        android:layout_height="34dp"
+        android:layout_marginBottom="48dp"
         android:background="#000000"
         android:text="P"
         android:textAlignment="center"
@@ -63,15 +65,13 @@
         android:textSize="24sp"
         android:textStyle="bold"
         app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintStart_toStartOf="@+id/textScore"
-        app:layout_constraintTop_toBottomOf="@+id/textScore"
-        app:layout_constraintVertical_bias="0.0" />
+        app:layout_constraintStart_toStartOf="@+id/textScore" />
 
     <TextView
         android:id="@+id/priorityB"
         android:layout_width="33dp"
         android:layout_height="33dp"
-        android:layout_marginTop="52dp"
+        android:layout_marginBottom="48dp"
         android:background="#000000"
         android:text="P"
         android:textAlignment="center"
@@ -79,9 +79,7 @@
         android:textSize="24sp"
         android:textStyle="bold"
         app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintEnd_toEndOf="@+id/textScore"
-        app:layout_constraintTop_toBottomOf="@+id/textScore"
-        app:layout_constraintVertical_bias="0.0" />
+        app:layout_constraintEnd_toEndOf="@+id/textScore" />
 
     <androidx.constraintlayout.widget.Barrier
         android:id="@+id/barrier"
@@ -134,7 +132,7 @@
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintStart_toEndOf="@+id/pCardA"
         app:layout_constraintTop_toBottomOf="@+id/textScore"
-        app:layout_constraintVertical_bias="0.196" />
+        app:layout_constraintVertical_bias="0.0" />
 
     <TextView
         android:id="@+id/battery_level"
@@ -166,31 +164,27 @@
         android:layout_width="33dp"
         android:layout_height="33dp"
         android:layout_marginStart="20dp"
-        android:layout_marginTop="52dp"
         android:layout_marginEnd="20dp"
+        android:layout_marginBottom="48dp"
         android:background="#000000"
         android:textSize="24sp"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toStartOf="@+id/passivityClock"
-        app:layout_constraintStart_toEndOf="@+id/priorityA"
-        app:layout_constraintTop_toBottomOf="@+id/textScore"
-        app:layout_constraintVertical_bias="0.0" />
+        app:layout_constraintStart_toEndOf="@+id/priorityA" />
 
     <TextView
         android:id="@+id/pCardB"
         android:layout_width="33dp"
         android:layout_height="33dp"
         android:layout_marginStart="20dp"
-        android:layout_marginTop="52dp"
         android:layout_marginEnd="20dp"
+        android:layout_marginBottom="48dp"
         android:background="#000000"
         android:textSize="24sp"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toStartOf="@+id/priorityB"
-        app:layout_constraintHorizontal_bias="1.0"
-        app:layout_constraintStart_toEndOf="@+id/passivityClock"
-        app:layout_constraintTop_toBottomOf="@+id/textScore"
-        app:layout_constraintVertical_bias="0.0" />
+        app:layout_constraintHorizontal_bias="0.0"
+        app:layout_constraintStart_toEndOf="@+id/passivityClock" />
 
     <ImageView
         android:id="@+id/icon_mute"
@@ -228,5 +222,22 @@
         app:layout_constraintStart_toEndOf="@+id/icon_mute"
         app:layout_constraintTop_toTopOf="parent"
         app:srcCompat="@drawable/ic_vibrate" />
+
+    <TextView
+        android:id="@+id/period"
+        android:layout_width="31dp"
+        android:layout_height="50dp"
+        android:layout_marginBottom="9dp"
+        android:background="#000000"
+        android:gravity="center"
+        android:text="1"
+        android:textSize="24sp"
+        android:textStyle="bold"
+        app:layout_constraintBottom_toTopOf="@+id/textScore"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="0.501"
+        app:layout_constraintStart_toStartOf="@+id/guideline"
+        app:layout_constraintTop_toBottomOf="@+id/textClock"
+        app:layout_constraintVertical_bias="1.0" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>

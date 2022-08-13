@@ -33,7 +33,6 @@
         android:layout_marginEnd="28dp"
         android:layout_marginBottom="32dp"
         android:background="#000000"
-        android:gravity="center"
         android:textAlignment="gravity"
         android:textSize="64sp"
         android:textStyle="bold"
@@ -49,7 +48,6 @@
         android:layout_marginStart="28dp"
         android:layout_marginBottom="32dp"
         android:background="#000000"
-        android:gravity="center"
         android:textAlignment="center"
         android:textSize="64sp"
         android:textStyle="bold"
@@ -64,7 +62,6 @@
         android:layout_height="100dp"
         android:layout_marginBottom="32dp"
         android:background="#000000"
-        android:gravity="center"
         android:textAlignment="gravity"
         android:textSize="64sp"
         android:textStyle="bold"
@@ -228,7 +225,7 @@
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="@+id/guideline"
         app:layout_constraintTop_toTopOf="@+id/guideline3"
-        app:layout_constraintVertical_bias="0.952" />
+        app:layout_constraintVertical_bias="0.8" />
 
     <ImageView
         android:id="@+id/icon_vibrate_l"
@@ -240,5 +237,20 @@
         app:layout_constraintStart_toEndOf="@+id/icon_mute_l"
         app:layout_constraintTop_toTopOf="parent"
         app:srcCompat="@drawable/ic_vibrate" />
+
+    <TextView
+        android:id="@+id/period_l"
+        android:layout_width="45dp"
+        android:layout_height="45dp"
+        android:layout_marginTop="76dp"
+        android:background="#000000"
+        android:gravity="center"
+        android:text="1"
+        android:textSize="24sp"
+        android:textStyle="bold"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="0.493"
+        app:layout_constraintStart_toStartOf="@+id/guideline"
+        app:layout_constraintTop_toTopOf="@+id/guideline3" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>

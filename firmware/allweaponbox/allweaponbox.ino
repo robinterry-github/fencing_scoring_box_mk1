@@ -2731,6 +2731,9 @@ void transIR(unsigned long key)
 #ifdef DEBUG_L1
                     Serial.println("bout continuing");
 #endif
+#ifdef ENABLE_REPEATER
+                    sendRepeater("!BC");
+#endif
                     break;
                  
                  case STA_STARTBOUT:
@@ -3454,9 +3457,6 @@ void startBout()
 void continueBout()
 {
    /* Don't reset passivity */
-#ifdef ENABLE_REPEATER
-   sendRepeater("!BC");
-#endif
    priState = PRI_IDLE;
    setTimer(BOUTTIME);
    displayScore();

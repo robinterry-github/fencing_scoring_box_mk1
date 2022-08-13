@@ -49,6 +49,7 @@ struct Box
    int                  port, idx;
    enum Dir             dir;
    int                  piste;
+   int                  period;
    int                  sock, rx;
    struct sockaddr_in   addr;
    struct ip_mreq       mc;
@@ -431,9 +432,10 @@ void *txrxCommsThread(void *arg)
                {
                   b->msgIndex = 0;
                }
-               sprintf(txrxString, "%04d|%02dS%c%c:%02d:%02dT%02d:%02d:00P-:-C%s:%sV%c:%c",
+               sprintf(txrxString, "%04d|%02d|%d|S%c%c:%02d:%02dT%02d:%02d:00P-:-C%s:%sV%c:%c",
                   b->msgIndex,
                   b->piste, 
+                  b->period,
                   b->hitA ? 'h':'-',
                   b->hitB ? 'h':'-',
                   b->scoreA,
@@ -485,6 +487,12 @@ void *txrxCommsThread(void *arg)
                               b->hitA     = b->hitB     = 0;
                               b->scoreA   = b->scoreB   = 0;
                               b->hitTimer = b->hitBlock = 0;
+
+                              /* Increment the period */
+                              if (++b->period > 9)
+                              {
+                                 b->period = 1;
+                              }
                            }
                         }
                      }
@@ -805,6 +813,7 @@ int main(int argc, char *argv[])
       meTx[i]->hitBlock = 0;
       meTx[i]->scoreA   = 0; 
       meTx[i]->scoreB   = 0;
+      meTx[i]->period   = 1;
       if (cards)
       {
          meTx[i]->cardA    = random()%8;

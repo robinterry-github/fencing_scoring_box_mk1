@@ -163,6 +163,7 @@ public class FencingBoxActivity extends AppCompatActivity
             demoBox[0].timeHund = "00";
             demoBox[0].scoreA = "00";
             demoBox[0].scoreB = "00";
+            demoBox[0].period = 8;
             demoBox[0].mode = Box.Mode.Demo;
             demoBox[0].cardA = Box.redCardBit | Box.yellowCardBit | Box.shortCircuitBit;
             demoBox[0].cardB = Box.redCardBit | Box.yellowCardBit | Box.shortCircuitBit;
@@ -181,6 +182,7 @@ public class FencingBoxActivity extends AppCompatActivity
             demoBox[1].timeHund = demoBox[0].timeHund;
             demoBox[1].scoreA = demoBox[0].scoreA;
             demoBox[1].scoreB = demoBox[0].scoreB;
+            demoBox[1].period = demoBox[0].period;
             demoBox[1].mode = Box.Mode.Demo;
             demoBox[1].cardA = demoBox[0].cardA;
             demoBox[1].cardB = demoBox[0].cardB;
@@ -199,6 +201,7 @@ public class FencingBoxActivity extends AppCompatActivity
             demoBox[0].timeHund = "00";
             demoBox[0].scoreA = "02";
             demoBox[0].scoreB = "10";
+            demoBox[0].period = 3;
             demoBox[0].mode = Box.Mode.Demo;
             demoBox[0].cardA = Box.redCardBit | Box.yellowCardBit | Box.shortCircuitBit;
             demoBox[0].cardB = Box.redCardBit | Box.yellowCardBit | Box.shortCircuitBit;
@@ -216,6 +219,7 @@ public class FencingBoxActivity extends AppCompatActivity
             demoBox[1].timeSecs = "27";
             demoBox[1].scoreA = "14";
             demoBox[1].scoreB = "11";
+            demoBox[1].period = 5;
             demoBox[1].mode = Box.Mode.Demo;
             demoBox[1].cardA = 0;
             demoBox[1].cardB = 0;
@@ -940,6 +944,7 @@ public class FencingBoxActivity extends AppCompatActivity
                         setPriority();
                         setPassivity();
                         setPassivityCard();
+                        setPeriod();
                         break;
                     default:
                         break;
@@ -1315,14 +1320,17 @@ public class FencingBoxActivity extends AppCompatActivity
         box.scoreB = s_B;
         if (box.isModeConnected()) {
             box.disp.displayScore(box.scoreA, box.scoreB);
+            setPeriod();
         } else {
             clearScore();
         }
+
     }
 
     public void clearScore() {
         box.scoreA = box.scoreB = "00";
         box.disp.clearScore(orientation);
+        box.disp.blankPeriod();
     }
 
     public void resetClock() {
@@ -1344,6 +1352,7 @@ public class FencingBoxActivity extends AppCompatActivity
 
     public void resetScore() {
         box.scoreA = box.scoreB = "00";
+        box.period = 1;
         if (box.isModeBout()) {
             setScore(box.scoreA, box.scoreB);
         } else {
@@ -1544,6 +1553,16 @@ public class FencingBoxActivity extends AppCompatActivity
         box.disp.displayPassivityCard(box, fencer);
     }
 
+    public void setPeriod() {
+        if (box.isModeConnected()
+                &&
+                (box.isModeBout() || box.isModeDemo() || box.isModeDisplay())) {
+            box.disp.displayPeriod(box.period);
+        } else {
+            box.disp.blankPeriod();
+        }
+    }
+
     public synchronized void processData(byte data[]) {
         StringBuilder str = new StringBuilder();
         for (byte b : data) {
@@ -1681,6 +1700,12 @@ public class FencingBoxActivity extends AppCompatActivity
 
             case "BC":
                 Log.i(TAG, "bout continue");
+                if (box.period < 9) {
+                    box.period++;
+                } else {
+                    box.period = 1;
+                }
+                setPeriod();
                 break;
 
             case "BE":
@@ -2072,9 +2097,10 @@ public class FencingBoxActivity extends AppCompatActivity
             box.msgIndex = 0;
         }
         if (box.getBoxMode() == Box.Mode.Bout) {
-            s = String.format("%04d|%02dS%c%c:%s:%s",
+            s = String.format("%04d|%02d|%d|S%c%c:%s:%s",
                     box.msgIndex,
                     box.piste,
+                    box.period,
                     cHitA,
                     cHitB,
                     box.scoreA,
@@ -2096,7 +2122,8 @@ public class FencingBoxActivity extends AppCompatActivity
             s = String.format("T%s:%s:%s",
                     box.timeMins,
                     box.timeSecs,
-                    box.timeHund);
+                    box.timeHund,
+                    box.period);
         } else {
             s = "T--:--:--";
         }
