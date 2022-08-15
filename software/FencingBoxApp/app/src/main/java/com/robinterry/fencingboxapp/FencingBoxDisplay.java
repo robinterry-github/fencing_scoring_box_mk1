@@ -180,6 +180,7 @@ public class FencingBoxDisplay {
                             textScoreB.setTypeface(face);
                             textScoreB.setTextSize(TypedValue.COMPLEX_UNIT_SP, faceSize);
                             textScoreB.setTextColor(Color.RED);
+                            period.setTextSize(TypedValue.COMPLEX_UNIT_SP, 64);
                             break;
 
                         case Portrait:
@@ -187,6 +188,7 @@ public class FencingBoxDisplay {
                             textScore.setTextSize(TypedValue.COMPLEX_UNIT_SP, faceSize);
                             textScore.setTextColor(Color.RED);
                             textScore.setBackgroundColor(Color.BLACK);
+                            period.setTextSize(TypedValue.COMPLEX_UNIT_SP, 48);
                             break;
 
                         default:
@@ -200,7 +202,6 @@ public class FencingBoxDisplay {
                     period.setTypeface(face);
                     period.setTextColor(Color.BLACK);
                     period.setBackgroundColor(Color.BLACK);
-                    period.setTextSize(TypedValue.COMPLEX_UNIT_SP, 32);
 
                     setPassivityClockColor(Color.GREEN);
                     passivityClock.setTypeface(face);

@@ -225,8 +225,8 @@
 
     <TextView
         android:id="@+id/period"
-        android:layout_width="31dp"
-        android:layout_height="50dp"
+        android:layout_width="51dp"
+        android:layout_height="59dp"
         android:layout_marginBottom="9dp"
         android:background="#000000"
         android:gravity="center"
@@ -235,9 +235,9 @@
         android:textStyle="bold"
         app:layout_constraintBottom_toTopOf="@+id/textScore"
         app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintHorizontal_bias="0.501"
+        app:layout_constraintHorizontal_bias="0.497"
         app:layout_constraintStart_toStartOf="@+id/guideline"
         app:layout_constraintTop_toBottomOf="@+id/textClock"
-        app:layout_constraintVertical_bias="1.0" />
+        app:layout_constraintVertical_bias="0.0" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>

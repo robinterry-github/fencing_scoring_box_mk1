@@ -30,10 +30,10 @@ public class HitLightView extends View {
     private int onTargetColor = Color.BLACK; // either red or green in practice
     private final int offTargetColor = Color.WHITE;
     private final int offColor = Color.TRANSPARENT;
-    public static final int LED_SIZE_X_DIV_PORT = 3;
-    public static final int LED_SIZE_Y_DIV_PORT = 4;
-    public static final int LED_SIZE_X_DIV_LAND = 3;
-    public static final int LED_SIZE_Y_DIV_LAND = 4;
+    public static final double LED_SIZE_X_DIV_PORT = 3.0;
+    public static final double LED_SIZE_Y_DIV_PORT = 4.0;
+    public static final double LED_SIZE_X_DIV_LAND = 3.5;
+    public static final double LED_SIZE_Y_DIV_LAND = 4.0;
 
     public static class FixedCoords {
         public int ledSizeX, ledSizeY, topPos, bottomPos;
@@ -109,11 +109,11 @@ public class HitLightView extends View {
 
         coords.topPos = screenHeight/TOP_MARGIN_DIV;
         if (mainActivity.getOrientation() == Orientation.Portrait) {
-            coords.ledSizeX = screenWidth/LED_SIZE_X_DIV_PORT;
-            coords.ledSizeY = screenHeight/LED_SIZE_Y_DIV_PORT;
+            coords.ledSizeX = (int) (((double) screenWidth)/LED_SIZE_X_DIV_PORT);
+            coords.ledSizeY = (int) (((double) screenHeight)/LED_SIZE_Y_DIV_PORT);
         } else {
-            coords.ledSizeX = screenWidth/LED_SIZE_X_DIV_LAND;
-            coords.ledSizeY = screenHeight/LED_SIZE_Y_DIV_LAND;
+            coords.ledSizeX = (int) (((double) screenWidth)/LED_SIZE_X_DIV_LAND);
+            coords.ledSizeY = (int) (((double) screenHeight)/LED_SIZE_Y_DIV_LAND);
         }
         coords.bottomPos = coords.topPos + coords.ledSizeY;
 
