@@ -340,6 +340,7 @@ enum BoutState
    STA_STARTBOUT,
    STA_BOUT,
    STA_TP_BOUT,
+   STA_TP_ENDBOUT,
    STA_PRIORITY,
    STA_ENDPRI,
    STA_TP_PRI,
@@ -842,6 +843,7 @@ void displayState(enum BoutState state)
       case STA_BOUT:
       case STA_TP_BOUT:
       case STA_STARTBOUT:
+      case STA_TP_ENDBOUT:
       case STA_TP_CONTINUE:
         disp.setSegments(boutDisp, 4, 0);
         break;
@@ -1693,6 +1695,7 @@ void restartBox(BoutState state)
       case STA_STARTBOUT:
       case STA_BOUT:
       case STA_TP_BOUT:
+      case STA_TP_ENDBOUT:
       case STA_TP_PRI:
       case STA_PRIORITY:
       case STA_BREAK:
@@ -2432,8 +2435,21 @@ void transIR(unsigned long key)
 #endif
                  break;
 
+              case STA_TP_CONTINUE:
+                // In the middle of a bout - continue the bout
+                keyClick();
+                continueBout(STA_TP_BOUT);
+                break;
+
+             case STA_TP_BOUT:
+                // At the start of a bout - end bout
+                keyClick();
+                continueBout(STA_TP_ENDBOUT);
+                break;   
+
+              case STA_TP_ENDBOUT:
               default:
-                 // In the middle of a bout - restart the bout
+                 // After continue - restart
                  keyClick();
                  resetPassivity();
                  startBout();
@@ -2491,6 +2507,7 @@ void transIR(unsigned long key)
               case STA_BOUT:
               case STA_STARTBOUT:
               case STA_TP_BOUT:
+              case STA_TP_ENDBOUT:
                  keyClick();
 #ifdef DEBUG_L1
                  Serial.println("reset bout timer");
@@ -2651,6 +2668,7 @@ void transIR(unsigned long key)
 
                  case STA_BOUT:
                  case STA_TP_BOUT:
+                 case STA_TP_ENDBOUT:
 #ifdef DEBUG_L1
                     Serial.println("bout timer stopped");
 #endif
@@ -2668,7 +2686,7 @@ void transIR(unsigned long key)
               resetLights();
               resetState = RES_IDLE;
               resetTimer = 0;
-
+              
               /* If the new score is different from the old one, clear passivity */
               if (
                     (prevScore[FENCER_A] != score[FENCER_A])
@@ -2724,15 +2742,16 @@ void transIR(unsigned long key)
                     break;
                     
                  case STA_TP_CONTINUE:
-                    setTimer(BOUTTIME);
+                    //setTimer(BOUTTIME);
+                    continueBout(STA_TP_BOUT);
                     boutState = STA_STARTBOUT;
-                    resetCards();
-                    displayTime();
+                    //resetCards();
+                    //displayTime();
 #ifdef DEBUG_L1
                     Serial.println("bout continuing");
 #endif
 #ifdef ENABLE_REPEATER
-                    sendRepeater("!BC");
+                    //sendRepeater("!BC");
 #endif
                     break;
                  
@@ -2790,6 +2809,7 @@ void transIR(unsigned long key)
 
                  case STA_BOUT:
                  case STA_TP_BOUT:
+                 case STA_TP_ENDBOUT:
                     // If we've switched to score display, switch back to time
                     if (currentDisp == DISP_SCORE)
                     {
@@ -3454,13 +3474,24 @@ void startBout()
 #endif
 }
 
-void continueBout()
+void continueBout(enum BoutState newBoutState)
 {
    /* Don't reset passivity */
    priState = PRI_IDLE;
    setTimer(BOUTTIME);
-   displayScore();
-   boutState = STA_TP_CONTINUE; 
+   boutState = newBoutState;
+   if (boutState != STA_TP_CONTINUE)
+   {
+      displayTime();
+#ifdef ENABLE_REPEATER
+      sendRepeater("!BC");
+#endif
+   }
+   else
+   {
+      displayScore();
+   }
+   
    scoreThisBout[FENCER_A] = scoreThisBout[FENCER_B] = 0;
    resetCards();
 #ifdef DEBUG_L1
@@ -4558,6 +4589,7 @@ void loop()
                 break;
 
              case STA_TP_BOUT:
+             case STA_TP_ENDBOUT:
              case STA_TP_PRI:
              case STA_TP_BREAK:
                 break;
@@ -4643,7 +4675,7 @@ void loop()
 
                   if (boutState == STA_BOUT || boutState == STA_BREAK)
                   {
-                     continueBout();
+                     continueBout(STA_TP_CONTINUE);
                   }
                }
 
