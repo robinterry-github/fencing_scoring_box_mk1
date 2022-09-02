@@ -9,6 +9,38 @@
     android:fitsSystemWindows="false"
     tools:context=".FencingBoxActivity">
 
+    <TextView
+        android:id="@+id/pCardB2"
+        android:layout_width="33dp"
+        android:layout_height="33dp"
+        android:layout_marginStart="20dp"
+        android:layout_marginTop="64dp"
+        android:layout_marginEnd="20dp"
+        android:background="#000000"
+        android:textSize="24sp"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toStartOf="@+id/priorityB"
+        app:layout_constraintHorizontal_bias="0.0"
+        app:layout_constraintStart_toEndOf="@+id/passivityClock"
+        app:layout_constraintTop_toBottomOf="@+id/textScore"
+        app:layout_constraintVertical_bias="0.0" />
+
+    <TextView
+        android:id="@+id/pCardA2"
+        android:layout_width="33dp"
+        android:layout_height="33dp"
+        android:layout_marginStart="20dp"
+        android:layout_marginTop="64dp"
+        android:layout_marginEnd="20dp"
+        android:background="#000000"
+        android:textSize="24sp"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toStartOf="@+id/passivityClock"
+        app:layout_constraintHorizontal_bias="0.0"
+        app:layout_constraintStart_toEndOf="@+id/priorityA"
+        app:layout_constraintTop_toBottomOf="@+id/textScore"
+        app:layout_constraintVertical_bias="0.0" />
+
     <ImageView
         android:id="@+id/icon_online"
         android:layout_width="20dp"
@@ -130,7 +162,7 @@
         android:textColor="#FF0000"
         android:textSize="24sp"
         app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintStart_toEndOf="@+id/pCardA"
+        app:layout_constraintStart_toEndOf="@+id/pCardA1"
         app:layout_constraintTop_toBottomOf="@+id/textScore"
         app:layout_constraintVertical_bias="0.0" />
 
@@ -160,31 +192,33 @@
         tools:layout_editor_absoluteY="1dp" />
 
     <TextView
-        android:id="@+id/pCardA"
+        android:id="@+id/pCardA1"
         android:layout_width="33dp"
         android:layout_height="33dp"
         android:layout_marginStart="20dp"
+        android:layout_marginTop="20dp"
         android:layout_marginEnd="20dp"
-        android:layout_marginBottom="48dp"
         android:background="#000000"
         android:textSize="24sp"
-        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintBottom_toTopOf="@+id/pCardA2"
         app:layout_constraintEnd_toStartOf="@+id/passivityClock"
-        app:layout_constraintStart_toEndOf="@+id/priorityA" />
+        app:layout_constraintStart_toEndOf="@+id/priorityA"
+        app:layout_constraintTop_toBottomOf="@+id/textScore"
+        app:layout_constraintVertical_bias="0.0" />
 
     <TextView
-        android:id="@+id/pCardB"
+        android:id="@+id/pCardB1"
         android:layout_width="33dp"
         android:layout_height="33dp"
         android:layout_marginStart="20dp"
+        android:layout_marginTop="20dp"
         android:layout_marginEnd="20dp"
-        android:layout_marginBottom="48dp"
         android:background="#000000"
         android:textSize="24sp"
-        app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toStartOf="@+id/priorityB"
         app:layout_constraintHorizontal_bias="0.0"
-        app:layout_constraintStart_toEndOf="@+id/passivityClock" />
+        app:layout_constraintStart_toEndOf="@+id/passivityClock"
+        app:layout_constraintTop_toBottomOf="@+id/textScore" />
 
     <ImageView
         android:id="@+id/icon_mute"

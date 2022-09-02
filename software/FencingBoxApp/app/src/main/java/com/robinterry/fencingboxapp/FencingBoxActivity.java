@@ -208,7 +208,7 @@ public class FencingBoxActivity extends AppCompatActivity
             demoBox[0].passivityTimer = 55;
             demoBox[0].passivityActive = true;
             demoBox[0].pCard[0] = PassivityCard.Yellow;
-            demoBox[0].pCard[1] = PassivityCard.Red1;
+            demoBox[0].pCard[1] = PassivityCard.Red2;
             demoBox[0].priA = true;
             demoBox[0].priB = true;
             demoBox[0].priIndicator = true;

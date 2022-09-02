@@ -28,7 +28,7 @@ public class FencingBoxDisplay {
     public TextView priorityA, priorityB;
     public TextView passivityClock, batteryLevel, time;
     public TextView period;
-    public TextView[] passCard = new TextView[]{null, null};
+    public TextView[][] passCard = new TextView[][]{ { null, null }, { null, null } };
     private ImageView muteIcon;
     private ImageView onlineIcon;
     private ImageView vibrateIcon;
@@ -140,8 +140,10 @@ public class FencingBoxDisplay {
                         passivityClock = landBinding.passivityClockL;
                         batteryLevel = landBinding.batteryLevelL;
                         time = landBinding.timeL;
-                        passCard[0] = landBinding.pCardAL;
-                        passCard[1] = landBinding.pCardBL;
+                        passCard[0][0] = landBinding.pCardA1L;
+                        passCard[0][1] = landBinding.pCardA2L;
+                        passCard[1][0] = landBinding.pCardB1L;
+                        passCard[1][1] = landBinding.pCardB2L;
                         muteIcon = (ImageView) landBinding.iconMuteL;
                         onlineIcon = (ImageView) landBinding.iconOnlineL;
                         vibrateIcon = (ImageView) landBinding.iconVibrateL;
@@ -160,8 +162,10 @@ public class FencingBoxDisplay {
                         passivityClock = portBinding.passivityClock;
                         batteryLevel = portBinding.batteryLevel;
                         time = portBinding.time;
-                        passCard[0] = portBinding.pCardA;
-                        passCard[1] = portBinding.pCardB;
+                        passCard[0][0] = portBinding.pCardA1;
+                        passCard[0][1] = portBinding.pCardA2;
+                        passCard[1][0] = portBinding.pCardB1;
+                        passCard[1][1] = portBinding.pCardB2;
                         muteIcon = (ImageView) portBinding.iconMute;
                         onlineIcon = (ImageView) portBinding.iconOnline;
                         vibrateIcon = (ImageView) portBinding.iconVibrate;
@@ -215,12 +219,13 @@ public class FencingBoxDisplay {
                     priorityB.setGravity(Gravity.CENTER);
                     time.setTextColor(Color.WHITE);
                     time.setGravity(Gravity.CENTER);
-                    passCard[0].setTypeface(null, Typeface.BOLD);
-                    passCard[0].setTextColor(Color.BLACK);
-                    passCard[0].setGravity(Gravity.CENTER);
-                    passCard[1].setTypeface(null, Typeface.BOLD);
-                    passCard[1].setTextColor(Color.BLACK);
-                    passCard[1].setGravity(Gravity.CENTER);
+                    for (int i = 0; i < 2; i++) {
+                        for (int j = 0; j < 2; j++) {
+                            passCard[i][j].setTypeface(null, Typeface.BOLD);
+                            passCard[i][j].setTextColor(Color.BLACK);
+                            passCard[i][j].setGravity(Gravity.CENTER);
+                        }
+                    }
                 } catch (Exception e) {
                     Log.e(TAG, "unable to find font " + e);
                 }
@@ -573,20 +578,36 @@ public class FencingBoxDisplay {
             public void run() {
                 switch (pCard) {
                     case None:
-                        passCard[fencer].setTextColor(Color.BLACK);
-                        passCard[fencer].setText("-");
+                        passCard[fencer][0].setTextColor(Color.BLACK);
+                        passCard[fencer][0].setBackgroundColor(Color.BLACK);
+                        passCard[fencer][0].setText("-");
+                        passCard[fencer][1].setTextColor(Color.BLACK);
+                        passCard[fencer][1].setBackgroundColor(Color.BLACK);
+                        passCard[fencer][1].setText("-");
                         break;
                     case Yellow:
-                        passCard[fencer].setTextColor(Color.YELLOW);
-                        passCard[fencer].setText("1");
+                        passCard[fencer][0].setTextColor(Color.YELLOW);
+                        passCard[fencer][0].setBackgroundColor(Color.YELLOW);
+                        passCard[fencer][0].setText("1");
+                        passCard[fencer][1].setTextColor(Color.BLACK);
+                        passCard[fencer][1].setBackgroundColor(Color.BLACK);
+                        passCard[fencer][1].setText("-");
                         break;
                     case Red1:
-                        passCard[fencer].setTextColor(Color.RED);
-                        passCard[fencer].setText("1");
+                        passCard[fencer][0].setTextColor(Color.RED);
+                        passCard[fencer][0].setBackgroundColor(Color.RED);
+                        passCard[fencer][0].setText("1");
+                        passCard[fencer][1].setTextColor(Color.BLACK);
+                        passCard[fencer][1].setBackgroundColor(Color.BLACK);
+                        passCard[fencer][1].setText("-");
                         break;
                     case Red2:
-                        passCard[fencer].setTextColor(Color.RED);
-                        passCard[fencer].setText("2");
+                        passCard[fencer][0].setTextColor(Color.RED);
+                        passCard[fencer][0].setBackgroundColor(Color.RED);
+                        passCard[fencer][0].setText("1");
+                        passCard[fencer][1].setTextColor(Color.RED);
+                        passCard[fencer][1].setBackgroundColor(Color.RED);
+                        passCard[fencer][1].setText("2");
                         break;
                     default:
                         break;
