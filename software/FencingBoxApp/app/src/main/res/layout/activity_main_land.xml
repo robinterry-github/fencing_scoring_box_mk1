@@ -257,7 +257,7 @@
         android:id="@+id/icon_vibrate_l"
         android:layout_width="19dp"
         android:layout_height="19dp"
-        android:layout_marginStart="80dp"
+        android:layout_marginStart="76dp"
         android:layout_marginTop="3dp"
         android:visibility="invisible"
         app:layout_constraintStart_toEndOf="@+id/icon_mute_l"
