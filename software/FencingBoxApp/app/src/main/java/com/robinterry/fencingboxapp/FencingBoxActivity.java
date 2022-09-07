@@ -132,6 +132,8 @@ public class FencingBoxActivity extends AppCompatActivity
     public SharedPreferences pref;
     public SharedPreferences.Editor editor;
 
+    public ActionBar actionBar;
+
     public FencingBoxActivity() {
         thisActivity = this;
         final BroadcastReceiver broadcastReceiver = new BroadcastReceiver() {
@@ -289,6 +291,8 @@ public class FencingBoxActivity extends AppCompatActivity
                 vibrationState = VibrationState.On;
             }
         }
+
+        actionBar = getSupportActionBar();
 
         /* Display handler */
         box.disp = new FencingBoxDisplay(this, box, layout, orientation, portBinding, landBinding);

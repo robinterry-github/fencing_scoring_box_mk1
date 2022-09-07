@@ -360,8 +360,14 @@ public class FencingBoxDisplay {
     }
 
     public void displayPeriod(int per) {
-        period.setTextColor(Color.YELLOW);
-        period.setText(String.format("%d", per));
+        /* Don't show the period when the action bar is displayed in landscape mode,
+           as the action bar partly overwrites the period, so it looks bad */
+        if (mainActivity.actionBar.isShowing() && orientation == Orientation.Landscape) {
+            blankPeriod();
+        } else {
+            period.setTextColor(Color.YELLOW);
+            period.setText(String.format("%d", per));
+        }
     }
 
     public void blankPeriod() {
