@@ -776,6 +776,11 @@ bool priorityInactive()
    return (priState == PRI_IDLE) ? true:false;
 }
 
+bool timerInactive()
+{
+   return (weaponType == SABRE) ? true:false;
+}
+
 //===================
 // Display the weapon (foil, epee, sabre) on the 7-segment
 //===================
@@ -1247,6 +1252,13 @@ void displayTime()
    // Is a short-circuit being displayed?
    else if (scDisplayActive())
    {
+      return;
+   }
+
+   // Don't display if the timer is supposed to be inactive
+   else if (timerInactive())
+   {
+      disp.setSegments(sparNoHit, 4, 0);
       return;
    }
 
@@ -2248,7 +2260,11 @@ void shortBeep()
 //============
 int countDown(int timerGap)
 {
-   if (timerLast9s)
+   if (timerInactive())
+   {
+      return 0;
+   }
+   else if (timerLast9s)
    {
       /* Counting down in hundredths of seconds */
       if (timerHund < 0)
