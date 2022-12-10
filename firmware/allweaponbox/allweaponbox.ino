@@ -2,9 +2,9 @@
 //                                                                           //
 //  Desc:    Arduino Code to implement a fencing scoring apparatus           //
 //  Dev:     Wnew                                                            //
-//  Date:    Nov     2012                                                    //
-//  Updated: Sept    2015                                                    //
-//  Updated: March 4 2022 Robin Terry, Skipton, UK                           //
+//  Date:    Nov         2012                                                //
+//  Updated: Sept        2015                                                //
+//  Updated: December 10 2022 Robin Terry, Skipton, UK                       //
 //                                                                           //
 //  Notes:   1. Basis of algorithm from digitalwestie on github. Thanks Mate //
 //           2. Used uint8_t instead of int where possible to optimise       //
@@ -32,6 +32,7 @@
 //          14. The timer shows 1/100 sec in last 9 seconds                  //
 //          15. Support for a passivity timer and cards                      //
 //          16. Support for polling the repeater for keypresses              //
+//          17. Support for new 2023 passivity rule                          //
 //===========================================================================//
 
 //============
@@ -91,12 +92,12 @@
 
 #ifdef PASSIVITY
 #define PASSIVITY_SIGNAL         // Enable signalling passivity timeout on the hit LEDs
+#define NEW_PASSIVITY_2023       // Enable new 2023 passivity rule
 #endif
 
 #define PRITIMER_RANDOM          // Enable generation of random time for priority selection
 
-// Constants
-
+/* Constants */
 #define BUZZERTIME     (1000)    // Length of time the buzzer is kept on after a hit (ms)
 #define TESTPOINTTIME  (500)     // Length of time the buzzer and lights are kept on when point testing (ms)
 #define LIGHTTIME      (3000)    // Length of time the lights are kept on after a hit (ms)
@@ -654,8 +655,10 @@ enum PassivityCard
 {
    P_CARD_NONE, 
    P_CARD_YELLOW, 
-   P_CARD_RED_1, 
+   P_CARD_RED_1,
+#ifndef NEW_PASSIVITY_2023
    P_CARD_RED_2
+#endif
 };
 
 long passivityTimer       = 0;
@@ -1878,10 +1881,11 @@ void awardPCard(int fencer, PassivityCard pass)
       case P_CARD_RED_1:
          sendRepeater("+" + String(fencer) + "2");
          break;
-
+#ifndef NEW_PASSIVITY_2023
       case P_CARD_RED_2:
          sendRepeater("+" + String(fencer) + "3");
          break;
+#endif
    }
 #endif
 }
@@ -1899,12 +1903,20 @@ void awardPCard(int fencer)
           break;
 
        case P_CARD_RED_1:
+#ifdef NEW_PASSIVITY_2023
+          /* 2023 rule - P-yellow, P-red, P-black */
+          awardPCard(fencer, P_CARD_NONE);
+#else
+          /* Pre-2023 rule - P-yellow, P-red1, P-ref2, P-black */
           awardPCard(fencer, P_CARD_RED_2);
+#endif
           break;
 
+#ifndef NEW_PASSIVITY_2023
        case P_CARD_RED_2:
           awardPCard(fencer, P_CARD_NONE);
           break;
+#endif
 
        default:
           break;
@@ -1916,6 +1928,7 @@ void awardPassivity()
 #ifdef PASSIVITY
    if (inBout() /* && passivitySignalled */)
    {
+#ifndef NEW_PASSIVITY_2023
       if (score[FENCER_A] < score[FENCER_B])
       {
          awardPCard(FENCER_A);
@@ -1925,6 +1938,7 @@ void awardPassivity()
          awardPCard(FENCER_B);
       }
       else
+#endif
       {
          awardPCard(FENCER_A);
          awardPCard(FENCER_B);
