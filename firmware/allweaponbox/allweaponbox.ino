@@ -87,6 +87,7 @@
 #define EEPROM_STORAGE           // Use EEPROM for storing values over power-off
 //#define SPAR_INCR_SCORE        // Automatically increment score after a hit in sparring mode
 #define BOUT_INCR_SCORE          // Automatically increment score after a hit in bout mode
+#define ENABLE_MULTI_PERIOD      // Support multiple period bouts (1-9 inclusive)
 
 #define PASSIVITY                // Support for passivity monitoring
 
@@ -2398,10 +2399,10 @@ void transIR(unsigned long key)
   case 'u': case 'd': // Repeater only
      if (priorityInactive())
      {
-        // In SPARRING mode? Go into BOUT mode
+        // In sparring mode? Go into bout mode
         if (inSpar())
         {
-           // Go into BOUT mode
+           // Go into bout mode
            keyClick();
 
            // Go backwards for the 'd' key
@@ -2415,7 +2416,7 @@ void transIR(unsigned long key)
            }
         }
 #ifdef ENABLE_STOPWATCH
-        // In ENABLE_STOPWATCH mode?
+        // In stopwatch mode?
         else if (inStopWatch())
         {
            if (timeState == TIM_STOPPED)
@@ -2428,7 +2429,7 @@ void transIR(unsigned long key)
               }
               else
               {        
-                 // Stopwatch already at zero, so go into SPARRING mode
+                 // Stopwatch already at zero, so go into sparring mode
                  keyClick();
                  if (key == '$')
                  {
@@ -2442,14 +2443,14 @@ void transIR(unsigned long key)
            }
         }
 #endif
-        // Only allow these keys if the timer is not running
+        // Bout mode - only allow these keys if the timer is not running
         else if (timeState == TIM_STOPPED)
         {
            switch (boutState)
            {                 
               case STA_STARTBOUT:
 #ifdef ENABLE_STOPWATCH
-                 // Bout not started - go into ENABLE_STOPWATCH mode
+                 // Bout not started - go into stopwatch mode
                  keyClick();
                  if (key == '$')
                  {
@@ -2465,10 +2466,11 @@ void transIR(unsigned long key)
 #endif
                  break;
 
+#ifdef ENABLE_MULTI_PERIOD
               case STA_TP_CONTINUE:
-                // In the middle of a bout - continue the bout
+                // In the middle of a bout - continue the bout, next period
                 keyClick();
-                continueBout(STA_TP_BOUT);
+                continueBout(STA_TP_ENDBOUT);
                 break;
 
              case STA_TP_BOUT:
@@ -2476,7 +2478,10 @@ void transIR(unsigned long key)
                 keyClick();
                 continueBout(STA_TP_ENDBOUT);
                 break;   
-
+#else
+              case STA_TP_CONTINUE:
+              case STA_TP_BOUT:
+#endif
               case STA_TP_ENDBOUT:
               default:
                  // After continue - restart
