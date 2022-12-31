@@ -254,6 +254,7 @@ bool scDisplay[2] = { false, false };
 long irDebounce      = 0;
 #endif
 bool lockedOut       = false;
+bool boutContinued   = false;
 long timer           = 0;
 long timerMs         = 0;
 long timerMins       = 0;
@@ -2449,28 +2450,46 @@ void transIR(unsigned long key)
            switch (boutState)
            {                 
               case STA_STARTBOUT:
-#ifdef ENABLE_STOPWATCH
-                 // Bout not started - go into stopwatch mode
-                 keyClick();
-                 if (key == '$')
-                 {
-                    startSpar();
-                 }
-                 else
-                 {
-                    startStopWatch();
-                 }
-#else
-                 keyClick();
-                 startSpar();
+#ifdef ENABLE_MULTI_PERIOD
+                if (boutContinued)
+                {
+                   boutContinued = false;
+                   startBout();
+                }
+                else
 #endif
+                {
+#ifdef ENABLE_STOPWATCH
+                    // Bout not started - go into stopwatch mode
+                    keyClick();
+                    if (key == '$')
+                    {
+                       startSpar();
+                    }
+                    else
+                    {
+                       startStopWatch();
+                    }
+#else
+                    keyClick();
+                    startSpar();
+#endif
+                 }
                  break;
 
 #ifdef ENABLE_MULTI_PERIOD
               case STA_TP_CONTINUE:
                 // In the middle of a bout - continue the bout, next period
                 keyClick();
-                continueBout(STA_TP_ENDBOUT);
+                if (boutContinued)
+                {
+                  boutContinued = false;
+                  continueBout(STA_TP_BOUT);
+                }
+                else
+                {
+                  continueBout(STA_TP_ENDBOUT);
+                }
                 break;
 
              case STA_TP_BOUT:
@@ -2778,6 +2797,7 @@ void transIR(unsigned long key)
                     
                  case STA_TP_CONTINUE:
                     //setTimer(BOUTTIME);
+                    boutContinued = true;
                     continueBout(STA_TP_BOUT);
                     boutState = STA_STARTBOUT;
                     //resetCards();
@@ -3491,6 +3511,7 @@ void startBout()
    boutState               = STA_STARTBOUT;
    resetState              = RES_IDLE;
    hitDisplay              = HIT_IDLE;
+   boutContinued           = false;
    resetHits();
 #ifdef EEPROM_STORAGE
    writeState(boutState);
