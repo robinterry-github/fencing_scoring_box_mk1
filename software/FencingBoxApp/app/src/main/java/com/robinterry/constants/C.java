@@ -22,7 +22,7 @@ public final class C {
     /* Enables quantisation of the clock in network messages */
     public static final boolean QUANTISE_CLOCK = true;
     /* Clock quantisation factor in seconds */
-    public static final int QUANTISE_FACTOR_SECS = 5;
+    public static final int QUANTISE_FACTOR_SECS = 1;
     /* Network receive timeout in milliseconds */
     public static final int RX_TIMEOUT = 2000;
     /* IP multicast message transmit interval in milliseconds */

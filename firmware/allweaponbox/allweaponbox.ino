@@ -101,7 +101,8 @@
 /* Constants */
 #define BUZZERTIME     (1000)    // Length of time the buzzer is kept on after a hit (ms)
 #define TESTPOINTTIME  (500)     // Length of time the buzzer and lights are kept on when point testing (ms)
-#define LIGHTTIME      (3000)    // Length of time the lights are kept on after a hit (ms)
+#define LIGHTTIME_BOUT (3000)    // Length of time the lights are kept on after a hit in a bout (ms)
+#define LIGHTTIME_SPAR (500)     // Length of time the lights are kept on after a hit in sparring (ms)
 #define BAUDRATE       (115200)  // Baud rate of the serial debug interface
 #define ONESEC         (1000UL)
 #define HUNDSEC        (10)
@@ -270,6 +271,7 @@ long resetTimer      = 0;
 int  currentFencer   = 0;
 long swMins          = 0;
 long swSecs          = 0;
+long lightTime       = LIGHTTIME_BOUT;
 
 // Total score for all bouts since restarting the bout
 int  score[2]        = { 0, 0 };
@@ -3509,6 +3511,7 @@ void startBout()
    scoreThisBout[FENCER_A] = 0;
    scoreThisBout[FENCER_B] = 0;
    boutState               = STA_STARTBOUT;
+   lightTime               = LIGHTTIME_BOUT;
    resetState              = RES_IDLE;
    hitDisplay              = HIT_IDLE;
    boutContinued           = false;
@@ -3644,6 +3647,7 @@ void startSpar()
    Serial.println("sparring mode - no timer");
 #endif
    boutState      = STA_SPAR;
+   lightTime      = LIGHTTIME_SPAR;
 #ifdef EEPROM_STORAGE
    writeState(boutState);
 #endif
@@ -4021,18 +4025,27 @@ void doWeapon()
       switch (weaponType)
       {
          case EPEE:
-            epee();
+            if (!lockedOut)
+            {
+              epee();
+            }
             break;
 
          case FOIL:
-            foil();
+            if (!lockedOut)
+            {
+              foil();
+            }
             break;
             
          case SABRE:
             // We need a ground pin measurement for sabre
             ground[FENCER_A] = analogRead(groundPinA);
             ground[FENCER_B] = analogRead(groundPinB);
-            sabre();
+            if (!lockedOut)
+            {
+              sabre();
+            }
             break;
             
          default:
@@ -4337,7 +4350,7 @@ void loop()
             // Turn lights off automatically in sparring mode
             if (inSpar())
             {
-               if (millis() - resetTimer >= LIGHTTIME)
+               if (millis() - resetTimer >= lightTime)
                {
                   // Turn lights off
                   resetLights();
@@ -4348,7 +4361,7 @@ void loop()
             break;
 
          case RES_SHORT:
-            if (millis() - resetTimer >= LIGHTTIME)
+            if (millis() - resetTimer >= lightTime)
             {
                // Turn lights off
                resetLights();
