@@ -66,66 +66,66 @@
 #endif
 
 #ifdef ENABLE_DISPLAY
-#define LOW_POWER                // Support low-power for battery operation
+#define LOW_POWER                  // Support low-power for battery operation
 #endif
 
 #ifdef ENABLE_IR
-#define FREQUENT_IRPOLL          // Define this to increase the amount of IR polling     
-#define IRLIB2                   // Use IRLib2 instead of IRRemote (IRLib2 is better, but bigger)
+#define FREQUENT_IRPOLL            // Define this to increase the amount of IR polling     
+#define IRLIB2                     // Use IRLib2 instead of IRRemote (IRLib2 is better, but bigger)
 
 #ifdef IRLIB2
 // IR receiver frame timeout for the IRLib2 library
 // You might need to modify this for different IR handsets
-#define IR_FRAMETIMEOUT     6000
+#define IR_FRAME_TIMEOUT    (6000)
 #endif
 
-#define MAX_DELAY_IR_REPEAT 300  // Initial period in milliseconds before repeats start
-#define MAX_KEYPRESS_GAP    200  // Gap between keypresses which resets the IR state machine
+#define MAX_DELAY_IR_REPEAT (300)  // Initial period in milliseconds before repeats start
+#define MAX_KEYPRESS_GAP    (200)  // Gap between keypresses which resets the IR state machine
 #endif
 
-#define ENABLE_STOPWATCH         // Enable the stopwatch
-#define EEPROM_STORAGE           // Use EEPROM for storing values over power-off
-//#define SPAR_INCR_SCORE        // Automatically increment score after a hit in sparring mode
-#define BOUT_INCR_SCORE          // Automatically increment score after a hit in bout mode
-#define ENABLE_MULTI_PERIOD      // Support multiple period bouts (1-9 inclusive)
+#define ENABLE_STOPWATCH           // Enable the stopwatch
+#define EEPROM_STORAGE             // Use EEPROM for storing values over power-off
+#undef  SPAR_INCR_SCORE            // Automatically increment score after a hit in sparring mode (epee only)
+#define BOUT_INCR_SCORE            // Automatically increment score after a hit in bout mode (epee only)
+#define ENABLE_MULTI_PERIOD        // Support multiple period bouts (1-9 inclusive)
 
-#define PASSIVITY                // Support for passivity monitoring
+#define PASSIVITY                  // Support for passivity monitoring
 
 #ifdef PASSIVITY
-#define PASSIVITY_SIGNAL         // Enable signalling passivity timeout on the hit LEDs
-#define NEW_PASSIVITY_2023       // Enable new 2023 passivity rule
+#define PASSIVITY_SIGNAL           // Enable signalling passivity timeout on the hit LEDs
+#define NEW_PASSIVITY_2023         // Enable new 2023 passivity rule
 #endif
 
-#define PRITIMER_RANDOM          // Enable generation of random time for priority selection
+#define PRI_TIMER_RANDOM           // Enable generation of random time for priority selection
 
 /* Constants */
-#define BUZZERTIME     (1000)    // Length of time the buzzer is kept on after a hit (ms)
-#define TESTPOINTTIME  (500)     // Length of time the buzzer and lights are kept on when point testing (ms)
-#define LIGHTTIME_BOUT (3000)    // Length of time the lights are kept on after a hit in a bout (ms)
-#define LIGHTTIME_SPAR (500)     // Length of time the lights are kept on after a hit in sparring (ms)
-#define BAUDRATE       (115200)  // Baud rate of the serial debug interface
-#define ONESEC         (1000UL)
-#define HUNDSEC        (10)
-#define ONESEC_US      (1000000)
-#define BUTTONSCAN     (200)              // Button scan period (ms)
-#define BUTTONDEBOUNCE (BUTTONSCAN*10)    // Button debounce (in ms, but a whole number of scan periods)
-#define BOUTTIME       (180)     // 3 minutes bout time
-#define PRITIME        (60)      // 1 minute priority time
-#define BREAKTIME      (60)      // 1 minute break time
-#define HITDISPTIME    (200)     // Hit display flash time (ms)
-#define SCOREFLASHTIME (1000)    // Score flashup display time (ms)
-#define MAXSCORE       (99)
-#define MAXSHORTCIRC   (3000)    // Short circuit persist time (ms)
-#define MAXSABREHITS   (8)       // If a sabre fencer makes 8 hits in one bout, stop the bout
-#define DIMDELAY       (5UL*60UL*ONESEC)  // Delay before starting to dim the LED display (ms)
-#define DIMINTERVAL    (500)              // Interval between LED display dimming cycle steps (ms)
-#define MAX_ENABLE_STOPWATCH  ((60UL*60UL)-1)    // Maximum stopwatch time (59:59)
-#define REPEATERPOLL   (100)
-#define MAXPISTE       30        // Maximum piste (1-MAXPISTE inclusive)
+#define BUZZER_TIME          (1000)    // Length of time the buzzer is kept on after a hit (ms)
+#define TEST_POINT_TIME      (500)     // Length of time the buzzer and lights are kept on when point testing (ms)
+#define LIGHT_TIME_BOUT      (3000)    // Length of time the lights are kept on after a hit in a bout (ms)
+#define LIGHT_TIME_SPAR      (500)     // Length of time the lights are kept on after a hit in sparring (ms)
+#define BAUD_RATE            (115200)  // Baud rate of the serial debug interface
+#define ONE_SEC              (1000UL)
+#define HUND_SEC             (10)
+#define ONE_SEC_US           (1000000)
+#define BUTTON_SCAN          (200)              // Button scan period (ms)
+#define BUTTON_DEBOUNCE      (BUTTON_SCAN*10)    // Button debounce (in ms, but a whole number of scan periods)
+#define BOUT_TIME            (180)     // 3 minutes bout time
+#define PRI_TIME             (60)      // 1 minute priority time
+#define BREAK_TIME           (60)      // 1 minute break time
+#define HIT_DISP_TIME        (200)     // Hit display flash time (ms)
+#define SCORE_FLASH_TIME     (1000)    // Score flashup display time (ms)
+#define MAX_SCORE            (99)
+#define MAX_SHORT_CIRC       (3000)    // Short circuit persist time (ms)
+#define MAX_SABRE_HITS       (8)       // If a sabre fencer makes 8 hits in one bout, stop the bout
+#define DIM_DELAY            (5UL*60UL*ONE_SEC)  // Delay before starting to dim the LED display (ms)
+#define DIM_INTERVAL         (500)              // Interval between LED display dimming cycle steps (ms)
+#define MAX_ENABLE_STOPWATCH ((60UL*60UL)-1)    // Maximum stopwatch time (59:59)
+#define REPEATER_POLL        (100)
+#define MAX_PISTE            (30)      // Maximum piste (1-MAX_PISTE inclusive)
 
 #ifdef PASSIVITY
-#define MAX_PASSIVITY  (60UL)             // Passivity timer (seconds)
-#define MAX_PASSIVITY_SIGNAL (100)        // Passivity signal time (ms)
+#define MAX_PASSIVITY        (60UL)    // Passivity timer (seconds)
+#define MAX_PASSIVITY_SIGNAL (100)     // Passivity signal time (ms)
 #endif
 
 #ifdef EEPROM_STORAGE
@@ -134,9 +134,9 @@
 #define NV_PISTE       (18)
 #endif
 
-#ifdef PRITIMER_RANDOM
-#define PRITIMER_RANGE (3000)
-#define PRITIMER_MIN   (3000)
+#ifdef PRI_TIMER_RANDOM
+#define PRI_TIMER_RANGE (3000)
+#define PRI_TIMER_MIN   (3000)
 #endif
 
 #define FENCER_A       (0)
@@ -261,17 +261,17 @@ long timerMs         = 0;
 long timerMins       = 0;
 long timerSecs       = 0;
 long timerHund       = 0;
-long timerInterval   = ONESEC;
+long timerInterval   = ONE_SEC;
 bool timerStart      = false;
 bool timerLast9s     = false;
-long timerMax        = BOUTTIME;
+long timerMax        = BOUT_TIME;
 long hitDisplayTimer = 0;
-long hitDisplayTime  = HITDISPTIME;
+long hitDisplayTime  = HIT_DISP_TIME;
 long resetTimer      = 0;
 int  currentFencer   = 0;
 long swMins          = 0;
 long swSecs          = 0;
-long lightTime       = LIGHTTIME_BOUT;
+long lightTime       = LIGHT_TIME_BOUT;
 
 // Total score for all bouts since restarting the bout
 int  score[2]        = { 0, 0 };
@@ -459,7 +459,7 @@ uint8_t         dimCycle             = 0;
 long            dimTimer             = 0;
 long            lastKeyCode          = 0;
 uint8_t         priFencer            = FENCER_A; 
-#ifdef PRITIMER_RANDOM
+#ifdef PRI_TIMER_RANDOM
 unsigned long   priChooseRndMs       = 0;
 unsigned long   priChooseTime        = 0;
 #endif
@@ -685,9 +685,9 @@ void sendRepeater(String msg)
       sendRepeaterRaw(msg);
    
       // Delay the polling
-      if (repeaterPollTime <= REPEATERPOLL)
+      if (repeaterPollTime <= REPEATER_POLL)
       {
-         repeaterPollTime += REPEATERPOLL;
+         repeaterPollTime += REPEATER_POLL;
       }
    }
 }
@@ -1535,14 +1535,14 @@ bool sendRepeaterGo()
    int  response[] = { 'O', 'K', '\0' };
    int  rxData[]   = { 0, 0 };
 
-   return waitSerial(response, rxData, ONESEC_US);
+   return waitSerial(response, rxData, ONE_SEC_US);
 }
 #endif
 
 void setup() 
 {
 #ifdef DEBUG_ALL
-   Serial.begin(BAUDRATE);
+   Serial.begin(BAUD_RATE);
    while (!Serial)
       ;
 #endif
@@ -1619,7 +1619,7 @@ void setup()
    boutState  = STA_SPAR;
 #endif
 #ifdef ENABLE_REPEATER
-   Serial.begin(BAUDRATE);
+   Serial.begin(BAUD_RATE);
    Serial.println("");
 
    /* Send the "!GO" message to search for a repeater */
@@ -1628,7 +1628,7 @@ void setup()
       repeaterPresent = true;
 
       /* Initial poll delayed for one second */
-      repeaterPollTime = millis()+ONESEC;
+      repeaterPollTime = millis()+ONE_SEC;
    }
 
    /* Repeater is not present */
@@ -1646,8 +1646,8 @@ void setup()
    restartBox();
 #ifdef ENABLE_IR
    irRecv.enableAutoResume(irBuffer);
-#ifdef IR_FRAMETIMEOUT
-   irRecv.setFrameTimeout(IR_FRAMETIMEOUT);
+#ifdef IR_FRAME_TIMEOUT
+   irRecv.setFrameTimeout(IR_FRAME_TIMEOUT);
 #endif
    irRecv.enableIRIn();
 #endif
@@ -1741,9 +1741,9 @@ void choosePriority()
    delay(1000);
    priState   = PRI_CHOOSE;
    priFencer  = FENCER_A;
-#ifdef PRITIMER_RANDOM
+#ifdef PRI_TIMER_RANDOM
    // Use the microsecond timer to set a random time for priority selection
-   priChooseRndMs = (((micros() ^ 0x49A0F44BUL) * 0x3CD1EE57UL) % PRITIMER_RANGE) + PRITIMER_MIN;
+   priChooseRndMs = (((micros() ^ 0x49A0F44BUL) * 0x3CD1EE57UL) % PRI_TIMER_RANGE) + PRI_TIMER_MIN;
    priChooseTime  = millis();
 #endif
 }
@@ -1766,7 +1766,7 @@ void setTimer(int time)
    timerSecs     = timer%60;
    timerHund     = 0;
    timerLast9s   = false;
-   timerInterval = ONESEC;
+   timerInterval = ONE_SEC;
 #ifdef DEBUG_L6
    Serial.print("setting timer to ");
    Serial.println(time);
@@ -1970,7 +1970,7 @@ int incTimer(int inc = 1)
       /* Increment in hundredths of seconds */
       if (timerLast9s)
       {
-         timerInterval = HUNDSEC;
+         timerInterval = HUND_SEC;
          
          timerHund += inc;
          if (timerHund >= 100)
@@ -1984,7 +1984,7 @@ int incTimer(int inc = 1)
       /* Increment in seconds */
       else
       {
-         timerInterval = ONESEC;
+         timerInterval = ONE_SEC;
          timer += inc;
          timerHund  = 0;
          
@@ -2022,7 +2022,7 @@ int decTimer(int dec = 1)
       /* Decrement in hundredths of seconds */
       if (timerLast9s)
       {
-         timerInterval = HUNDSEC;
+         timerInterval = HUND_SEC;
 
          timerHund -= dec;
          if (timerHund < 0)
@@ -2039,7 +2039,7 @@ int decTimer(int dec = 1)
       /* Decrement in seconds */
       else
       {
-         timerInterval = ONESEC;
+         timerInterval = ONE_SEC;
          timer -= dec;
          timerHund = 0;
 
@@ -2071,7 +2071,7 @@ void addScore(int fencer)
 {
    if (!disableScore)
    {
-      if (score[fencer] < MAXSCORE)
+      if (score[fencer] < MAX_SCORE)
       {
          score[fencer]++;
          scoreThisBout[fencer]++;
@@ -2301,7 +2301,7 @@ int countDown(int timerGap)
          {
             timer         = timerSecs = 0;
             timerLast9s   = false;
-            timerInterval = ONESEC;
+            timerInterval = ONE_SEC;
          }
          else
          {
@@ -2339,7 +2339,7 @@ int countDown(int timerGap)
    {
       timerMins     = timerSecs = 0;
       timerLast9s   = false;
-      timerInterval = ONESEC;
+      timerInterval = ONE_SEC;
    }
    return (timer == 0) ? 1:0;
 }
@@ -2523,7 +2523,7 @@ void transIR(unsigned long key)
         resetHits();
      }
 
-#ifndef PRITIMER_RANDOM
+#ifndef PRI_TIMER_RANDOM
      // In priority select mode, this key will stop selection (same as #)
      else if (priorityChoose())
      {
@@ -2546,7 +2546,7 @@ void transIR(unsigned long key)
 #ifdef DEBUG_L1
                  Serial.println("reset break timer");
 #endif
-                 setTimer(BREAKTIME);
+                 setTimer(BREAK_TIME);
                  displayTime();
                  break;
 
@@ -2556,7 +2556,7 @@ void transIR(unsigned long key)
 #ifdef DEBUG_L1
                  Serial.println("reset priority timer");
 #endif
-                 setTimer(PRITIME);
+                 setTimer(PRI_TIME);
                  displayTime();
                  break;
 
@@ -2568,7 +2568,7 @@ void transIR(unsigned long key)
 #ifdef DEBUG_L1
                  Serial.println("reset bout timer");
 #endif
-                 setTimer(BOUTTIME);
+                 setTimer(BOUT_TIME);
                  displayTime();
                  break;
 
@@ -2639,7 +2639,7 @@ void transIR(unsigned long key)
            }
         }
 #endif
-#ifndef PRITIMER_RANDOM
+#ifndef PRI_TIMER_RANDOM
         // In priority select mode, this key will stop selection (same as #)
         else if (priorityChoose())
         {
@@ -2650,7 +2650,7 @@ void transIR(unsigned long key)
         resetHits();
      }
 
-#ifndef PRITIMER_RANDOM
+#ifndef PRI_TIMER_RANDOM
      // In priority select mode, this key will stop selection (same as #)
      else if (priorityChoose())
      {
@@ -2798,7 +2798,7 @@ void transIR(unsigned long key)
                     break;
                     
                  case STA_TP_CONTINUE:
-                    //setTimer(BOUTTIME);
+                    //setTimer(BOUT_TIME);
                     boutContinued = true;
                     continueBout(STA_TP_BOUT);
                     boutState = STA_STARTBOUT;
@@ -2899,7 +2899,7 @@ void transIR(unsigned long key)
         resetHits();
      }
 
-#ifndef PRITIMER_RANDOM
+#ifndef PRI_TIMER_RANDOM
      // In priority select mode, this key will stop selection (same as #)
      else if (priorityChoose())
      {
@@ -2971,7 +2971,7 @@ void transIR(unsigned long key)
         resetHits();
      }
 
-#ifndef PRITIMER_RANDOM
+#ifndef PRI_TIMER_RANDOM
      // In priority select mode, this key will stop selection (same as #)
      else if (priorityChoose())
      {
@@ -3065,7 +3065,7 @@ void transIR(unsigned long key)
 #endif
      }
 
-#ifndef PRITIMER_RANDOM
+#ifndef PRI_TIMER_RANDOM
      // In priority select mode, this key will stop selection (same as #)
      else if (priorityChoose())
      {
@@ -3090,7 +3090,7 @@ void transIR(unsigned long key)
         resetHits();
      }
 
-#ifndef PRITIMER_RANDOM
+#ifndef PRI_TIMER_RANDOM
      // In priority select mode, this key will stop selection (same as #)
      else if (priorityChoose())
      {
@@ -3184,7 +3184,7 @@ void transIR(unsigned long key)
 #endif
      }
 
-#ifndef PRITIMER_RANDOM
+#ifndef PRI_TIMER_RANDOM
      // In priority select mode, this key will stop selection (same as #)
      else if (priorityChoose())
      {
@@ -3312,7 +3312,7 @@ void transIR(unsigned long key)
 #ifdef DEBUG_L1
                  Serial.println("timer at maximum");
 #endif
-                 setTimer(BOUTTIME);
+                 setTimer(BOUT_TIME);
               }
               displayTime();
            }
@@ -3511,7 +3511,7 @@ void startBout()
    scoreThisBout[FENCER_A] = 0;
    scoreThisBout[FENCER_B] = 0;
    boutState               = STA_STARTBOUT;
-   lightTime               = LIGHTTIME_BOUT;
+   lightTime               = LIGHT_TIME_BOUT;
    resetState              = RES_IDLE;
    hitDisplay              = HIT_IDLE;
    boutContinued           = false;
@@ -3526,7 +3526,7 @@ void startBout()
    resetCards();
    resetLights();
    delay(1000);
-   setTimer(BOUTTIME);
+   setTimer(BOUT_TIME);
    displayTime();
 #ifdef DEBUG_L1
    Serial.println("bout start mode");
@@ -3537,7 +3537,7 @@ void continueBout(enum BoutState newBoutState)
 {
    /* Don't reset passivity */
    priState = PRI_IDLE;
-   setTimer(BOUTTIME);
+   setTimer(BOUT_TIME);
    boutState = newBoutState;
    if (boutState != STA_TP_CONTINUE)
    {
@@ -3605,7 +3605,7 @@ void startPriority()
 #endif
    delay(1000);
    priState = PRI_IDLE;
-   setTimer(PRITIME);
+   setTimer(PRI_TIME);
    displayTime();
    boutState = STA_TP_PRI;
    clearPassivity();
@@ -3647,7 +3647,7 @@ void startSpar()
    Serial.println("sparring mode - no timer");
 #endif
    boutState      = STA_SPAR;
-   lightTime      = LIGHTTIME_SPAR;
+   lightTime      = LIGHT_TIME_SPAR;
 #ifdef EEPROM_STORAGE
    writeState(boutState);
 #endif
@@ -3686,7 +3686,7 @@ void startBreak()
    displayState();
 #endif
    delay(1000);
-   setTimer(BREAKTIME);
+   setTimer(BREAK_TIME);
    restartTimer();
    clearPassivity();
 }
@@ -3705,7 +3705,7 @@ void startStopWatch()
    swMins        = 0;
    swSecs        = 0;
    timerLast9s   = false;
-   timerInterval = ONESEC;
+   timerInterval = ONE_SEC;
    swCount       = SW_UP;
    swEdit        = SW_MINS;
 
@@ -3939,11 +3939,11 @@ bool checkSabreHits()
    if (weaponType == SABRE)
    {
       // If one sabre fencer has achieved 8 hits this bout...
-      if (scoreThisBout[FENCER_A] >= MAXSABREHITS)
+      if (scoreThisBout[FENCER_A] >= MAX_SABRE_HITS)
       {
          maxSabreHits[FENCER_A] = true;
       }
-      if (scoreThisBout[FENCER_B] >= MAXSABREHITS)
+      if (scoreThisBout[FENCER_B] >= MAX_SABRE_HITS)
       {
           maxSabreHits[FENCER_B] = true;
       }
@@ -3953,7 +3953,7 @@ bool checkSabreHits()
 
 void startHitDisplay()
 {
-   startHitDisplay(HITDISPTIME);
+   startHitDisplay(HIT_DISP_TIME);
 }
 
 void startHitDisplay(long time)
@@ -4057,7 +4057,7 @@ void doWeapon()
          loopNow = micros();
       }
       loopCount++;
-      if ((micros() - loopNow) >= ONESEC_US) 
+      if ((micros() - loopNow) >= ONE_SEC_US) 
       {
          Serial.print(loopCount);
          Serial.print(" readings in 1 sec");
@@ -4096,7 +4096,7 @@ void loop()
 #ifdef ENABLE_DISPLAY
       if (dimSetting == DIM_BRIGHTEST)
       {
-         if (millis() - dimTimer > DIMDELAY)
+         if (millis() - dimTimer > DIM_DELAY)
          {
             // Start 'screen saver'
             setBrightness(DIM_DIMMEST);
@@ -4116,7 +4116,7 @@ void loop()
          LowPower.idle(SLEEP_FOREVER, ADC_OFF, TIMER2_ON, 
                TIMER1_OFF, TIMER0_ON, SPI_OFF, USART0_OFF, TWI_OFF);
 #endif
-         if (millis() - dimTimer > DIMINTERVAL)
+         if (millis() - dimTimer > DIM_INTERVAL)
          {
             if (++dimCycle >= MAX_DIMCYCLE)
             {
@@ -4206,14 +4206,17 @@ void loop()
               startHitDisplay();
 
 #ifdef SPAR_INCR_SCORE
-              // Do automatic scoring
-              if (hitOnTarg[FENCER_A])
+              // Do automatic spar scoring for epee only
+              if (weaponType == EPEE)
               {
-                 addScore(FENCER_A);
-              }
-              if (hitOnTarg[FENCER_B])
-              {
-                 addScore(FENCER_B);
+                 if (hitOnTarg[FENCER_A])
+                 {
+                    addScore(FENCER_A);
+                 }
+                 if (hitOnTarg[FENCER_B])
+                 {
+                    addScore(FENCER_B);
+                 }
               }
 #endif
               displayScore();
@@ -4297,7 +4300,7 @@ void loop()
 #ifdef ENABLE_DISPLAY
          displayPriority();
 #endif
-#ifdef PRITIMER_RANDOM
+#ifdef PRI_TIMER_RANDOM
          // Stop choosing when the timer expires
          if (millis() - priChooseTime >= priChooseRndMs)
          {
@@ -4317,7 +4320,7 @@ void loop()
       switch (resetState)
       {
          case RES_BUZZER:
-            if (millis() - resetTimer >= BUZZERTIME)
+            if (millis() - resetTimer >= BUZZER_TIME)
             {
                // Clear hit and lockout
                resetValues();
@@ -4333,7 +4336,7 @@ void loop()
                then deal with the situation where a fencer tests their
                weapon point before restarting the bout
             */        
-            if (millis() - resetTimer >= TESTPOINTTIME)
+            if (millis() - resetTimer >= TEST_POINT_TIME)
             {
                // Clear hit and lockout
                resetValues();
@@ -4426,7 +4429,7 @@ void loop()
          }
 
          // For the 7-segment display, we need a short delay to check it's real
-         if (millis() - shortCircuit[FENCER_A] >= MAXSHORTCIRC)
+         if (millis() - shortCircuit[FENCER_A] >= MAX_SHORT_CIRC)
          {
             if (!scDisplay[FENCER_A])
             {
@@ -4472,7 +4475,7 @@ void loop()
          }
 
          // For the 7-segment display, we need a short delay to check it's real
-         if (millis() - shortCircuit[FENCER_B] >= MAXSHORTCIRC)
+         if (millis() - shortCircuit[FENCER_B] >= MAX_SHORT_CIRC)
          {
             if (!scDisplay[FENCER_B])
             {
@@ -4527,7 +4530,7 @@ void loop()
 #ifdef ENABLE_DISPLAY
          displayPriority();
 #endif
-#ifdef PRITIMER_RANDOM
+#ifdef PRI_TIMER_RANDOM
          // Stop choosing when the timer expires
          if (millis() - priChooseTime >= priChooseRndMs)
          {
@@ -4551,7 +4554,7 @@ void loop()
              scoreFlashTimer = millis();
              displayScore();
           }
-          else if (millis() - scoreFlashTimer >= SCOREFLASHTIME)
+          else if (millis() - scoreFlashTimer >= SCORE_FLASH_TIME)
           {
              scoreFlash      = false;
              scoreFlashTimer = 0;
@@ -4566,7 +4569,7 @@ void loop()
       doWeapon();
 
       // Button scan
-      if ((millis() - buttonScan) > BUTTONSCAN)
+      if ((millis() - buttonScan) > BUTTON_SCAN)
       {
          if (timeState == TIM_STOPPED)
          {
@@ -4577,7 +4580,7 @@ void loop()
                {
                   buttonDebounce = millis();
                }
-               else if ((millis() - buttonDebounce) > BUTTONDEBOUNCE)
+               else if ((millis() - buttonDebounce) > BUTTON_DEBOUNCE)
                {
                   if (!buttonPressed)
                   {
@@ -4682,7 +4685,7 @@ void loop()
          {
             timerGap = (millis()-timerMs)/timerInterval;
 #ifdef DEBUG_L6
-            if (timerInterval == ONESEC)
+            if (timerInterval == ONE_SEC)
                Serial.println("1 second gone");
 #endif
             timerMs = millis();
@@ -4704,7 +4707,7 @@ void loop()
                      if (!timerLast9s)
                      {
                         timerLast9s   = true;
-                        timerInterval = HUNDSEC;
+                        timerInterval = HUND_SEC;
                         timerHund     = 0;
                      }
                   }
@@ -4736,7 +4739,7 @@ void loop()
                      Serial.println("bout timer expired");
 #endif
                      timerLast9s   = false;
-                     timerInterval = ONESEC;
+                     timerInterval = ONE_SEC;
                   }
 
                   // Stay in the same mode, so that we can continue if needed
@@ -5421,7 +5424,7 @@ void writePiste(int p)
 int readPiste()
 {
    int p = EEPROM.read(NV_PISTE);
-   if (p <= 0 || p > MAXPISTE)
+   if (p <= 0 || p > MAX_PISTE)
    {
       p = 1;
    }
@@ -5482,7 +5485,7 @@ void repeaterPollForKey()
          /* Only write if there are enough spaces in the write buffer */
          if (Serial.availableForWrite() > 10)
          {
-            repeaterPollTime = millis()+REPEATERPOLL;
+            repeaterPollTime = millis()+REPEATER_POLL;
             Serial.flush();
             Serial.print("/?");
 #ifdef ENABLE_REPEATER_TEST
