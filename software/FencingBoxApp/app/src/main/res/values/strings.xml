@@ -28,5 +28,31 @@
     <string name="icon_online_desc">Icon to show online status</string>
     <string name="icon_mute_desc">Icon to show sound mute status</string>
     <string name="piste">Piste</string>
-    <string name="copyright">&#169; Robin Terry 2022</string>
+    <string name="b_priority">PRI</string>
+    <string name="b_rest">REST</string>
+    <string name="b_mode_bout">BOUT</string>
+    <string name="b_mode_spar">SPAR</string>
+    <string name="b_mode_stopwatch">STOPW</string>
+    <string name="b_score_inc">SCORE+</string>
+    <string name="b_score_dec">SCORE-</string>
+    <string name="b_score_clear">CLR</string>
+    <string name="b_score_swap">SWAP</string>
+    <string name="b_score_on">SCORE ON</string>
+    <string name="b_score_off">SCORE OFF</string>
+    <string name="b_fencer_a">FENCER A</string>
+    <string name="b_fencer_b">FENCER B</string>
+    <string name="b_timer_start">STRT TMR</string>
+    <string name="b_timer_stop">STOP TMR</string>
+    <string name="b_timer_inc">TMR+</string>
+    <string name="b_timer_dec">TMR-</string>
+    <string name="b_timer_reset">TMR RST</string>
+    <string name="b_confirm">CONFM</string>
+    <string name="b_minutes">MINS</string>
+    <string name="b_seconds">SECS</string>
+    <string name="b_penalty_yellow">PEN YEL</string>
+    <string name="b_penalty_red">PEN RED</string>
+    <string name="b_penalty_clear">PEN CLR</string>
+    <string name="b_passivity">PASS</string>
+
+    <string name="copyright">&#169; Robin Terry 2024</string>
 </resources>

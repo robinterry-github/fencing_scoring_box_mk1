@@ -202,7 +202,7 @@ public class FencingBoxActivity extends AppCompatActivity
             demoBox[0].timeSecs = "24";
             demoBox[0].timeHund = "00";
             demoBox[0].scoreA = "02";
-            demoBox[0].scoreB = "10";
+            demoBox[0].scoreB = "08";
             demoBox[0].period = 3;
             demoBox[0].mode = Box.Mode.Demo;
             demoBox[0].cardA = Box.redCardBit | Box.yellowCardBit | Box.shortCircuitBit;
@@ -887,6 +887,15 @@ public class FencingBoxActivity extends AppCompatActivity
             default:
                 break;
         }
+
+        /* Select the weapon select item (only visible when connected to box) */
+        item = menu.findItem(R.id.menu_weapon_select);
+        item.setEnabled(isSerialConnected() ? true:false);
+
+        /* Select the piste select item (only visible when connected to box) */
+        item = menu.findItem(R.id.menu_piste_select);
+        item.setEnabled(isSerialConnected() ? true:false);
+
         return super.onPrepareOptionsMenu(menu);
     }
 

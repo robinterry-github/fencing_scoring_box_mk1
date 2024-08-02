@@ -37,7 +37,7 @@
         app:layout_constraintVertical_bias="0.499" />
 
     <TextView
-        android:id="@+id/weapon_select_title"
+        android:id="@+id/piste_select_label"
         android:layout_width="233dp"
         android:layout_height="69dp"
         android:layout_marginTop="120dp"

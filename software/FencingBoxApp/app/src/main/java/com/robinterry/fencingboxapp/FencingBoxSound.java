@@ -10,8 +10,8 @@ import java.lang.Thread;
 import java.lang.Math;
 
 public class FencingBoxSound implements Runnable {
+    private static final String TAG = FencingBoxSound.class.getSimpleName();
     public enum waveformType { SINE, SQUARE, SAWTOOTH }
-
     private int level;
     private waveformType waveform;
     private short[] buffer;
@@ -42,8 +42,10 @@ public class FencingBoxSound implements Runnable {
         int minBufferSize = AudioTrack.getMinBufferSize(sampleRateInHz,
                 AudioFormat.CHANNEL_OUT_MONO,
                 AudioFormat.ENCODING_PCM_16BIT);
+        Log.i(TAG, "Min buffer size " + minBufferSize );
         int maxSamplesPerSec = sampleRateInHz / frequencyInHz;
         int bufferSize = (minBufferSize / maxSamplesPerSec) * (maxSamplesPerSec + 1);
+        Log.i(TAG, "Buffer size " + bufferSize );
 
         createTrack(context, maxSamplesPerSec, sampleRateInHz, bufferSize);
     }
@@ -67,10 +69,12 @@ public class FencingBoxSound implements Runnable {
         int minBufferSize = AudioTrack.getMinBufferSize(sampleRateInHz,
                 AudioFormat.CHANNEL_OUT_MONO,
                 AudioFormat.ENCODING_PCM_16BIT);
+        Log.i(TAG, "Min buffer size " + minBufferSize );
         int maxSamplesPerCycle = sampleRateInHz / frequencyInHz;
 
         // This is a time-limited sound, so work out the total number of samples
         this.sampleLimit = (int) ((sampleRateInHz * durationMs) / 1000);
+        Log.i(TAG, "sampleLimit " + this.sampleLimit );
 
         int bufferSize;
         if (this.sampleLimit < minBufferSize) {
@@ -85,6 +89,17 @@ public class FencingBoxSound implements Runnable {
                              int maxSamplesPerCycle,
                              int sampleRateInHz,
                              int bufferSize) {
+        AudioFormat format = new AudioFormat.Builder().
+                setSampleRate(sampleRateInHz).
+                setEncoding(AudioFormat.ENCODING_PCM_16BIT).
+                setChannelMask(AudioFormat.CHANNEL_OUT_MONO).
+                build();
+
+        // Frame size for PCM-16 so that we can round the buffer size accordingly
+        int frameSize = 4; /* format.getFrameSizeInBytes(); */
+
+        bufferSize = (bufferSize / frameSize) * frameSize;
+
         // Allocate the buffer
         buffer = new short[bufferSize];
 
@@ -93,16 +108,13 @@ public class FencingBoxSound implements Runnable {
         angleStep = (2*Math.PI)/(double) maxSamplesPerCycle;
 
         // Create the AudioTrack instance
+        Log.i("FencingBoxSound", "Buffer size " + bufferSize );
         audioTrack = new AudioTrack.Builder().
                 setAudioAttributes(new AudioAttributes.Builder().
                         setUsage(AudioAttributes.USAGE_MEDIA).
                         setContentType(AudioAttributes.CONTENT_TYPE_MUSIC).
                         build()).
-                setAudioFormat(new AudioFormat.Builder().
-                        setSampleRate(sampleRateInHz).
-                        setEncoding(AudioFormat.ENCODING_PCM_16BIT).
-                        setChannelMask(AudioFormat.CHANNEL_OUT_MONO).
-                        build()).
+                setAudioFormat(format).
                 setBufferSizeInBytes(bufferSize).
                 build();
 

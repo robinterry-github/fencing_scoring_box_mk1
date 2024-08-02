@@ -78,9 +78,15 @@ public class CardLightView extends View {
         int desiredWidth = areaXSize;
         int desiredHeight = areaYSize;
         int width, height;
-        final int LEFT_MARGIN_DIV = 10;
+        int leftMarginDiv;
         final int CARD_SIZE_Y_DIV_PORT = 14;
         final int CARD_SIZE_Y_DIV_LAND = 8;
+
+        if (mainActivity.getOrientation() == Orientation.Portrait) {
+            leftMarginDiv = 10;
+        } else {
+            leftMarginDiv = 7;
+        }
 
         int widthMode = MeasureSpec.getMode(widthMeasureSpec);
         int widthSize = MeasureSpec.getSize(widthMeasureSpec);
@@ -113,10 +119,10 @@ public class CardLightView extends View {
             topPos = HitLightView.coords.bottomPos;
 
             if (cardLight == CardLight.CardB) {
-                leftPos = screenWidth - (screenWidth / LEFT_MARGIN_DIV);
+                leftPos = screenWidth - (screenWidth / leftMarginDiv);
                 leftPos -= areaXSize;
             } else {
-                leftPos = screenWidth / LEFT_MARGIN_DIV;
+                leftPos = screenWidth / leftMarginDiv;
             }
         } else {
             areaXSize = HitLightView.coords.ledSizeX;
@@ -124,10 +130,10 @@ public class CardLightView extends View {
             topPos = HitLightView.coords.bottomPos;
 
             if (cardLight == CardLight.CardB) {
-                leftPos = screenWidth - (screenWidth / LEFT_MARGIN_DIV);
+                leftPos = screenWidth - (screenWidth / leftMarginDiv);
                 leftPos -= areaXSize;
             } else {
-                leftPos = screenWidth / LEFT_MARGIN_DIV;
+                leftPos = screenWidth / leftMarginDiv;
             }
         }
     }
