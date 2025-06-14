@@ -1493,14 +1493,16 @@ bool restoreDisplayAfterSleep()
       // Restore the last display
       return restoreDisplay();
    }
+#else
+   return true;
 #endif
 }
 
 bool restoreDisplay()
 {
-   bool ret = false;
-
 #ifdef ENABLE_DISPLAY
+   bool ret = true;
+
    switch (currentDisp)
    {
       case DISP_NONE:
@@ -1509,24 +1511,24 @@ bool restoreDisplay()
          
       case DISP_SCORE:
          displayScore();
-         ret = true;
          break;
 
       case DISP_TIME:
          displayTime();
-         ret = true;
          break;
 
       case DISP_PRI:
          displayPriority();
-         ret = true;
          break;
 
       default:
+         ret = false;
          break;
    }
-#endif
    return ret;
+#else
+   return true;
+#endif
 }
 
 //================
