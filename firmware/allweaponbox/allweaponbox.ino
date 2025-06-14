@@ -33,6 +33,7 @@
 //          15. Support for a passivity timer and cards                      //
 //          16. Support for polling the repeater for keypresses              //
 //          17. Support for new 2023 passivity rule                          //
+//          18. Added a weapon test mode                                     //
 //===========================================================================//
 
 //============
@@ -84,6 +85,7 @@
 #endif
 
 #define ENABLE_STOPWATCH           // Enable the stopwatch
+#define ENABLE_WEAPONTEST          // Enable weapon test mode
 #define EEPROM_STORAGE             // Use EEPROM for storing values over power-off
 #undef  SPAR_INCR_SCORE            // Automatically increment score after a hit in sparring mode (epee only)
 #define BOUT_INCR_SCORE            // Automatically increment score after a hit in bout mode (epee only)
@@ -339,17 +341,20 @@ enum BoutState
 {
    STA_NONE,
    STA_SPAR,
+   STA_STOPWATCH,
+   STA_WEAPONTEST,
+
+   /* Actual bout states */
+   STA_BOUT,
    STA_TP_CONTINUE,
    STA_BREAK,
    STA_TP_BREAK,
    STA_STARTBOUT,
-   STA_BOUT,
    STA_TP_BOUT,
    STA_TP_ENDBOUT,
    STA_PRIORITY,
    STA_ENDPRI,
-   STA_TP_PRI,
-   STA_STOPWATCH
+   STA_TP_PRI
 };
 
 enum HitDisplay
@@ -366,6 +371,7 @@ enum Reset
    RES_TESTPOINT,
    RES_LIGHTS,
    RES_SHORT,
+   RES_WEAPONTEST,
    RES_OFF
 };
 
@@ -587,6 +593,7 @@ const uint8_t shortDisp[] =
    SEG_A | SEG_D | SEG_E | SEG_F
 };
 
+#ifdef ENABLE_STOPWATCH
 const uint8_t stopWatchDisp[] =
 {
    SEG_A | SEG_C | SEG_D | SEG_F | SEG_G,
@@ -594,6 +601,17 @@ const uint8_t stopWatchDisp[] =
    SEG_A | SEG_B | SEG_C | SEG_D | SEG_E | SEG_F,
    SEG_A | SEG_B | SEG_E | SEG_F | SEG_G
 };
+#endif
+
+#ifdef ENABLE_WEAPONTEST
+const uint8_t weaponTestDisp[] =
+{
+   SEG_D | SEG_E | SEG_F | SEG_G,
+   SEG_A | SEG_D | SEG_E | SEG_F | SEG_G,
+   SEG_A | SEG_C | SEG_D | SEG_F | SEG_G,
+   SEG_D | SEG_E | SEG_F | SEG_G
+};
+#endif
 
 const uint8_t dimDisp[MAX_DIMCYCLE][4] =
 {
@@ -703,17 +721,17 @@ void sendRepeaterRaw(String msg)
 
 bool inBout()
 {
-   return ((boutState != STA_SPAR) && (boutState != STA_BREAK) && (boutState != STA_STOPWATCH)) ? true:false;
+   return ((boutState >= STA_BOUT) && (boutState != STA_BREAK)) ? true:false;
 }
 
 bool inBoutOrBreak()
 {
-   return ((boutState > STA_SPAR) && (boutState != STA_STOPWATCH)) ? true:false;
+   return ((boutState > STA_BOUT)) ? true:false;
 }
 
 bool inBoutOrSpar()
 {
-   return ((boutState != STA_BREAK) && (boutState != STA_STOPWATCH)) ? true:false;
+   return ((boutState != STA_BREAK) && (boutState != STA_STOPWATCH) && (boutState != STA_WEAPONTEST)) ? true:false;
 }
 
 bool inSpar()
@@ -741,14 +759,29 @@ bool inTestPoint()
    return (boutState == STA_TP_BOUT || boutState == STA_TP_PRI || boutState == STA_TP_BREAK || boutState == STA_TP_CONTINUE) ? true:false;
 }
 
+bool inWeaponTest()
+{
+   return (boutState == STA_WEAPONTEST) ? true:false;
+}
+
 bool pointCanBeTested()
 {
-   return inTestPoint() || inBreak() || inBoutStart();
+   return inTestPoint() || inBreak() || inBoutStart() || inWeaponTest();
+}
+
+bool isPointActive()
+{
+   return (depressed[FENCER_A] || depressed[FENCER_B]) ? true:false;
+}
+
+bool isRawHit()
+{
+   return (hitOnTarg[FENCER_A] || hitOnTarg[FENCER_B]) ? true:false;
 }
 
 bool isHit()
 {
-   if (hitOnTarg[FENCER_A] || hitOnTarg[FENCER_B])
+   if (isRawHit())
    {
       return lockedOut ? true:false;
    }
@@ -876,6 +909,12 @@ void displayState(enum BoutState state)
         disp.setSegments(stopWatchDisp, 4, 0);
 #endif
         break;
+
+     case STA_WEAPONTEST:
+#ifdef ENABLE_WEAPONTEST
+        disp.setSegments(weaponTestDisp, 4, 0);
+#endif
+        break;
    }
 #endif
 }
@@ -953,6 +992,13 @@ void displayScore()
   {
      return;
   }
+
+#ifdef ENABLE_WEAPONTEST
+  else if (inWeaponTest())
+  {
+     return;
+  }
+#endif
 
   // Is a short-circuit being displayed?
   else if (scDisplayActive())
@@ -1457,6 +1503,10 @@ bool restoreDisplay()
 #ifdef ENABLE_DISPLAY
    switch (currentDisp)
    {
+      case DISP_NONE:
+         displayState();
+         break;
+         
       case DISP_SCORE:
          displayScore();
          ret = true;
@@ -1707,7 +1757,6 @@ void restartBox(BoutState state)
    {
       case STA_SPAR:
       default:
-         boutState = state;
          startSpar();
          break;
 
@@ -1724,9 +1773,12 @@ void restartBox(BoutState state)
          break;
 
       case STA_STOPWATCH:
-         boutState = state;
          startStopWatch();
          break;
+
+      case STA_WEAPONTEST:
+         startWeaponTest();
+         break;   
    }
 }
 
@@ -2402,16 +2454,20 @@ void transIR(unsigned long key)
   case 'u': case 'd': // Repeater only
      if (priorityInactive())
      {
-        // In sparring mode? Go into bout mode
+        // In sparring mode? Go into next mode
         if (inSpar())
         {
-           // Go into bout mode
+           // Go into next mode
            keyClick();
 
            // Go backwards for the 'd' key
            if (key == 'd')
            {
+#ifdef ENABLE_STOPWATCH
               startStopWatch();
+#else
+              startBout();
+#endif
            }
            else
            {
@@ -2432,7 +2488,7 @@ void transIR(unsigned long key)
               }
               else
               {        
-                 // Stopwatch already at zero, so go into sparring mode
+                 // Stopwatch already at zero, so go into next mode
                  keyClick();
                  if (key == '$')
                  {
@@ -2440,9 +2496,32 @@ void transIR(unsigned long key)
                  }
                  else
                  {
+#ifdef ENABLE_WEAPONTEST
+                    startWeaponTest();
+#else
                     startSpar();
+#endif
                  }
               }
+           }
+        }
+#endif
+#ifdef ENABLE_WEAPONTEST
+        // In weapon test mode?
+        else if (inWeaponTest())
+        {
+           keyClick();
+           if (key == '$')
+           {
+#ifdef ENABLE_STOPWATCH
+              startStopWatch();
+#else
+              startBout();
+#endif
+           }
+           else
+           {
+              startSpar();
            }
         }
 #endif
@@ -3902,6 +3981,22 @@ int runStopWatch()
    return ret;
 }
 
+void startWeaponTest()
+{
+   boutState = STA_WEAPONTEST;
+#ifdef ENABLE_DISPLAY
+   displayState();
+#endif
+#ifdef EEPROM_STORAGE
+   writeState(boutState);
+#endif
+   currentDisp = DISP_NONE;
+   resetValues();
+   resetCards();
+   resetPassivity();
+   resetLights();
+}
+
 #ifdef ENABLE_IR
 void pollIR()
 {
@@ -4025,14 +4120,25 @@ void doWeapon()
       switch (weaponType)
       {
          case EPEE:
-            if (!lockedOut)
+            if ((!lockedOut)
+#ifdef ENABLE_WEAPONTEST
+                 ||
+                 inWeaponTest()
+#endif
+               )
+            
             {
               epee();
             }
             break;
 
          case FOIL:
-            if (!lockedOut)
+            if ((!lockedOut)
+#ifdef ENABLE_WEAPONTEST
+                 ||
+                 inWeaponTest()
+#endif
+               )
             {
               foil();
             }
@@ -4042,7 +4148,12 @@ void doWeapon()
             // We need a ground pin measurement for sabre
             ground[FENCER_A] = analogRead(groundPinA);
             ground[FENCER_B] = analogRead(groundPinB);
-            if (!lockedOut)
+            if ((!lockedOut)
+#ifdef ENABLE_WEAPONTEST
+                 ||
+                 inWeaponTest()
+#endif
+               )
             {
               sabre();
             }
@@ -4143,12 +4254,20 @@ void loop()
          if (pointCanBeTested())
          {
             signalHits();
-           
-            // Start the reset state machine to turn off buzzer and lights
-            if (!resetState)
+
+            // Don't turn off the buzzer and lights if in weapon test mode
+            if (inWeaponTest())
             {
-               resetState = RES_TESTPOINT;
-               resetTimer = millis();
+               resetState = RES_WEAPONTEST;
+            }
+            else
+            {
+               // Start the reset state machine to turn off buzzer and lights
+               if (!resetState)
+               {
+                  resetState = RES_TESTPOINT;
+                  resetTimer = millis();
+               }
             }
             restoreDisplay();
          }
@@ -4225,6 +4344,20 @@ void loop()
               resetState = RES_BUZZER;
               resetTimer = millis();
             }
+         }
+      }
+
+      // No longer a hit
+      if (!isPointActive())
+      {
+         // Turn off lights and buzzer if in weapon test mode
+         if (resetState == RES_WEAPONTEST)
+         {
+            // Turn lights off
+            resetLights();
+            resetValues();
+            resetState = RES_IDLE;
+            resetTimer = 0;
          }
       }
 
@@ -4372,7 +4505,11 @@ void loop()
                resetTimer = 0;
                restoreDisplay();
             }
-            break;         
+            break;
+
+         case RES_WEAPONTEST:
+            // Don't turn the lights and buzzer off until there is no hit
+            break;
 
          case RES_OFF:
             resetLights();
@@ -4664,6 +4801,7 @@ void loop()
              case STA_TP_ENDBOUT:
              case STA_TP_PRI:
              case STA_TP_BREAK:
+             case STA_WEAPONTEST:
                 break;
           }
       }
@@ -4785,7 +4923,12 @@ void foil()
    }
 
    // weapon A
-   if (!hitOnTarg[FENCER_A] && !hitOffTarg[FENCER_A]) 
+   if ((!hitOnTarg[FENCER_A] && !hitOffTarg[FENCER_A])
+#ifdef ENABLE_WEAPONTEST
+        ||
+        inWeaponTest()
+#endif
+      )
    {
       // Off-target hit?
       if (weapon[FENCER_A] > 900 && lame[FENCER_B] < 200) 
@@ -4858,10 +5001,15 @@ void foil()
    }
 
    // weapon B
-   if (!hitOnTarg[FENCER_B] && !hitOffTarg[FENCER_B]) 
+   if ((!hitOnTarg[FENCER_B] && !hitOffTarg[FENCER_B]) 
+#ifdef ENABLE_WEAPONTEST
+        ||
+        inWeaponTest()
+#endif
+      )
    {
       // Off-target hit?
-      if (weapon[FENCER_B] > 900 && lame[FENCER_A] < 200) 
+      if (weapon[FENCER_B] > 900 && lame[FENCER_A] < 200)
       {
          if (!depressed[FENCER_B]) 
          {
@@ -4938,7 +5086,7 @@ void epee()
 {
    long now = micros();
    if ((hitOnTarg[FENCER_A] && (depressTime[FENCER_A] + lockout[EPEE] < now)) 
-       || 
+        || 
        (hitOnTarg[FENCER_B] && (depressTime[FENCER_B] + lockout[EPEE] < now))) 
    {
       lockedOut = true;
@@ -4946,7 +5094,12 @@ void epee()
 
    // Weapon A
    // No hit yet && weapon depress && opponent body touched
-   if (!hitOnTarg[FENCER_A] && !lockedOut)
+   if ((!hitOnTarg[FENCER_A] && !lockedOut)
+#ifdef ENABLE_WEAPONTEST
+        ||
+        inWeaponTest()
+#endif
+      )
    {
       if (weapon[FENCER_A] > 400 && weapon[FENCER_A] < 600 
           && 
@@ -4975,14 +5128,20 @@ void epee()
 
       // Short-circuit of some kind?
       else if (
-                 (weapon[FENCER_A] > 200 && weapon[FENCER_A] < 400 
-                  && 
-                  lame[FENCER_A] > 200 && lame[FENCER_A] < 400)
-               ||
-                 (weapon[FENCER_A] > 400 && weapon[FENCER_A] < 600
-                  &&
-                  lame[FENCER_A] < 200)
-              )   
+                 (
+                    (weapon[FENCER_A] > 200 && weapon[FENCER_A] < 400 
+                     && 
+                     lame[FENCER_A] > 200 && lame[FENCER_A] < 400)
+                 ||
+                    (weapon[FENCER_A] > 400 && weapon[FENCER_A] < 600
+                     &&
+                     lame[FENCER_A] < 200)
+                 )
+#ifdef ENABLE_WEAPONTEST
+                 &&
+                 !inWeaponTest()
+#endif
+              )  
       {
          // Short circuit on fencer A
          if (!shortCircuit[FENCER_A])
@@ -5008,7 +5167,12 @@ void epee()
 
    // Weapon B
    // No hit yet && weapon depress && opponent body touched
-   if (!hitOnTarg[FENCER_B] && !lockedOut)
+   if ((!hitOnTarg[FENCER_B] && !lockedOut)
+#ifdef ENABLE_WEAPONTEST
+        ||
+        inWeaponTest()
+#endif
+      )
    {
       if (weapon[FENCER_B] > 400 && weapon[FENCER_B] < 600 
           && 
@@ -5037,13 +5201,19 @@ void epee()
      
       // Short-circuit of some kind?
       else if (
-                 (weapon[FENCER_B] > 200 && weapon[FENCER_B] < 400 
-                  && 
-                  lame[FENCER_B] > 200 && lame[FENCER_B] < 400)
-               ||
-                 (weapon[FENCER_B] > 400 && weapon[FENCER_B] < 600
-                  &&
-                  lame[FENCER_B] < 200)
+                 (
+                    (weapon[FENCER_B] > 200 && weapon[FENCER_B] < 400 
+                     && 
+                     lame[FENCER_B] > 200 && lame[FENCER_B] < 400)
+                 ||
+                    (weapon[FENCER_B] > 400 && weapon[FENCER_B] < 600
+                     &&
+                     lame[FENCER_B] < 200)
+                 )
+#ifdef ENABLE_WEAPONTEST
+                 &&
+                 !inWeaponTest()
+#endif
               )
       {
          // Short circuit on fencer B
@@ -5082,12 +5252,22 @@ void sabre()
    }
 
    // weapon A
-   if (!hitOnTarg[FENCER_A]) 
+   if ((!hitOnTarg[FENCER_A] && !lockedOut)
+#ifdef ENABLE_WEAPONTEST
+        ||
+        inWeaponTest()
+#endif
+      )
    { 
       // Check for weapon pin being disconnected from ground pin
       if (abs(weapon[FENCER_A] - ground[FENCER_A]) > 200)
       {
-         if (!lockOutOffTarg[FENCER_A])
+         if ((!lockOutOffTarg[FENCER_A])
+#ifdef ENABLE_WEAPONTEST
+               &&
+               !inWeaponTest()
+#endif
+            )
          {
             if (!shortCircuit[FENCER_A])
             {
@@ -5145,12 +5325,22 @@ void sabre()
    }
 
    // weapon B
-   if (!hitOnTarg[FENCER_B]) 
+   if ((!hitOnTarg[FENCER_B] && !lockedOut)
+#ifdef ENABLE_WEAPONTEST
+        ||
+        inWeaponTest()
+#endif
+      )
    {
       // Check for weapon pin being disconnected from ground pin
       if (abs(weapon[FENCER_B] - ground[FENCER_B]) > 200)
       {
-         if (!lockOutOffTarg[FENCER_B])
+         if ((!lockOutOffTarg[FENCER_B])
+#ifdef ENABLE_WEAPONTEST
+               &&
+               !inWeaponTest()
+#endif
+            )
          {
             if (!shortCircuit[FENCER_B])
             {
@@ -5448,6 +5638,10 @@ void writeState(BoutState state)
          EEPROM.update(NV_MODE, 2);
          break;
 
+      case STA_WEAPONTEST:
+         EEPROM.update(NV_MODE, 3);
+         break;
+
       default:
          break;
    }
@@ -5467,6 +5661,9 @@ BoutState readState()
 
       case 2:
          return STA_STOPWATCH;
+
+      case 3:
+         return STA_WEAPONTEST;
 
       default:
          return STA_NONE;
