@@ -1380,7 +1380,7 @@ public class FencingBoxActivity extends AppCompatActivity
     public boolean setClock(Box box, String mins, String secs, String hund, boolean hundActive) {
         boolean clockChanged = true;
 
-        if (box.isModeSparring() || box.isModeDisplay()) {
+        if (box.isModeSparring() || box.isModeDisplay() || box.isModeWeaponTest()) {
             clearClock();
             clockChanged = false;
         } else if (box.isModeConnected()) {
@@ -1826,6 +1826,20 @@ public class FencingBoxActivity extends AppCompatActivity
                     stopwatchHours++;
                 }
                 setPassivity(stopwatchHours);
+                break;
+
+            case "WT":
+                Log.i(TAG, "weapon test");
+                box.disp.hideUI();
+                box.setModeWeaponTest();
+                invalidateOptionsMenu();
+                Toast.makeText(getApplicationContext(), R.string.mode_weapontest, Toast.LENGTH_SHORT).show();
+                resetScore();
+                resetClock();
+                resetCard();
+                clearPriority();
+                clearPassivity();
+                clearPassivityCard();
                 break;
 
             case "RL":

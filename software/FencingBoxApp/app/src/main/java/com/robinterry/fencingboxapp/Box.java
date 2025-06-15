@@ -10,7 +10,7 @@ public class Box {
     public int msgIndex = 0;
     public enum Weapon {Foil, Epee, Sabre}
     public static enum Hit {None, OnTarget, OffTarget}
-    public enum Mode {None, Display, Sparring, Bout, Stopwatch, Demo}
+    public enum Mode {None, Display, Sparring, Bout, Stopwatch, WeaponTest, Demo}
     public Mode mode = Mode.None;
     private Mode oldMode = Mode.None;
     public Integer piste = 1;
@@ -96,6 +96,8 @@ public class Box {
         return mode == Mode.Demo;
     }
 
+    public boolean isModeWeaponTest() { return mode == Mode.WeaponTest; }
+
     public void setMode(Mode mode) {
         this.mode = mode;
     }
@@ -115,6 +117,8 @@ public class Box {
     public void setModeStopwatch() {
         this.mode = Mode.Stopwatch;
     }
+
+    public void setModeWeaponTest() { this.mode = Mode.WeaponTest; }
 
     public void setModeDemo() {
         this.mode = Mode.Demo;

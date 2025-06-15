@@ -3989,6 +3989,9 @@ void startWeaponTest()
 #ifdef ENABLE_DISPLAY
    displayState();
 #endif
+#ifdef ENABLE_REPEATER
+   sendRepeater("!WT");
+#endif
 #ifdef EEPROM_STORAGE
    writeState(boutState);
 #endif

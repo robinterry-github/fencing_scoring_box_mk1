@@ -624,7 +624,7 @@ public class FencingBoxDisplay {
 
     public void displayBox(Box box) {
         synchronized (this) {
-            if (box.rxOk) {
+            if (box.rxOk && !box.isModeWeaponTest()) {
                 displayClock(box.timeMins, box.timeSecs, box.timeHund, false);
                 displayScore(box.scoreA, box.scoreB);
                 displayHitLights(box.hitA, box.hitB);
