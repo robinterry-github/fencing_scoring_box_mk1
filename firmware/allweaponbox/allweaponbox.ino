@@ -5139,10 +5139,6 @@ void epee()
                      &&
                      lame[FENCER_A] < 200)
                  )
-#ifdef ENABLE_WEAPONTEST
-                 &&
-                 !inWeaponTest()
-#endif
               )  
       {
          // Short circuit on fencer A
@@ -5212,10 +5208,6 @@ void epee()
                      &&
                      lame[FENCER_B] < 200)
                  )
-#ifdef ENABLE_WEAPONTEST
-                 &&
-                 !inWeaponTest()
-#endif
               )
       {
          // Short circuit on fencer B
