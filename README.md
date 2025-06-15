@@ -22,7 +22,7 @@ Arduino libraries IRRemote, IRLib2 and TM1637Display are used in the software fo
 
 - The box also supports a 4-digit 7-segment LED display, an IR handset, a buzzer and various indicator LEDs.
 
-- The box has three main operating modes - sparring, bout and stopwatch.
+- The box has four main operating modes - sparring, bout, stopwatch and weapon test.
 
 - The power supply connector on the box is a 5V USB type B, which allows the box to be powered from a standard USB charger or a USB battery pack.
 
