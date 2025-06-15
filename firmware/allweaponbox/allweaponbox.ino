@@ -343,7 +343,7 @@ enum BoutState
    STA_SPAR,
    STA_STOPWATCH,
    STA_WEAPONTEST,
-
+   
    /* Actual bout states */
    STA_BOUT,
    STA_TP_CONTINUE,
@@ -721,17 +721,17 @@ void sendRepeaterRaw(String msg)
 
 bool inBout()
 {
-   return ((boutState >= STA_BOUT) && (boutState != STA_BREAK)) ? true:false;
+   return ((boutState >= STA_BOUT) && !inBreak()) ? true:false;
 }
 
 bool inBoutOrBreak()
 {
-   return ((boutState > STA_BOUT)) ? true:false;
+   return ((boutState >= STA_BOUT)) ? true:false;
 }
 
 bool inBoutOrSpar()
 {
-   return ((boutState != STA_BREAK) && (boutState != STA_STOPWATCH) && (boutState != STA_WEAPONTEST)) ? true:false;
+   return (!inBreak() && !inStopWatch() && !inWeaponTest()) ? true:false;
 }
 
 bool inSpar()
