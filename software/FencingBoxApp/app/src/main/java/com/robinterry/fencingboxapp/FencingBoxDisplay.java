@@ -239,7 +239,8 @@ public class FencingBoxDisplay {
                 mainActivity.runOnUiThread(new Runnable() {
                     @Override
                     public void run() {
-                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                        //if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                        if (false) {
                             mainActivity.getWindow().setDecorFitsSystemWindows(false);
                             if (mainActivity.getWindow().getInsetsController() != null) {
                                 mainActivity.getWindow().getInsetsController().hide(WindowInsets.Type.statusBars() | WindowInsets.Type.navigationBars());

@@ -1329,15 +1329,18 @@ public class FencingBoxActivity extends AppCompatActivity
     }
 
     public void setScore(String s_A, String s_B) {
-        box.scoreA = s_A;
-        box.scoreB = s_B;
-        if (box.isModeConnected()) {
-            box.disp.displayScore(box.scoreA, box.scoreB);
-            setPeriod();
+        if (!box.isModeWeaponTest()) {
+            box.scoreA = s_A;
+            box.scoreB = s_B;
+            if (box.isModeConnected()) {
+                box.disp.displayScore(box.scoreA, box.scoreB);
+                setPeriod();
+            } else {
+                clearScore();
+            }
         } else {
             clearScore();
         }
-
     }
 
     public void clearScore() {
