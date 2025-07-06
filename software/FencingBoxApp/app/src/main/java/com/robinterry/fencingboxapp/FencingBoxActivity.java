@@ -1584,7 +1584,7 @@ public class FencingBoxActivity extends AppCompatActivity
         for (byte b : data) {
             str.append(String.format("%02X", b));
         }
-        if (C.DEBUG) {
+        if (C.DEBUGNET) {
             Log.d(TAG, "Data: " + str);
         }
         for (int i = 0; i < data.length; ) {
@@ -2264,12 +2264,12 @@ public class FencingBoxActivity extends AppCompatActivity
         new Thread(new Runnable() {
             @Override
             public void run() {
-                if (C.DEBUG) {
+                if (C.DEBUGNET) {
                     Log.d(TAG, "Starting TX send thread");
                 }
                 for (;;) {
                     try {
-                        if (C.DEBUG) {
+                        if (C.DEBUGNET) {
                             Log.d(TAG, "Start full TX, bc " +
                                     bc + ", serial connected " + serialConnected +
                                     "box info " + box);
@@ -2278,7 +2278,7 @@ public class FencingBoxActivity extends AppCompatActivity
                             /* Only send messages in bout mode */
                             if (serialConnected == Connected.True) {
                                 String msg = msgFull();
-                                if (C.DEBUG) {
+                                if (C.DEBUGNET) {
                                     Log.d(TAG, "TX message " + msg);
                                 }
                                 if (useBroadcast) {

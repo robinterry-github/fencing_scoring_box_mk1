@@ -44,7 +44,6 @@ public class HitLightView extends View {
     public HitLightView(FencingBoxActivity mainActivity) {
         super(mainActivity.getBaseContext());
         this.mainActivity = mainActivity;
-
     }
 
     public HitLightView(FencingBoxActivity mainActivity, ConstraintLayout layout, HitLight hitLight, int color) {
@@ -73,8 +72,7 @@ public class HitLightView extends View {
     @Override
     protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
         super.onMeasure(widthMeasureSpec, heightMeasureSpec);
-        int desiredWidth  = coords.ledSizeX;
-        int desiredHeight = coords.ledSizeY;
+
         int width, height, screenWidth, screenHeight;
         final int LEFT_MARGIN_DIV = 10;
         final int TOP_MARGIN_DIV  = 12;
@@ -86,6 +84,19 @@ public class HitLightView extends View {
 
         screenWidth    = widthSize;
         screenHeight   = heightSize;
+
+        coords.topPos = screenHeight/TOP_MARGIN_DIV;
+        if (mainActivity.getOrientation() == Orientation.Portrait) {
+            coords.ledSizeX = (int) (((double) screenWidth)/LED_SIZE_X_DIV_PORT);
+            coords.ledSizeY = (int) (((double) screenHeight)/LED_SIZE_Y_DIV_PORT);
+        } else {
+            coords.ledSizeX = (int) (((double) screenWidth)/LED_SIZE_X_DIV_LAND);
+            coords.ledSizeY = (int) (((double) screenHeight)/LED_SIZE_Y_DIV_LAND);
+        }
+        coords.bottomPos = coords.topPos + coords.ledSizeY;
+
+        int desiredWidth  = coords.ledSizeX;
+        int desiredHeight = coords.ledSizeY;
 
         if (widthMode == MeasureSpec.EXACTLY) {
             width = widthSize;
@@ -101,21 +112,6 @@ public class HitLightView extends View {
         } else {
             height = desiredHeight;
         }
-        setMeasuredDimension(width, height);
-
-        if (C.DEBUG) {
-            Log.d(TAG, "screen width " + screenWidth + ", screen height " + screenHeight);
-        }
-
-        coords.topPos = screenHeight/TOP_MARGIN_DIV;
-        if (mainActivity.getOrientation() == Orientation.Portrait) {
-            coords.ledSizeX = (int) (((double) screenWidth)/LED_SIZE_X_DIV_PORT);
-            coords.ledSizeY = (int) (((double) screenHeight)/LED_SIZE_Y_DIV_PORT);
-        } else {
-            coords.ledSizeX = (int) (((double) screenWidth)/LED_SIZE_X_DIV_LAND);
-            coords.ledSizeY = (int) (((double) screenHeight)/LED_SIZE_Y_DIV_LAND);
-        }
-        coords.bottomPos = coords.topPos + coords.ledSizeY;
 
         if (hitLight == HitLight.HitB) {
             leftPos = screenWidth - (screenWidth/LEFT_MARGIN_DIV);
@@ -123,6 +119,7 @@ public class HitLightView extends View {
         } else {
             leftPos = screenWidth/LEFT_MARGIN_DIV;
         }
+        setMeasuredDimension(width, height);
     }
 
     public void setLayout(ConstraintLayout layout) {
@@ -138,12 +135,14 @@ public class HitLightView extends View {
 
     public void showLights(Box.Hit hit) {
         this.hit = hit;
+        requestLayout();
         invalidate();
     }
 
     @Override
     protected void onDraw(Canvas canvas) {
         super.onDraw(canvas);
+
         mainActivity.runOnUiThread(new Runnable() {
             @Override
             public void run() {
@@ -153,6 +152,7 @@ public class HitLightView extends View {
                 setBottom(coords.bottomPos);
 
                 int color;
+
                 switch (hit) {
                     case None:
                     default:
@@ -169,8 +169,8 @@ public class HitLightView extends View {
                 }
                 paint.setColor(color);
                 canvas.drawRect(
-                        (float) 0,
-                        (float) 0,
+                        0.0f,
+                        0.0f,
                         (float) getWidth(),
                         (float) getHeight(),
                         paint);
